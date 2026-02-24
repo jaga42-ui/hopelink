@@ -1,4 +1,5 @@
 import { useState, useContext } from "react";
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import AuthContext from "../context/AuthContext";
 import {
