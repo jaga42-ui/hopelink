@@ -10,15 +10,23 @@ const {
   getMe,
   updateLocation,       
   getNearbyDonors,      
-  sendEmergencyBlast,   // 👉 IMPORTED
-  respondToBlast        // 👉 IMPORTED
+  sendEmergencyBlast,
+  respondToBlast,
+  forgotPassword, // 👉 NEWLY IMPORTED
+  resetPassword   // 👉 NEWLY IMPORTED
 } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 
+// Standard Auth
 router.post('/register', registerUser);
 router.post('/login', loginUser);
 router.post('/google', googleLogin);
 
+// Password Reset Routes (Public)
+router.post('/forgotpassword', forgotPassword); // 👉 Endpoint for sending email
+router.post('/resetpassword/:id/:token', resetPassword); // 👉 Endpoint for saving new password
+
+// Profile & Role Management
 router.put('/role', protect, toggleRole);
 router.put('/profile', protect, updateProfile);
 router.get('/profile', protect, getMe);
@@ -28,7 +36,7 @@ router.post('/subscribe', protect, savePushSubscription);
 router.put('/location', protect, updateLocation);
 router.get('/nearby-donors', protect, getNearbyDonors);
 
-// 👉 NEW: Emergency Blast & Response Routes
+// Emergency Blast & Response Routes
 router.post('/emergency-blast', protect, sendEmergencyBlast);
 router.post('/respond-blast/:id', protect, respondToBlast);
 

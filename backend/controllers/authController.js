@@ -4,6 +4,7 @@ const User = require('../models/User');
 const Blast = require('../models/Blast'); 
 const webpush = require('web-push');      
 const { OAuth2Client } = require('google-auth-library');
+const nodemailer = require('nodemailer'); // 👉 NEW: Imported Nodemailer
 
 // 👉 Initialize the Google OAuth Client
 const client = new OAuth2Client(
@@ -91,13 +92,11 @@ const googleLogin = asyncHandler(async (req, res) => {
   }
 
   try {
-    // 1. Exchange the code for actual tokens
     const { tokens } = await client.getToken({
       code,
-      redirect_uri: 'postmessage', // Critical for React Popup Flow
+      redirect_uri: 'postmessage', 
     });
 
-    // 2. Verify the ID Token to get user details
     const ticket = await client.verifyIdToken({
       idToken: tokens.id_token,
       audience: process.env.GOOGLE_CLIENT_ID,
@@ -106,11 +105,9 @@ const googleLogin = asyncHandler(async (req, res) => {
     const payload = ticket.getPayload();
     const { email, name, picture, sub: googleId } = payload;
 
-    // 3. Find or Create User
     let user = await User.findOne({ email });
 
     if (!user) {
-      // Create account for first-time Google users
       const securePass = `HopeLink_${Math.random().toString(36).slice(-8)}!`;
       user = await User.create({
         name: name || 'New Hero',
@@ -120,28 +117,19 @@ const googleLogin = asyncHandler(async (req, res) => {
         googleId,
         phone: 'Not Provided',
         activeRole: 'donor',
-        points: 10, // Welcome points
+        points: 10, 
       });
     } else {
-      // Sync Google profile pic if they didn't have one
       if (!user.profilePic && picture) {
         user.profilePic = picture;
         await user.save();
       }
     }
 
-    // 4. Send back user data + App JWT
     res.json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      activeRole: user.activeRole,
-      isAdmin: user.isAdmin,
-      profilePic: user.profilePic,
-      bloodGroup: user.bloodGroup,
-      addressText: user.addressText,
-      points: user.points,
+      _id: user._id, name: user.name, email: user.email, phone: user.phone,
+      activeRole: user.activeRole, isAdmin: user.isAdmin, profilePic: user.profilePic,
+      bloodGroup: user.bloodGroup, addressText: user.addressText, points: user.points,
       token: generateToken(user._id),
     });
 
@@ -186,7 +174,7 @@ const savePushSubscription = asyncHandler(async (req, res) => {
   res.status(200).json({ message: 'Push subscription saved successfully!' });
 });
 
-// @desc    Get current user profile (The Heartbeat)
+// @desc    Get current user profile
 // @route   GET /api/auth/profile
 // @access  Private
 const getMe = asyncHandler(async (req, res) => {
@@ -211,7 +199,7 @@ const updateLocation = asyncHandler(async (req, res) => {
 // The Blood Radar Search Engine
 // @route   GET /api/auth/nearby-donors
 const getNearbyDonors = asyncHandler(async (req, res) => {
-  const { lat, lng, bloodGroup, distance = 15000 } = req.query; // Default 15km radius
+  const { lat, lng, bloodGroup, distance = 15000 } = req.query; 
   let query = {
     location: {
       $near: {
@@ -237,15 +225,11 @@ const sendEmergencyBlast = asyncHandler(async (req, res) => {
     res.status(400); throw new Error("Location and message are required for a blast");
   }
 
-  // 1. Save the Blast to the Database
   const blast = await Blast.create({
-    requester: req.user._id,
-    message,
-    bloodGroup,
+    requester: req.user._id, message, bloodGroup,
     location: { type: 'Point', coordinates: [Number(lng), Number(lat)] }
   });
 
-  // 2. Find all donors within 20km (20,000 meters)
   const nearbyDonors = await User.find({
     location: {
       $near: {
@@ -253,19 +237,14 @@ const sendEmergencyBlast = asyncHandler(async (req, res) => {
         $maxDistance: 20000, 
       },
     },
-    activeRole: 'donor',
-    _id: { $ne: req.user._id }, 
-    pushSubscription: { $ne: null } 
+    activeRole: 'donor', _id: { $ne: req.user._id }, pushSubscription: { $ne: null } 
   });
 
-  // 3. Prepare the Notification Payload (includes the blast ID so they can respond)
   const payload = JSON.stringify({
     title: `🚨 URGENT: ${bloodGroup || 'Blood'} Needed Nearby`,
-    body: message,
-    url: `/radar?blastId=${blast._id}` 
+    body: message, url: `/radar?blastId=${blast._id}` 
   });
 
-  // 4. Broadcast in parallel
   const notifications = nearbyDonors.map(donor => 
     webpush.sendNotification(donor.pushSubscription, payload).catch(err => {
       console.error(`Failed to send to ${donor.name}:`, err.message);
@@ -274,37 +253,96 @@ const sendEmergencyBlast = asyncHandler(async (req, res) => {
 
   await Promise.all(notifications);
 
-  res.status(200).json({ 
-    success: true, 
-    blastId: blast._id,
-    recipients: nearbyDonors.length 
-  });
+  res.status(200).json({ success: true, blastId: blast._id, recipients: nearbyDonors.length });
 });
 
-// Respond to a Blast (The "I'm Coming" Function)
+// Respond to a Blast 
 // @route   POST /api/auth/respond-blast/:id
 const respondToBlast = asyncHandler(async (req, res) => {
   const blast = await Blast.findById(req.params.id);
   if (!blast) { res.status(404); throw new Error("SOS alert no longer active"); }
 
-  // Avoid duplicate responses from the same hero
   const alreadyResponded = blast.responses.find(r => r.donor.toString() === req.user._id.toString());
   if (alreadyResponded) return res.json(blast);
 
   blast.responses.push({ donor: req.user._id });
   await blast.save();
 
-  // REAL-TIME: Notify the requester that help is coming!
   const io = req.app.get('io');
   if (io) {
     io.to(blast.requester.toString()).emit("donor_coming", { 
-      donorName: req.user.name,
-      donorPic: req.user.profilePic,
-      blastId: blast._id
+      donorName: req.user.name, donorPic: req.user.profilePic, blastId: blast._id
     });
   }
 
   res.json({ message: "Hero status confirmed! The requester has been notified." });
+});
+
+// 👉 NEW: Forgot Password (Send Email)
+// @route   POST /api/auth/forgotpassword
+// @access  Public
+const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    res.status(404); throw new Error('User not found');
+  }
+
+  const secret = process.env.JWT_SECRET + user.password;
+  const token = jwt.sign({ email: user.email, id: user._id }, secret, { expiresIn: '15m' });
+
+  const resetLink = `${process.env.FRONTEND_URL}/reset-password/${user._id}/${token}`;
+
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: process.env.SMTP_PORT,
+    secure: false, 
+    auth: {
+      user: process.env.SMTP_EMAIL,
+      pass: process.env.SMTP_PASSWORD,
+    },
+  });
+
+  const mailOptions = {
+    from: `"${process.env.FROM_NAME}" <${process.env.FROM_EMAIL}>`,
+    to: user.email,
+    subject: 'HopeLink - Password Reset Request',
+    html: `
+      <h3>You requested a password reset</h3>
+      <p>Click the link below to securely set a new password. This link expires in 15 minutes.</p>
+      <a href="${resetLink}" style="padding: 10px 20px; background-color: #ef4444; color: white; text-decoration: none; border-radius: 5px;">Reset Password</a>
+    `,
+  };
+
+  await transporter.sendMail(mailOptions);
+  res.json({ message: 'Password reset link sent to your email.' });
+});
+
+// 👉 NEW: Reset Password (Save new password)
+// @route   POST /api/auth/resetpassword/:id/:token
+// @access  Public
+const resetPassword = asyncHandler(async (req, res) => {
+  const { id, token } = req.params;
+  const { password } = req.body;
+
+  const user = await User.findById(id);
+  if (!user) {
+    res.status(404); throw new Error('User not found');
+  }
+
+  const secret = process.env.JWT_SECRET + user.password;
+  
+  try {
+    jwt.verify(token, secret);
+    
+    user.password = password; 
+    await user.save();
+
+    res.json({ message: 'Password has been successfully reset. You can now log in.' });
+  } catch (error) {
+    res.status(400); throw new Error('Reset link is invalid or has expired.');
+  }
 });
 
 // 👉 Export EVERYTHING
@@ -319,5 +357,7 @@ module.exports = {
   updateLocation, 
   getNearbyDonors,
   sendEmergencyBlast, 
-  respondToBlast 
+  respondToBlast,
+  forgotPassword,  // <-- Added
+  resetPassword    // <-- Added
 };
