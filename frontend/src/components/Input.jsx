@@ -1,19 +1,28 @@
 import { motion } from 'framer-motion';
 
-const Input = ({ icon: Icon, type, placeholder, name, value, onChange }) => {
+const Input = ({ icon: Icon, type, placeholder, name, value, onChange, required = false }) => {
   return (
-    <div className="relative mb-4">
-      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-        <Icon size={20} />
-      </div>
+    <div className="relative w-full">
+      {/* Absolute positioning for the icon to keep it perfectly centered vertically */}
+      {Icon && (
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm pointer-events-none z-10">
+          <Icon size={16} />
+        </div>
+      )}
+      
       <motion.input 
-        whileFocus={{ scale: 1.02, borderColor: "#60A5FA" }}
+        whileFocus={{ scale: 1.01 }}
+        transition={{ type: "spring", stiffness: 400, damping: 25 }}
         type={type} 
         name={name}
         placeholder={placeholder}
         value={value}
         onChange={onChange}
-        className="w-full pl-10 pr-4 py-3 bg-gray-800/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
+        required={required}
+        // 👉 text-base prevents iOS Safari zoom. bg-[#111] matches the stealth aesthetic.
+        className={`w-full bg-[#111] border border-white/10 rounded-2xl py-3.5 sm:py-4 pr-4 text-white text-base sm:text-sm placeholder-white/20 outline-none focus:border-teal-500 focus:bg-black transition-colors shadow-inner ${
+          Icon ? 'pl-10 sm:pl-12' : 'pl-4 sm:pl-5'
+        }`}
       />
     </div>
   );

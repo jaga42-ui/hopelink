@@ -1,88 +1,95 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { FaLock } from 'react-icons/fa';
+import { FaLock, FaSpinner, FaShieldAlt } from 'react-icons/fa';
 
-// 👉 IMPORT YOUR API MANAGER
 import api from '../utils/api';
+import AuthLayout from '../components/AuthLayout';
 
 const ResetPassword = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const { resettoken } = useParams();
+  const [loading, setLoading] = useState(false);
+  
+  const { id, token } = useParams(); 
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (password !== confirmPassword) {
-      return toast.error("Passwords do not match");
+      return toast.error("Passcodes do not match.");
     }
 
-    const toastId = toast.loading('Resetting password...');
+    setLoading(true);
+    const toastId = toast.loading('Re-encrypting passcode...');
+    
     try {
-      // 👉 CLEAN REQUEST: Using your API manager to hit the live server!
-      await api.put(`/auth/resetpassword/${resettoken}`, { password });
-      
-      toast.success('Password reset successfully! Please login.', { id: toastId });
+      await api.post(`/auth/resetpassword/${id}/${token}`, { password });
+      toast.success('Passcode updated securely. You may now access the network.', { 
+        id: toastId,
+        style: { background: '#111', color: '#14b8a6', border: '1px solid rgba(20, 184, 166, 0.3)' }
+      });
       navigate('/login');
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Invalid or expired token', { id: toastId });
+      toast.error(error.response?.data?.message || 'Invalid or expired override link', { id: toastId });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    // Responsive outer container with the custom gradient
-    <div className="min-h-screen flex items-center justify-center bg-brand-gradient p-4 selection:bg-white selection:text-teal-700">
-      
-      {/* Glassmorphism Card */}
-      <div className="w-full max-w-md bg-white/10 backdrop-blur-xl border border-white/20 p-6 sm:p-8 rounded-3xl shadow-2xl relative overflow-hidden">
-        
-        {/* Soft lighting overlay */}
-        <div className="absolute -bottom-20 -right-20 w-40 h-40 bg-white/20 rounded-full blur-[50px] pointer-events-none" />
-
-        <div className="text-center mb-8 relative z-10">
-          <Link to="/" className="text-3xl font-extrabold text-white mb-2 inline-block drop-shadow-md">
-            New <span className="text-emerald-100">Password</span>
-          </Link>
-          <p className="text-white/80 font-medium mt-2">Please enter your new strong password.</p>
+    <AuthLayout 
+      title="SECURE ENCRYPTION." 
+      subtitle="Establish a new network passcode"
+      icon={FaShieldAlt}
+    >
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div>
+          <label className="text-white/50 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-2 flex items-center gap-2 ml-1">
+            <FaLock className="text-teal-400/70" /> New Passcode
+          </label>
+          <input 
+            type="password" 
+            value={password} 
+            onChange={(e) => setPassword(e.target.value)} 
+            required
+            className="w-full bg-[#111] border border-white/10 rounded-2xl px-5 py-4 text-white text-base md:text-sm placeholder-white/20 focus:border-teal-500 focus:bg-black outline-none transition-all"
+            placeholder="••••••••"
+          />
+          <p className="text-[9px] text-white/40 mt-2 ml-1 font-bold uppercase tracking-widest">
+            Min 8 chars, uppercase, number, & special char.
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
-          <div>
-            <label className="text-white text-sm font-extrabold mb-2 flex items-center gap-2 drop-shadow-sm">
-              <FaLock className="text-emerald-100" /> New Password
-            </label>
-            <input 
-              type="password" 
-              value={password} 
-              onChange={(e) => setPassword(e.target.value)} 
-              required
-              className="w-full bg-black/20 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 outline-none transition-all shadow-inner"
-              placeholder="••••••••"
-            />
-            <p className="text-xs text-white/70 mt-2 font-medium">Must be 8+ characters, with uppercase, lowercase, number, and special character.</p>
-          </div>
+        <div>
+          <label className="text-white/50 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-2 flex items-center gap-2 ml-1">
+            <FaLock className="text-teal-400/70" /> Confirm Passcode
+          </label>
+          <input 
+            type="password" 
+            value={confirmPassword} 
+            onChange={(e) => setConfirmPassword(e.target.value)} 
+            required
+            className="w-full bg-[#111] border border-white/10 rounded-2xl px-5 py-4 text-white text-base md:text-sm placeholder-white/20 focus:border-teal-500 focus:bg-black outline-none transition-all"
+            placeholder="••••••••"
+          />
+        </div>
 
-          <div>
-            <label className="text-white text-sm font-extrabold mb-2 flex items-center gap-2 drop-shadow-sm">
-              <FaLock className="text-emerald-100" /> Confirm Password
-            </label>
-            <input 
-              type="password" 
-              value={confirmPassword} 
-              onChange={(e) => setConfirmPassword(e.target.value)} 
-              required
-              className="w-full bg-black/20 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 outline-none transition-all shadow-inner"
-              placeholder="••••••••"
-            />
-          </div>
+        <button 
+          type="submit"
+          disabled={loading || !password || !confirmPassword}
+          className="w-full mt-4 bg-teal-500 hover:bg-teal-400 text-[#050505] font-black uppercase tracking-widest text-xs py-4 rounded-2xl transition-all shadow-[0_0_30px_rgba(20,184,166,0.2)] active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50 disabled:active:scale-100"
+        >
+          {loading ? <FaSpinner className="animate-spin text-xl text-black" /> : 'Confirm & Encrypt'}
+        </button>
+      </form>
 
-          <button className="w-full bg-white text-teal-700 font-extrabold py-3 rounded-xl hover:bg-gray-100 transition-all shadow-xl active:scale-95">
-            Reset Password
-          </button>
-        </form>
+      <div className="mt-8 text-center bg-white/5 py-4 rounded-2xl border border-white/5">
+        <Link to="/login" className="text-white/60 hover:text-white text-xs font-bold uppercase tracking-widest transition-colors">
+          Abort & Return to Login
+        </Link>
       </div>
-    </div>
+    </AuthLayout>
   );
 };
 

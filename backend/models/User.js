@@ -25,22 +25,25 @@ const userSchema = new mongoose.Schema({
   bloodGroup: { type: String },
   addressText: { type: String },
 
-  // 👉 NEW: Geospatial Location Tracking
+  // 👉 Geospatial Location Tracking
   location: {
     type: { type: String, enum: ['Point'], default: 'Point' },
     coordinates: { type: [Number], default: [0, 0] } // [longitude, latitude]
   }
 }, { timestamps: true });
 
-// 👉 NEW: This tells MongoDB to treat this field as a spherical Earth map
+// 👉 This index is what allows the "Blood Radar" to find people by distance
 userSchema.index({ location: '2dsphere' });
 
+// 👉 Hashes password before saving to DB (Used in Register & Reset Password)
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 10);
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
 });
 
-userSchema.methods.comparePassword = async function (enteredPassword) {
+// 👉 Renamed to match your Controller call
+userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 

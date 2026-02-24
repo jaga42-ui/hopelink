@@ -1,9 +1,12 @@
 import { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
-import { FaEnvelope, FaLock, FaSpinner, FaGoogle } from 'react-icons/fa';
+import { FaEnvelope, FaLock, FaSpinner, FaGoogle, FaShieldAlt } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
+
+// 👉 Import your new AuthLayout wrapper!
+import AuthLayout from '../components/AuthLayout'; 
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -20,19 +23,20 @@ const Login = () => {
     try {
       const { data } = await api.post('/auth/login', { email, password });
       login(data);
-      toast.success(`Welcome back, ${data.name}!`);
+      toast.success(`Authentication successful. Welcome back, ${data.name}.`, {
+        style: { background: '#111', color: '#14b8a6', border: '1px solid rgba(20, 184, 166, 0.3)' }
+      });
       navigate('/dashboard');
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Invalid email or password');
+      toast.error(error.response?.data?.message || 'Access Denied. Invalid credentials.');
     } finally {
       setLoading(false);
     }
   };
 
-  // 👉 DYNAMIC GOOGLE OAUTH LINK
   const handleGoogleLogin = () => {
     if (!window.google) {
-      return toast.error("Google secure login is still loading. Please try again in a second.");
+      return toast.error("Secure gateway is still loading. Please wait a moment.");
     }
 
     const client = window.google.accounts.oauth2.initCodeClient({
@@ -43,11 +47,9 @@ const Login = () => {
         if (response.code) {
           const toastId = toast.loading("Verifying Identity...");
           try {
-            // 👉 THIS SENDS THE 'POST' REQUEST YOUR BACKEND IS WAITING FOR
             const { data } = await api.post('/auth/google', { code: response.code });
-            
             login(data);
-            toast.success(`Welcome back, ${data.name}!`, { id: toastId });
+            toast.success(`Identity verified. Welcome, ${data.name}.`, { id: toastId });
             navigate('/dashboard');
           } catch (error) {
             toast.error(error.response?.data?.message || "Google Login Failed", { id: toastId });
@@ -60,73 +62,80 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-brand-gradient p-4 selection:bg-white selection:text-teal-700">
-      <div className="w-full max-w-md bg-white/10 backdrop-blur-xl border border-white/20 p-6 sm:p-8 rounded-3xl shadow-2xl relative overflow-hidden">
-        <div className="absolute -top-20 -left-20 w-40 h-40 bg-white/20 rounded-full blur-[50px] pointer-events-none" />
-
-        <div className="text-center mb-8 relative z-10">
-          <h1 className="text-4xl font-black text-white italic tracking-tighter mb-2 drop-shadow-md">
-            HOPE<span className="text-teal-400">LINK.</span>
-          </h1>
-          <p className="text-white/80 font-medium mt-2">Welcome back to the community.</p>
+    // 👉 Wrap everything in AuthLayout instead of a standard <div>
+    <AuthLayout 
+      title="RESUME THE MISSION." 
+      subtitle="The network is waiting for you."
+      icon={FaShieldAlt}
+    >
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div>
+          <label className="text-white/50 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-2 flex items-center gap-2 ml-1">
+            <FaEnvelope className="text-teal-400/70" /> Secured Email
+          </label>
+          {/* text-base prevents iOS Safari from auto-zooming */}
+          <input 
+            type="email" 
+            value={email} 
+            onChange={(e) => setEmail(e.target.value)} 
+            required
+            className="w-full bg-[#111] border border-white/10 rounded-2xl px-5 py-4 text-white text-base md:text-sm placeholder-white/20 focus:border-teal-500 focus:bg-black outline-none transition-all"
+            placeholder="operator@hopelink.com"
+          />
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
-          <div>
-            <label className="text-white text-sm font-extrabold mb-2 flex items-center gap-2 drop-shadow-sm">
-              <FaEnvelope className="text-teal-300" /> Email Address
+        <div>
+          <div className="flex justify-between items-center mb-2 ml-1 mr-1">
+            <label className="text-white/50 text-[10px] sm:text-xs font-black uppercase tracking-widest flex items-center gap-2">
+              <FaLock className="text-teal-400/70" /> Passcode
             </label>
-            <input 
-              type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
-              className="w-full bg-black/20 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/40 focus:ring-2 focus:ring-teal-500/50 outline-none transition-all shadow-inner"
-              placeholder="you@example.com"
-            />
+            <Link to="/forgotpassword" className="text-[10px] text-teal-400 hover:text-teal-300 font-black uppercase tracking-widest transition-colors">
+              Override?
+            </Link>
           </div>
-
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <label className="text-white text-sm font-extrabold flex items-center gap-2 drop-shadow-sm">
-                <FaLock className="text-teal-300" /> Password
-              </label>
-              <Link to="/forgotpassword" className="text-xs text-teal-300 hover:text-white font-bold transition-colors">
-                Forgot Password?
-              </Link>
-            </div>
-            <input 
-              type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
-              className="w-full bg-black/20 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/40 focus:ring-2 focus:ring-teal-500/50 outline-none transition-all shadow-inner"
-              placeholder="••••••••"
-            />
-          </div>
-
-          <button disabled={loading} className="w-full mt-4 bg-teal-500 hover:bg-teal-400 text-white font-black uppercase tracking-widest py-4 rounded-xl transition-all shadow-[0_0_20px_rgba(20,184,166,0.3)] active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50">
-            {loading ? <FaSpinner className="animate-spin text-xl" /> : 'Log In to Network'}
-          </button>
-        </form>
-
-        {/* 👉 RESTORED GOOGLE BUTTON */}
-        <div className="relative z-10 mt-6">
-          <div className="flex items-center mb-6">
-            <div className="flex-1 border-t border-white/10"></div>
-            <span className="px-4 text-white/40 text-[10px] font-black uppercase tracking-widest">Or</span>
-            <div className="flex-1 border-t border-white/10"></div>
-          </div>
-          
-          <button onClick={handleGoogleLogin} type="button" className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-3 backdrop-blur-sm">
-            <FaGoogle className="text-red-400 text-lg" /> Continue with Google
-          </button>
+          <input 
+            type="password" 
+            value={password} 
+            onChange={(e) => setPassword(e.target.value)} 
+            required
+            className="w-full bg-[#111] border border-white/10 rounded-2xl px-5 py-4 text-white text-base md:text-sm placeholder-white/20 focus:border-teal-500 focus:bg-black outline-none transition-all"
+            placeholder="••••••••"
+          />
         </div>
 
-        <div className="mt-8 text-center relative z-10">
-          <p className="text-white/80 font-medium">
-            New to HopeLink?{' '}
-            <Link to="/register" className="text-teal-300 hover:text-white font-black ml-1 transition-colors hover:underline">
-              Create an account
-            </Link>
-          </p>
+        <button 
+          disabled={loading || !email || !password} 
+          className="w-full mt-2 bg-teal-500 hover:bg-teal-400 text-[#050505] font-black uppercase tracking-widest text-xs py-4 md:py-5 rounded-2xl transition-all shadow-[0_0_30px_rgba(20,184,166,0.2)] active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50 disabled:active:scale-100"
+        >
+          {loading ? <FaSpinner className="animate-spin text-xl text-black" /> : 'Access Live Network'}
+        </button>
+      </form>
+
+      <div className="relative mt-8 mb-6">
+        <div className="flex items-center">
+          <div className="flex-1 border-t border-white/10"></div>
+          <span className="px-4 text-white/30 text-[9px] font-black uppercase tracking-widest">Or Authenticate Via</span>
+          <div className="flex-1 border-t border-white/10"></div>
         </div>
       </div>
-    </div>
+      
+      <button 
+        onClick={handleGoogleLogin} 
+        type="button" 
+        className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-xs uppercase tracking-widest py-4 rounded-2xl transition-all flex items-center justify-center gap-3 active:scale-95"
+      >
+        <FaGoogle className="text-red-500 text-lg" /> Google Override
+      </button>
+
+      <div className="mt-8 text-center bg-white/5 py-4 rounded-2xl border border-white/5">
+        <p className="text-white/60 text-xs font-bold uppercase tracking-widest">
+          Haven't Enlisted Yet?
+          <Link to="/register" className="block mt-2 text-teal-400 hover:text-white font-black transition-colors">
+            Join the Frontlines
+          </Link>
+        </p>
+      </div>
+    </AuthLayout>
   );
 };
 
