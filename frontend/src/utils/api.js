@@ -4,13 +4,12 @@ const baseURL = 'https://hopelink-api.onrender.com/api';
 
 const api = axios.create({
   baseURL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  // 👉 STRIPPED: We removed the hardcoded JSON header. 
+  // Now it will automatically allow image uploads!
 });
 
 api.interceptors.request.use((config) => {
-  // 👉 THE FIX: Look inside the 'user' object for the token
+  // Look inside the 'user' object for the token
   const userJSON = localStorage.getItem('user');
   
   if (userJSON) {
