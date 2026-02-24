@@ -1,0 +1,23 @@
+{
+  "short_name": "HopeLink",
+  "name": "HopeLink Community Rescue",
+  "description": "Real-time geospatial emergency and donation network.",
+  "icons": [
+    {
+      "src": "/pwa-512x512.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#229985",
+  "background_color": "#0a0a0a"
+}

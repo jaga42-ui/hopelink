@@ -1,0 +1,1 @@
+import{l as t}from"./index-BWa_XzmO.js";const o="https://hopelink-api.onrender.com/api",s=t.create({baseURL:o});s.interceptors.request.use(e=>{const r=JSON.parse(localStorage.getItem("user"));return r&&r.token&&(e.headers.Authorization=`Bearer ${r.token}`),e},e=>Promise.reject(e));export{s as a};

@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@layer utilities {
+  .bg-brand-gradient {
+    /* Fallback */
+    background: #229985;
+    
+    /* The New 168deg Gradient */
+    background: -webkit-linear-gradient(168deg, rgba(34, 153, 133, 1) 0%, rgba(87, 199, 133, 1) 50%, rgba(173, 166, 222, 1) 100%);
+    background: -moz-linear-gradient(168deg, rgba(34, 153, 133, 1) 0%, rgba(87, 199, 133, 1) 50%, rgba(173, 166, 222, 1) 100%);
+    background: linear-gradient(168deg, rgba(34, 153, 133, 1) 0%, rgba(87, 199, 133, 1) 50%, rgba(173, 166, 222, 1) 100%);
+  }
+}
+@layer components {
+  /* Soft, bouncy buttons */
+  .btn-aesthetic {
+    @apply px-8 py-4 rounded-2xl font-black transition-all active:scale-95 shadow-xl;
+  }
+  
+  /* Inputs that feel like part of the glass */
+  .input-glass {
+    @apply bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white placeholder-white/30 focus:bg-white/10 focus:border-white/30 outline-none transition-all;
+  }
+
+  /* The main "Container" style for all cards */
+  .glass-card {
+    @apply bg-white/10 backdrop-blur-xl border border-white/20 rounded-[3rem] shadow-2xl;
+  }
+}
+
+/* Hide scrollbars but keep functionality */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* -----------------------------------------
+   LEAFLET DARK MODE & GLASSMORPHISM FIXES
+------------------------------------------ */
+.leaflet-popup-content-wrapper {
+  background: rgba(17, 17, 17, 0.85) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1.5rem !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8) !important;
+}
+
+.leaflet-popup-tip {
+  background: rgba(17, 17, 17, 0.9) !important;
+}
+
+.leaflet-container a.leaflet-popup-close-button {
+  color: rgba(255, 255, 255, 0.5) !important;
+  padding: 4px !important;
+}
+
+.leaflet-container a.leaflet-popup-close-button:hover {
+  color: #fff !important;
+  background: transparent !important;
+}
+
+/* Make the map container match the rounded corners perfectly */
+.leaflet-container {
+  background: #0a0a0a !important;
+  border-radius: inherit;
+}

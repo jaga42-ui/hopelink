@@ -1,0 +1,323 @@
+const jwt = require('jsonwebtoken');
+const asyncHandler = require('express-async-handler');
+const User = require('../models/User');
+const Blast = require('../models/Blast'); 
+const webpush = require('web-push');      
+const { OAuth2Client } = require('google-auth-library');
+
+// 👉 Initialize the Google OAuth Client
+const client = new OAuth2Client(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET
+);
+
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+};
+
+// @desc    Register new user
+// @route   POST /api/auth/register
+const registerUser = asyncHandler(async (req, res) => {
+  const { name, email, password, phone, activeRole } = req.body;
+
+  if (!name || !email || !password || !phone) {
+    res.status(400); throw new Error('Please add all required fields');
+  }
+
+  const userExists = await User.findOne({ email });
+  if (userExists) {
+    res.status(400); throw new Error('Email already registered');
+  }
+
+  const user = await User.create({
+    name, email, password, phone,
+    activeRole: activeRole || 'donor',
+    isAdmin: false, profilePic: '', addressText: '' 
+  });
+
+  if (user) {
+    res.status(201).json({
+      _id: user.id, name: user.name, email: user.email, phone: user.phone,
+      activeRole: user.activeRole, isAdmin: user.isAdmin, profilePic: user.profilePic, 
+      addressText: user.addressText, token: generateToken(user._id)
+    });
+  } else {
+    res.status(400); throw new Error('Invalid user data');
+  }
+});
+
+// @desc    Authenticate a user
+// @route   POST /api/auth/login
+const loginUser = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+  const user = await User.findOne({ email });
+
+  if (user && (await user.matchPassword(password))) {
+    res.json({
+      _id: user.id, name: user.name, email: user.email, phone: user.phone,
+      activeRole: user.activeRole, isAdmin: user.isAdmin, profilePic: user.profilePic, 
+      bloodGroup: user.bloodGroup, addressText: user.addressText, token: generateToken(user._id)
+    });
+  } else {
+    res.status(401); throw new Error('Invalid credentials');
+  }
+});
+
+// @desc    Toggle Role (Donor <-> Receiver)
+// @route   PUT /api/auth/role
+// @access  Private
+const toggleRole = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user.id);
+  if (!user) { res.status(404); throw new Error('User not found'); }
+
+  user.activeRole = user.activeRole === 'donor' ? 'receiver' : 'donor';
+  const updatedUser = await user.save();
+
+  res.json({
+    _id: updatedUser.id, name: updatedUser.name, email: updatedUser.email, phone: updatedUser.phone,
+    activeRole: updatedUser.activeRole, isAdmin: updatedUser.isAdmin, profilePic: updatedUser.profilePic, 
+    bloodGroup: updatedUser.bloodGroup, addressText: updatedUser.addressText, token: req.headers.authorization.split(' ')[1] 
+  });
+});
+
+// @desc    Authenticate via Google (Secure Authorization Code Flow)
+// @route   POST /api/auth/google
+const googleLogin = asyncHandler(async (req, res) => {
+  const { code } = req.body; 
+
+  if (!code) {
+    res.status(400);
+    throw new Error('Authorization code not provided');
+  }
+
+  try {
+    // 1. Exchange the code for actual tokens
+    const { tokens } = await client.getToken({
+      code,
+      redirect_uri: 'postmessage', // Critical for React Popup Flow
+    });
+
+    // 2. Verify the ID Token to get user details
+    const ticket = await client.verifyIdToken({
+      idToken: tokens.id_token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const { email, name, picture, sub: googleId } = payload;
+
+    // 3. Find or Create User
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      // Create account for first-time Google users
+      const securePass = `HopeLink_${Math.random().toString(36).slice(-8)}!`;
+      user = await User.create({
+        name: name || 'New Hero',
+        email,
+        password: securePass,
+        profilePic: picture || '',
+        googleId,
+        phone: 'Not Provided',
+        activeRole: 'donor',
+        points: 10, // Welcome points
+      });
+    } else {
+      // Sync Google profile pic if they didn't have one
+      if (!user.profilePic && picture) {
+        user.profilePic = picture;
+        await user.save();
+      }
+    }
+
+    // 4. Send back user data + App JWT
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      activeRole: user.activeRole,
+      isAdmin: user.isAdmin,
+      profilePic: user.profilePic,
+      bloodGroup: user.bloodGroup,
+      addressText: user.addressText,
+      points: user.points,
+      token: generateToken(user._id),
+    });
+
+  } catch (error) {
+    console.error('Google Auth Error:', error);
+    res.status(500);
+    throw new Error('Google authentication failed. Please try again.');
+  }
+});
+
+// @desc    Update user profile
+// @route   PUT /api/auth/profile
+// @access  Private
+const updateProfile = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id);
+
+  if (user) {
+    user.name = req.body.name || user.name;
+    user.bloodGroup = req.body.bloodGroup || user.bloodGroup;
+    user.phone = req.body.phone || user.phone;
+    user.addressText = req.body.addressText || user.addressText;
+
+    const updatedUser = await user.save();
+    res.json({
+      _id: updatedUser._id, name: updatedUser.name, email: updatedUser.email,
+      profilePic: updatedUser.profilePic, activeRole: updatedUser.activeRole, isAdmin: updatedUser.isAdmin,
+      bloodGroup: updatedUser.bloodGroup, phone: updatedUser.phone, addressText: updatedUser.addressText,
+      token: req.headers.authorization.split(' ')[1] 
+    });
+  } else { res.status(404); throw new Error('User not found'); }
+});
+
+// @desc    Save User's Web Push Subscription
+// @route   POST /api/auth/subscribe
+// @access  Private
+const savePushSubscription = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id);
+  if (!user) { res.status(404); throw new Error('User not found'); }
+
+  user.pushSubscription = req.body; 
+  await user.save();
+  res.status(200).json({ message: 'Push subscription saved successfully!' });
+});
+
+// @desc    Get current user profile (The Heartbeat)
+// @route   GET /api/auth/profile
+// @access  Private
+const getMe = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id).select('-password');
+  if (user) { res.json(user); } else { res.status(404); throw new Error('User not found'); }
+});
+
+// Update User's Live GPS Location
+// @route   PUT /api/auth/location
+const updateLocation = asyncHandler(async (req, res) => {
+  const { lat, lng, addressText } = req.body;
+  const user = await User.findById(req.user._id);
+
+  if (user) {
+    user.location = { type: 'Point', coordinates: [lng, lat] }; 
+    if (addressText) user.addressText = addressText;
+    await user.save();
+    res.json({ message: "Live location locked in." });
+  } else { res.status(404); throw new Error('User not found'); }
+});
+
+// The Blood Radar Search Engine
+// @route   GET /api/auth/nearby-donors
+const getNearbyDonors = asyncHandler(async (req, res) => {
+  const { lat, lng, bloodGroup, distance = 15000 } = req.query; // Default 15km radius
+  let query = {
+    location: {
+      $near: {
+        $geometry: { type: 'Point', coordinates: [Number(lng), Number(lat)] },
+        $maxDistance: Number(distance)
+      }
+    },
+    _id: { $ne: req.user._id },
+    activeRole: 'donor'
+  };
+
+  if (bloodGroup && bloodGroup !== 'All') query.bloodGroup = bloodGroup;
+  const donors = await User.find(query).select('name profilePic bloodGroup addressText phone location rank rating');
+  res.json(donors);
+});
+
+// Send Emergency Blast to nearby donors
+// @route   POST /api/auth/emergency-blast
+const sendEmergencyBlast = asyncHandler(async (req, res) => {
+  const { lat, lng, message, bloodGroup } = req.body;
+
+  if (!lat || !lng || !message) {
+    res.status(400); throw new Error("Location and message are required for a blast");
+  }
+
+  // 1. Save the Blast to the Database
+  const blast = await Blast.create({
+    requester: req.user._id,
+    message,
+    bloodGroup,
+    location: { type: 'Point', coordinates: [Number(lng), Number(lat)] }
+  });
+
+  // 2. Find all donors within 20km (20,000 meters)
+  const nearbyDonors = await User.find({
+    location: {
+      $near: {
+        $geometry: { type: "Point", coordinates: [Number(lng), Number(lat)] },
+        $maxDistance: 20000, 
+      },
+    },
+    activeRole: 'donor',
+    _id: { $ne: req.user._id }, 
+    pushSubscription: { $ne: null } 
+  });
+
+  // 3. Prepare the Notification Payload (includes the blast ID so they can respond)
+  const payload = JSON.stringify({
+    title: `🚨 URGENT: ${bloodGroup || 'Blood'} Needed Nearby`,
+    body: message,
+    url: `/radar?blastId=${blast._id}` 
+  });
+
+  // 4. Broadcast in parallel
+  const notifications = nearbyDonors.map(donor => 
+    webpush.sendNotification(donor.pushSubscription, payload).catch(err => {
+      console.error(`Failed to send to ${donor.name}:`, err.message);
+    })
+  );
+
+  await Promise.all(notifications);
+
+  res.status(200).json({ 
+    success: true, 
+    blastId: blast._id,
+    recipients: nearbyDonors.length 
+  });
+});
+
+// Respond to a Blast (The "I'm Coming" Function)
+// @route   POST /api/auth/respond-blast/:id
+const respondToBlast = asyncHandler(async (req, res) => {
+  const blast = await Blast.findById(req.params.id);
+  if (!blast) { res.status(404); throw new Error("SOS alert no longer active"); }
+
+  // Avoid duplicate responses from the same hero
+  const alreadyResponded = blast.responses.find(r => r.donor.toString() === req.user._id.toString());
+  if (alreadyResponded) return res.json(blast);
+
+  blast.responses.push({ donor: req.user._id });
+  await blast.save();
+
+  // REAL-TIME: Notify the requester that help is coming!
+  const io = req.app.get('io');
+  if (io) {
+    io.to(blast.requester.toString()).emit("donor_coming", { 
+      donorName: req.user.name,
+      donorPic: req.user.profilePic,
+      blastId: blast._id
+    });
+  }
+
+  res.json({ message: "Hero status confirmed! The requester has been notified." });
+});
+
+// 👉 Export EVERYTHING
+module.exports = { 
+  registerUser, 
+  loginUser, 
+  toggleRole, 
+  updateProfile, 
+  googleLogin, 
+  savePushSubscription, 
+  getMe,
+  updateLocation, 
+  getNearbyDonors,
+  sendEmergencyBlast, 
+  respondToBlast 
+};
