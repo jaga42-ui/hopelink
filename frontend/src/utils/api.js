@@ -1,29 +1,22 @@
 import axios from 'axios';
 
-// 👉 Auto-switches between your local laptop and the live internet!
-const API_URL = import.meta.env.MODE === 'development' 
-  ? 'http://localhost:5000/api' 
-  : 'https://hopelink-api.onrender.com/api'; // We will change this to your actual Render URL when we deploy!
+// 👉 FORCED PRODUCTION URL: No more localhost fallback.
+// Make sure this matches your exact Render URL.
+const baseURL = 'https://hopelink-api.onrender.com/api'; 
 
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
-// 👉 THE LIFESAVER: Automatically attaches the user's JWT Token to EVERY request.
-// You never have to manually write `headers: { Authorization: Bearer... }` again!
-api.interceptors.request.use(
-  (config) => {
-    // Grab the user token from local storage
-    const user = JSON.parse(localStorage.getItem('user'));
-    
-    if (user && user.token) {
-      config.headers.Authorization = `Bearer ${user.token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
-);
+  return config;
+});
 
 export default api;

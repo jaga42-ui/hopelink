@@ -15,15 +15,14 @@ import toast from 'react-hot-toast';
 
 import api from '../utils/api';
 
-const BACKEND_URL = import.meta.env.MODE === 'development' 
-  ? 'http://localhost:5000' 
-  : 'https://hopelink-api.onrender.com';
+// 👉 NO MORE LOCALHOST BULLSHIT. Hardwired to Production.
+const BACKEND_URL = 'https://hopelink-api.onrender.com';
 
 const Dashboard = () => {
   const { user, switchRole } = useContext(AuthContext);
   const navigate = useNavigate();
   
-  // 👉 Local State for Buttery Smooth Role Toggle
+  // Local State for Buttery Smooth Role Toggle
   const [localRole, setLocalRole] = useState(user?.activeRole || 'donor');
 
   const [feed, setFeed] = useState([]);
@@ -74,7 +73,11 @@ const Dashboard = () => {
   useEffect(() => {
     if (!user) return;
     
-    const socket = io(BACKEND_URL);
+    // 👉 Socket hardwired to live Render URL
+    const socket = io(BACKEND_URL, {
+      transports: ['websocket', 'polling']
+    });
+
     socket.emit('setup', user._id);
     
     socket.on('new_message_notification', () => {
@@ -282,13 +285,13 @@ const Dashboard = () => {
           
           <div className="w-full md:w-auto grid grid-cols-2 md:flex gap-3 md:gap-4 items-center">
             
-            {/* 👉 FIXED OPTIMISTIC UI ROLE SWITCHER */}
+            {/* OPTIMISTIC UI ROLE SWITCHER */}
             {user && !user.isAdmin && (
               <button 
                 onClick={() => {
                   const newRole = localRole === 'donor' ? 'receiver' : 'donor';
-                  setLocalRole(newRole); // Instantly update UI locally
-                  switchRole(); // Trigger backend update silently
+                  setLocalRole(newRole);
+                  switchRole();
                 }}
                 className="col-span-2 md:col-span-1 px-4 py-3 md:py-4 bg-[#111] border border-white/10 rounded-2xl flex items-center justify-center gap-3 active:bg-white/5 transition-all shadow-lg"
               >
@@ -482,9 +485,9 @@ const Dashboard = () => {
         <AnimatePresence>
           {showSOS && (
             <div className="fixed inset-0 z-[3000] flex items-end sm:items-center justify-center p-0 sm:p-4">
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowSOS(false)} />
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-[#050505]/90 backdrop-blur-sm" onClick={() => setShowSOS(false)} />
               
-              <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="relative w-full max-w-md bg-[#111] border-t sm:border border-red-500/30 rounded-t-[2.5rem] sm:rounded-[2rem] p-6 sm:p-8 shadow-[0_0_50px_rgba(220,38,38,0.2)] max-h-[90vh] overflow-y-auto no-scrollbar">
+              <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="relative w-full max-w-md bg-[#0a0a0a] border-t sm:border border-red-500/30 rounded-t-[2.5rem] sm:rounded-[2rem] p-6 sm:p-8 shadow-[0_0_50px_rgba(220,38,38,0.15)] max-h-[90vh] overflow-y-auto no-scrollbar">
                 <div className="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-5 sm:hidden" />
                 <button type="button" onClick={() => setShowSOS(false)} className="hidden sm:block absolute top-6 right-6 text-white/40 hover:text-white"><FaTimes className="text-xl" /></button>
 
@@ -497,43 +500,44 @@ const Dashboard = () => {
                   <div className="flex gap-3">
                     <div className="flex-1">
                       <label className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white/40 ml-2 mb-1 block">Blood Group</label>
-                      <select required value={sosData.bloodGroup} onChange={e => setSosData({...sosData, bloodGroup: e.target.value})} className="w-full bg-red-500/5 border border-red-500/20 rounded-xl px-4 py-3 text-white text-base md:text-sm outline-none appearance-none">
+                      {/* text-base prevents iOS zoom */}
+                      <select required value={sosData.bloodGroup} onChange={e => setSosData({...sosData, bloodGroup: e.target.value})} className="w-full bg-[#111] border border-red-500/30 rounded-xl px-4 py-3.5 text-white text-base md:text-sm outline-none appearance-none focus:border-red-500 transition-colors">
                         <option value="" disabled className="bg-[#111]">Select</option>
                         {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bg => <option key={bg} value={bg} className="bg-[#111]">{bg}</option>)}
                       </select>
                     </div>
                     <div className="w-1/3">
                       <label className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white/40 ml-2 mb-1 block">Units</label>
-                      <input required type="number" min="1" placeholder="e.g. 2" value={sosData.quantity} onChange={e => setSosData({...sosData, quantity: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-base md:text-sm outline-none" />
+                      <input required type="number" min="1" placeholder="e.g. 2" value={sosData.quantity} onChange={e => setSosData({...sosData, quantity: e.target.value})} className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3.5 text-white text-base md:text-sm outline-none focus:border-red-500 transition-colors" />
                     </div>
                   </div>
 
                   <div>
                     <label className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white/40 ml-2 mb-1 block">Hospital Name</label>
-                    <input required value={sosData.hospital} onChange={e => setSosData({...sosData, hospital: e.target.value})} placeholder="e.g. Apollo Hospital" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-base md:text-sm outline-none" />
+                    <input required value={sosData.hospital} onChange={e => setSosData({...sosData, hospital: e.target.value})} placeholder="e.g. Apollo Hospital" className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3.5 text-white text-base md:text-sm outline-none focus:border-red-500 transition-colors" />
                   </div>
 
                   <div className="relative">
                     <label className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white/40 ml-2 mb-1 block">City / Area</label>
                     <div className="flex gap-2">
-                      <input required value={sosData.addressText} onChange={handleLocationType} placeholder="Type city or use GPS..." className="flex-1 w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-base md:text-sm outline-none" />
-                      <button type="button" onClick={handleGetLocation} disabled={isFetchingLocation} className="px-4 bg-red-500/10 text-red-400 border border-red-500/30 rounded-xl flex items-center justify-center">
-                        {isFetchingLocation ? <FaSpinner className="animate-spin" /> : <FaLocationArrow />}
+                      <input required value={sosData.addressText} onChange={handleLocationType} placeholder="Type city or use GPS..." className="flex-1 w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3.5 text-white text-base md:text-sm outline-none focus:border-red-500 transition-colors" />
+                      <button type="button" onClick={handleGetLocation} disabled={isFetchingLocation} className="px-5 bg-red-500/10 text-red-500 border border-red-500/30 rounded-xl flex items-center justify-center active:bg-red-500/20 transition-colors">
+                        {isFetchingLocation ? <FaSpinner className="animate-spin text-lg" /> : <FaLocationArrow className="text-lg" />}
                       </button>
                     </div>
                     {suggestions.length > 0 && (
-                      <div className="absolute bottom-full mb-2 z-50 w-full bg-[#1a1a1a] border border-white/10 rounded-xl max-h-40 overflow-y-auto">
-                        {suggestions.map((s, idx) => <div key={idx} onClick={() => handleSelectSuggestion(s.display_name)} className="px-4 py-3 text-xs text-white/70 border-b border-white/5">{s.display_name}</div>)}
+                      <div className="absolute bottom-full mb-2 z-50 w-full bg-[#111] border border-white/10 rounded-xl max-h-40 overflow-y-auto shadow-2xl">
+                        {suggestions.map((s, idx) => <div key={idx} onClick={() => handleSelectSuggestion(s.display_name)} className="px-4 py-3 text-xs text-white/70 border-b border-white/5 active:bg-white/5">{s.display_name}</div>)}
                       </div>
                     )}
                   </div>
 
                   <div>
                     <label className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white/40 ml-2 mb-1 block">Patient Details</label>
-                    <textarea required value={sosData.description} onChange={e => setSosData({...sosData, description: e.target.value})} placeholder="Require urgent blood for surgery..." rows="2" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-base md:text-sm outline-none resize-none"></textarea>
+                    <textarea required value={sosData.description} onChange={e => setSosData({...sosData, description: e.target.value})} placeholder="Require urgent blood for surgery..." rows="2" className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3.5 text-white text-base md:text-sm outline-none resize-none focus:border-red-500 transition-colors"></textarea>
                   </div>
 
-                  <button type="submit" disabled={isSubmitting} className="w-full mt-2 mb-4 py-4 bg-red-600 active:bg-red-700 rounded-xl font-black text-white uppercase tracking-widest text-xs flex items-center justify-center gap-2">
+                  <button type="submit" disabled={isSubmitting} className="w-full mt-2 mb-4 py-4 sm:py-5 bg-red-600 active:bg-red-700 rounded-xl font-black text-white uppercase tracking-widest text-xs flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(220,38,38,0.2)] disabled:opacity-50">
                     {isSubmitting ? <FaSpinner className="animate-spin text-lg" /> : <><FaExclamationTriangle /> Broadcast Alert</>}
                   </button>
                 </form>
@@ -546,32 +550,32 @@ const Dashboard = () => {
         <AnimatePresence>
           {fulfillModal.isOpen && (
             <div className="fixed inset-0 z-[3000] flex items-end sm:items-center justify-center p-0 sm:p-4">
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setFulfillModal({ isOpen: false, donationId: null, pin: '', rating: 5 })} />
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-[#050505]/90 backdrop-blur-sm" onClick={() => setFulfillModal({ isOpen: false, donationId: null, pin: '', rating: 5 })} />
               
-              <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="relative w-full max-w-sm bg-[#111] border-t sm:border border-white/10 rounded-t-[2.5rem] sm:rounded-[2rem] p-6 sm:p-8 text-center">
+              <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="relative w-full max-w-sm bg-[#0a0a0a] border-t sm:border border-white/10 rounded-t-[2.5rem] sm:rounded-[2rem] p-6 sm:p-8 text-center shadow-2xl">
                 <div className="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-5 sm:hidden" />
                 
-                <div className="w-14 h-14 bg-teal-500/10 text-teal-400 rounded-full flex items-center justify-center text-2xl mx-auto mb-4 border border-teal-500/20">
+                <div className="w-14 h-14 bg-teal-500/10 text-teal-400 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-5 border border-teal-500/20 shadow-inner">
                   <FaLock />
                 </div>
                 <h2 className="text-xl sm:text-2xl font-black text-white mb-1 tracking-tighter">SECURE HANDSHAKE</h2>
-                <p className="text-white/50 text-[10px] sm:text-xs font-bold leading-relaxed mb-5">Enter the 4-digit PIN provided by the receiver.</p>
+                <p className="text-white/50 text-[10px] sm:text-xs font-bold leading-relaxed mb-6">Enter the 4-digit PIN provided by the receiver.</p>
 
                 <form onSubmit={handleFulfillSubmit}>
                   {/* text-base safely prevents iOS auto-zoom on PIN code input */}
-                  <input type="text" required maxLength="4" placeholder="PIN" value={fulfillModal.pin} onChange={e => setFulfillModal({...fulfillModal, pin: e.target.value.replace(/\D/g, '')})} className="w-full bg-black/40 border-2 border-dashed border-white/20 rounded-2xl px-5 py-4 text-center text-white text-base md:text-2xl tracking-[0.5em] font-black outline-none focus:border-teal-500 mb-4" />
+                  <input type="text" required maxLength="4" placeholder="PIN" value={fulfillModal.pin} onChange={e => setFulfillModal({...fulfillModal, pin: e.target.value.replace(/\D/g, '')})} className="w-full bg-[#111] border-2 border-dashed border-white/20 rounded-2xl px-5 py-4 text-center text-teal-400 text-base md:text-2xl tracking-[0.5em] font-black outline-none focus:border-teal-500 transition-colors mb-5" />
 
-                  <div className="mb-5 bg-black/20 p-4 rounded-xl border border-white/5">
-                    <p className="text-white/50 text-[9px] sm:text-[10px] uppercase font-black tracking-widest mb-2">Rate the Receiver</p>
+                  <div className="mb-6 bg-[#111] p-4 rounded-2xl border border-white/5">
+                    <p className="text-white/50 text-[9px] sm:text-[10px] uppercase font-black tracking-widest mb-3">Rate the Receiver</p>
                     <div className="flex justify-center gap-2 sm:gap-3">
                       {[1, 2, 3, 4, 5].map(star => (
-                        <FaStar key={star} onClick={() => setFulfillModal({...fulfillModal, rating: star})} className={`text-2xl sm:text-3xl cursor-pointer ${fulfillModal.rating >= star ? 'text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.5)]' : 'text-white/10'}`} />
+                        <FaStar key={star} onClick={() => setFulfillModal({...fulfillModal, rating: star})} className={`text-2xl sm:text-3xl cursor-pointer transition-colors ${fulfillModal.rating >= star ? 'text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.5)]' : 'text-white/10'}`} />
                       ))}
                     </div>
                   </div>
 
-                  <button type="submit" disabled={isSubmitting || fulfillModal.pin.length !== 4} className="w-full mb-4 py-4 bg-teal-500 active:bg-teal-600 rounded-xl font-black text-white uppercase tracking-widest text-[10px] sm:text-xs flex items-center justify-center gap-2 disabled:opacity-50">
-                    {isSubmitting ? <FaSpinner className="animate-spin text-lg" /> : <><FaCheckCircle /> Verify & Complete</>}
+                  <button type="submit" disabled={isSubmitting || fulfillModal.pin.length !== 4} className="w-full mb-2 py-4 sm:py-5 bg-teal-500 active:bg-teal-600 rounded-2xl font-black text-[#050505] uppercase tracking-widest text-[10px] sm:text-xs flex items-center justify-center gap-2 disabled:opacity-50 shadow-[0_0_30px_rgba(20,184,166,0.2)]">
+                    {isSubmitting ? <FaSpinner className="animate-spin text-lg" /> : <><FaCheckCircle className="text-lg" /> Verify & Complete</>}
                   </button>
                 </form>
               </motion.div>
@@ -583,29 +587,29 @@ const Dashboard = () => {
         <AnimatePresence>
           {requestsModal.isOpen && requestsModal.donation && (
             <div className="fixed inset-0 z-[3000] flex items-end sm:items-center justify-center p-0 sm:p-4">
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setRequestsModal({ isOpen: false, donation: null })} />
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-[#050505]/90 backdrop-blur-sm" onClick={() => setRequestsModal({ isOpen: false, donation: null })} />
               
-              <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="relative w-full max-w-md bg-[#111] border-t sm:border border-white/10 rounded-t-[2.5rem] sm:rounded-[2rem] p-6 sm:p-8">
+              <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="relative w-full max-w-md bg-[#0a0a0a] border-t sm:border border-white/10 rounded-t-[2.5rem] sm:rounded-[2rem] p-6 sm:p-8 shadow-2xl">
                 <div className="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-5 sm:hidden" />
                 
-                <h2 className="text-xl sm:text-2xl font-black text-white mb-1 tracking-tighter">COMMUNITY REQUESTS</h2>
-                <p className="text-white/50 text-[10px] sm:text-xs font-bold leading-relaxed mb-5">Choose someone to connect with for <span className="text-white">"{requestsModal.donation.title}"</span>.</p>
+                <h2 className="text-xl sm:text-2xl font-black text-white mb-1 tracking-tighter uppercase">COMMUNITY REQUESTS</h2>
+                <p className="text-white/50 text-[10px] sm:text-xs font-bold leading-relaxed mb-6">Choose an operator to connect with for <span className="text-white">"{requestsModal.donation.title}"</span>.</p>
 
                 <div className="space-y-3 max-h-[50vh] overflow-y-auto no-scrollbar pb-4">
                   {requestsModal.donation.requestedBy.map((requester) => (
-                    <div key={requester._id} className="flex items-center justify-between bg-black/40 border border-white/5 p-3 sm:p-4 rounded-xl">
+                    <div key={requester._id} className="flex items-center justify-between bg-[#111] border border-white/5 p-3 sm:p-4 rounded-2xl">
                       <div className="flex items-center gap-3 overflow-hidden">
                         {requester.profilePic ? (
-                          <img src={requester.profilePic} className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                          <img src={requester.profilePic} className="w-10 h-10 rounded-xl object-cover shrink-0 border border-white/10" />
                         ) : (
-                          <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center font-black text-white/50 uppercase shrink-0">{requester.name?.charAt(0) || '?'}</div>
+                          <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center font-black text-white/50 uppercase shrink-0">{requester.name?.charAt(0) || '?'}</div>
                         )}
                         <span className="text-white font-bold text-xs sm:text-sm truncate">{requester.name}</span>
                       </div>
                       
                       <button 
                         onClick={() => handleApproveRequest(requestsModal.donation._id, requester._id)}
-                        className="px-4 py-2.5 bg-blue-600 active:bg-blue-700 text-white rounded-xl text-[9px] sm:text-xs font-black uppercase tracking-widest shrink-0"
+                        className="px-4 py-3 bg-teal-500/10 active:bg-teal-500 text-teal-400 active:text-black border border-teal-500/30 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest shrink-0 transition-all"
                       >
                         Approve
                       </button>
