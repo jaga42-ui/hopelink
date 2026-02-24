@@ -7,11 +7,11 @@ import EmojiPicker from 'emoji-picker-react';
 import { FaPaperPlane, FaArrowLeft, FaSpinner, FaSmile, FaCheckDouble, FaCheck, FaChevronDown, FaTimes, FaEdit, FaTrash } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
+// 👉 IMPORT HARDWIRED API
 import api from '../utils/api';
 
-const SOCKET_URL = import.meta.env.MODE === 'development' 
-  ? 'http://localhost:5000' 
-  : 'https://hopelink-api.onrender.com';
+// 👉 HARDWIRED SOCKET URL (No more localhost fallback)
+const SOCKET_URL = 'https://hopelink-api.onrender.com';
 
 let socket;
 
@@ -45,7 +45,11 @@ const Chat = () => {
       return;
     }
 
-    socket = io(SOCKET_URL);
+    // 👉 Added transport fallbacks for connection stability on mobile/Render
+    socket = io(SOCKET_URL, {
+      transports: ['websocket', 'polling']
+    });
+    
     socket.emit('join_chat', { userId: user._id, donationId });
 
     const fetchHistoryAndMarkRead = async () => {
@@ -116,12 +120,12 @@ const Chat = () => {
       setNewMessage('');
       setShowEmojis(false);
     } catch (error) { 
-      toast.error('Failed to send message'); 
+      toast.error('Failed to transmit message'); 
     }
   };
 
   const handleDeleteMessage = async (msgId) => {
-    if (window.confirm("Delete this message?")) {
+    if (window.confirm("Purge this transmission from the logs?")) {
       try {
         await api.delete(`/chat/${msgId}`);
         socket.emit('delete_message', { id: msgId, donationId });
@@ -145,7 +149,7 @@ const Chat = () => {
 
   return (
     <Layout>
-      {/* MOBILE-FIRST CONTAINER: Dynamic Viewport Height (dvh) so keyboard doesn't break UI */}
+      {/* MOBILE-FIRST CONTAINER */}
       <div className="w-full h-[calc(100dvh-70px)] md:h-[85vh] md:max-w-4xl md:mx-auto md:my-4 flex flex-col bg-[#0b141a] md:border md:border-white/10 md:rounded-2xl overflow-hidden md:shadow-2xl relative">
         <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`, backgroundRepeat: 'repeat' }}></div>
 
@@ -191,12 +195,11 @@ const Chat = () => {
                     isMe ? 'bg-[#005c4b] text-[#e9edef] rounded-2xl rounded-tr-sm' : 'bg-[#202c33] text-[#e9edef] rounded-2xl rounded-tl-sm'
                   }`}>
                     
-                    {/* FIXED: Touch-Friendly Dropdown Toggle */}
+                    {/* Touch-Friendly Dropdown Toggle */}
                     {isMe && (
                       <div className="absolute top-1 right-1">
                         <button 
                           onClick={(e) => { e.stopPropagation(); setDropdownOpen(dropdownOpen === msg._id ? null : msg._id); }}
-                          // md:opacity-0 hides it on desktop until hover. On mobile, it's always slightly visible (opacity-50)
                           className="text-white/50 hover:text-white p-2 md:p-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity active:bg-white/10 rounded-full"
                         >
                           <FaChevronDown className="text-[10px] md:text-[12px]" />
@@ -236,10 +239,9 @@ const Chat = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* EMOJI PICKER: Responsive Width */}
+        {/* EMOJI PICKER */}
         {showEmojis && (
           <div className="absolute bottom-16 md:bottom-20 left-0 right-0 md:left-4 md:right-auto z-50 shadow-2xl flex justify-center md:block">
-            {/* The wrapper forces the picker to not overflow the phone screen */}
             <div className="w-full md:w-[320px]">
                <EmojiPicker onEmojiClick={onEmojiClick} theme="dark" width="100%" height={350} />
             </div>
@@ -249,7 +251,7 @@ const Chat = () => {
         {/* EDIT BANNER */}
         {editingMessage && (
           <div className="bg-[#182229] px-4 py-2.5 flex justify-between items-center border-t border-white/10 z-10 shadow-lg">
-            <span className="text-teal-400 text-xs md:text-sm font-bold flex items-center gap-2"><FaEdit /> Editing message...</span>
+            <span className="text-teal-400 text-xs md:text-sm font-bold flex items-center gap-2"><FaEdit /> Editing transmission...</span>
             <button onClick={() => { setEditingMessage(null); setNewMessage(''); }} className="text-white/50 active:text-white hover:text-white p-2 bg-white/5 rounded-full">
               <FaTimes className="text-xs" />
             </button>
@@ -263,24 +265,25 @@ const Chat = () => {
           </button>
 
           <form onSubmit={handleSendMessage} className="flex-1 flex gap-2 md:gap-3">
+            {/* 👉 text-base ensures iOS doesn't zoom in while typing! */}
             <input 
               type="text" 
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               onFocus={() => setShowEmojis(false)}
-              placeholder="Message" 
-              className="flex-1 bg-[#2a3942] rounded-full px-4 md:px-5 py-2.5 md:py-3 text-[#e9edef] text-[14px] md:text-[15px] outline-none placeholder-[#8696a0] focus:ring-1 focus:ring-teal-500/50 transition-all"
+              placeholder="Transmit message..." 
+              className="flex-1 bg-[#2a3942] rounded-full px-4 md:px-5 py-3 text-[#e9edef] text-base md:text-[15px] outline-none placeholder-[#8696a0] focus:ring-1 focus:ring-teal-500/50 transition-all"
               autoComplete="off"
             />
             
             <button 
               type="submit" 
               disabled={!newMessage.trim()}
-              className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-white transition-all shadow-md shrink-0 active:scale-95 ${
+              className={`w-12 h-12 rounded-full flex items-center justify-center text-white transition-all shadow-md shrink-0 active:scale-95 ${
                 editingMessage ? 'bg-blue-600' : 'bg-teal-600'
               } disabled:bg-[#2a3942] disabled:text-[#8696a0] disabled:shadow-none`}
             >
-              {editingMessage ? <FaCheckDouble className="text-[14px] md:text-[16px]" /> : <FaPaperPlane className="text-[12px] md:text-[16px] -ml-0.5 md:-ml-1 mt-0.5" />}
+              {editingMessage ? <FaCheckDouble className="text-[16px]" /> : <FaPaperPlane className="text-[15px] -ml-1 mt-0.5" />}
             </button>
           </form>
         </div>

@@ -1,9 +1,14 @@
 import { createContext, useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
-import axios from 'axios'; // 👉 Added Axios back for the DB update
 import toast from 'react-hot-toast';
 
+// 👉 IMPORT YOUR HARDWIRED API PIPELINE
+import api from '../utils/api';
+
 const AuthContext = createContext();
+
+// 👉 HARDWIRED SOCKET URL
+const BACKEND_URL = 'https://hopelink-api.onrender.com';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
@@ -15,8 +20,11 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (!user) return;
 
-    // Connect to the socket and join the user's personal secure room
-    const socket = io('http://localhost:5000');
+    // 👉 FIXED: Connect to the live server, not localhost!
+    const socket = io(BACKEND_URL, {
+      transports: ['websocket', 'polling'] // Ensures stable connection on Render
+    });
+    
     socket.emit('setup', user._id);
 
     const handleRoleUpdate = (data) => {
@@ -27,11 +35,15 @@ export const AuthProvider = ({ children }) => {
         setUser(updatedUser);
         localStorage.setItem('user', JSON.stringify(updatedUser));
         
-        // Notify me of what just happened
+        // Tactical Notifications
         if (!data.isAdmin) {
-          toast.error("SECURITY ALERT: Your Admin privileges have been revoked.");
+          toast.error("SECURITY ALERT: Your Admin privileges have been revoked.", {
+            style: { background: '#111', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.5)' }
+          });
         } else {
-          toast.success("You have been promoted to System Admin!");
+          toast.success("You have been promoted to System Admin!", {
+            style: { background: '#111', color: '#14b8a6', border: '1px solid rgba(20, 184, 166, 0.5)' }
+          });
         }
       }
     };
@@ -45,15 +57,13 @@ export const AuthProvider = ({ children }) => {
     };
   }, [user]);
 
-  // --- FIXED FUNCTION: Role Switcher (Now talks to the database!) ---
+  // --- FIXED FUNCTION: Role Switcher ---
   const switchRole = async () => {
     if (!user) return;
     
     try {
-      const config = { headers: { Authorization: `Bearer ${user.token}` } };
-      
-      // 👉 Actually hit the backend so the Database knows about the switch!
-      const { data } = await axios.put('http://localhost:5000/api/auth/role', {}, config);
+      // 👉 FIXED: Uses your api.js file! No localhost, no manual token headers needed!
+      const { data } = await api.put('/auth/role', {});
       
       // Update local state and storage instantly with the verified backend data
       const updatedUser = { ...user, activeRole: data.activeRole };
