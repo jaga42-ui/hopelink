@@ -1,15 +1,21 @@
 import { useState, useEffect, useContext } from 'react';
 import axios from 'axios'; 
 import AuthContext from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaUser, FaEnvelope, FaMapMarkerAlt, FaTint, FaBoxOpen, FaAward, FaHistory, FaEdit, FaSave, FaTimes, FaPhone, FaLocationArrow, FaSpinner, FaStar, FaShieldAlt } from 'react-icons/fa';
+import { 
+  FaUser, FaEnvelope, FaMapMarkerAlt, FaTint, FaBoxOpen, 
+  FaAward, FaHistory, FaEdit, FaSave, FaTimes, FaPhone, 
+  FaLocationArrow, FaSpinner, FaStar, FaShieldAlt, FaSignOutAlt 
+} from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
 import api from '../utils/api';
 
 const Profile = () => {
-  const { user, login } = useContext(AuthContext);
+  const { user, login, logout } = useContext(AuthContext);
+  const navigate = useNavigate();
   const [stats, setStats] = useState({ totalDonations: 0, activeListings: 0, bloodDonations: 0 });
   const [loading, setLoading] = useState(true);
   
@@ -82,6 +88,12 @@ const Profile = () => {
     } catch (error) { toast.error(error.response?.data?.message || "Failed to update profile"); }
   };
 
+  const handleMobileLogout = () => {
+    logout();
+    navigate('/login');
+    toast.success("Successfully logged out.");
+  };
+
   if (!user) return null;
 
   return (
@@ -96,7 +108,6 @@ const Profile = () => {
             <p className="text-white/60 font-bold uppercase tracking-[0.2em] md:tracking-[0.3em] text-[9px] md:text-[10px] mt-1 md:mt-2">Identity & Community Impact</p>
           </div>
           
-          {/* Glassmorphism Edit Button */}
           {!isEditing && (
             <button onClick={() => setIsEditing(true)} className="w-full md:w-auto px-6 py-4 md:py-3 rounded-2xl md:rounded-full font-black text-[10px] md:text-xs uppercase tracking-widest bg-white/10 backdrop-blur-xl border border-white/20 hover:bg-white/20 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg">
               <FaEdit /> Update Dossier
@@ -106,7 +117,7 @@ const Profile = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
           
-          {/* THE IDENTITY CARD (Left Column - Glassmorphism) */}
+          {/* THE IDENTITY CARD */}
           <div className="lg:col-span-4 space-y-6 md:space-y-8">
             <div className={`bg-white/10 backdrop-blur-xl border border-white/20 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 relative overflow-hidden transition-all duration-500 shadow-2xl`}>
               
@@ -214,10 +225,9 @@ const Profile = () => {
             </div>
           </div>
 
-          {/* THE METRICS DASHBOARD (Right Column - Glassmorphism) */}
+          {/* THE METRICS DASHBOARD */}
           <div className="lg:col-span-8 space-y-5 md:space-y-6">
             
-            {/* The Golden XP Banner (Glassmorphism) */}
             <div className="bg-white/10 backdrop-blur-xl border border-yellow-500/30 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 relative overflow-hidden group shadow-2xl">
               <div className="absolute -right-8 -bottom-8 md:-right-10 md:-bottom-10 text-8xl md:text-9xl text-yellow-500/20 pointer-events-none drop-shadow-2xl">
                 <FaAward />
@@ -238,7 +248,6 @@ const Profile = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-4 md:gap-6">
-              {/* Transactions Metric */}
               <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl md:rounded-[2.5rem] p-5 md:p-8 relative overflow-hidden group shadow-xl">
                 <div className="absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-white/10 rounded-bl-[80px] md:rounded-bl-[100px]"></div>
                 <div className={`text-3xl md:text-4xl mb-4 md:mb-6 opacity-90 drop-shadow-md ${themeAccent}`}><FaBoxOpen /></div>
@@ -250,7 +259,6 @@ const Profile = () => {
                 <p className="text-white/70 text-[9px] md:text-[10px] uppercase font-black tracking-widest mt-2 md:mt-3 leading-tight">Missions Completed</p>
               </div>
 
-              {/* Active Logistics Metric */}
               <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl md:rounded-[2.5rem] p-5 md:p-8 relative overflow-hidden group shadow-xl">
                 <div className="absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-white/10 rounded-bl-[80px] md:rounded-bl-[100px]"></div>
                 <div className={`text-3xl md:text-4xl mb-4 md:mb-6 opacity-90 drop-shadow-md ${themeAccent}`}><FaHistory /></div>
@@ -263,7 +271,16 @@ const Profile = () => {
               </div>
             </div>
 
-            {/* Subtle Motivational Quote */}
+            {/* 👉 MOBILE LOGOUT BUTTON */}
+            <div className="md:hidden mt-8 pt-6 border-t border-white/20">
+              <button 
+                onClick={handleMobileLogout} 
+                className="w-full py-4 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-xs flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg"
+              >
+                <FaSignOutAlt className="text-lg" /> Secure Logout
+              </button>
+            </div>
+
             <div className="text-center pt-6 md:pt-8 opacity-60 px-4">
               <p className="text-[10px] md:text-xs font-bold uppercase tracking-[0.1em] md:tracking-[0.2em] italic leading-relaxed drop-shadow-sm text-white">
                 "A community is only as strong as its willingness to protect one another."
