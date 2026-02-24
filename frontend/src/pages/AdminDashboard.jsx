@@ -80,21 +80,21 @@ const Admin = () => {
 
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto px-4 pb-32"> {/* Added px-4 for mobile breathing room & pb-32 for nav */}
+      <div className="max-w-6xl mx-auto px-4 pb-32 min-h-screen text-white relative"> 
         
         {/* HEADER */}
         <header className="mb-8 border-b border-white/10 pt-6 pb-6 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-4 text-red-500 w-full md:w-auto justify-center md:justify-start">
-            <FaShieldAlt className="text-4xl md:text-5xl drop-shadow-[0_0_15px_rgba(239,68,68,0.5)]" />
+            <FaShieldAlt className="text-4xl md:text-5xl drop-shadow-[0_0_15px_rgba(239,68,68,0.6)]" />
             <div>
-              <h1 className="text-2xl md:text-3xl font-black text-white tracking-tighter">COMMAND <span className="text-red-500">CENTER</span></h1>
-              <p className="text-red-400/50 text-[10px] uppercase font-black tracking-[0.3em]">System Administrator Access</p>
+              <h1 className="text-2xl md:text-3xl font-black text-white tracking-tighter drop-shadow-md">COMMAND <span className="text-red-500">CENTER</span></h1>
+              <p className="text-red-300 text-[10px] uppercase font-black tracking-[0.3em]">System Administrator</p>
             </div>
           </div>
           
-          {/* NAVIGATION TABS: Scrollable on mobile */}
+          {/* NAVIGATION TABS (Glassmorphism) */}
           <div className="w-full md:w-auto overflow-x-auto no-scrollbar">
-            <div className="flex bg-[#111] p-1.5 rounded-2xl border border-white/10 min-w-max">
+            <div className="flex bg-black/30 backdrop-blur-xl p-1.5 rounded-2xl border border-white/20 min-w-max shadow-lg">
               {[
                 { id: 'overview', label: 'Overview', icon: <FaChartPie /> },
                 { id: 'users', label: 'Users', icon: <FaUsers /> },
@@ -103,7 +103,7 @@ const Admin = () => {
                 <button 
                   key={tab.id} 
                   onClick={() => setActiveTab(tab.id)}
-                  className={`px-6 py-3 md:py-2.5 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 flex-1 md:flex-none ${activeTab === tab.id ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' : 'text-white/40 hover:text-white'}`}
+                  className={`px-6 py-3 md:py-2.5 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 flex-1 md:flex-none ${activeTab === tab.id ? 'bg-red-600 text-white shadow-lg' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
                 >
                   {tab.icon} <span>{tab.label}</span>
                 </button>
@@ -117,7 +117,7 @@ const Admin = () => {
         ) : (
           <div className="space-y-6">
             
-            {/* OVERVIEW TAB: 2 columns on phone, 4 on desktop */}
+            {/* OVERVIEW TAB: Glassmorphism Cards */}
             {activeTab === 'overview' && stats && (
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 {[
@@ -126,9 +126,9 @@ const Admin = () => {
                   { title: "Requests", value: stats.totalRequests, color: "text-yellow-400" },
                   { title: "Fulfilled", value: stats.fulfilledItems, color: "text-green-400" },
                 ].map((stat, i) => (
-                  <div key={i} className="bg-[#111] border border-white/10 rounded-2xl md:rounded-[2rem] p-5 md:p-8 relative overflow-hidden group">
-                    <h3 className={`text-3xl md:text-6xl font-black ${stat.color} mb-1 md:mb-2`}>{stat.value}</h3>
-                    <p className="text-white/40 text-[8px] md:text-[10px] uppercase font-black tracking-widest">{stat.title}</p>
+                  <div key={i} className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl md:rounded-[2rem] p-5 md:p-8 relative overflow-hidden group shadow-xl">
+                    <h3 className={`text-3xl md:text-6xl font-black ${stat.color} mb-1 md:mb-2 drop-shadow-md`}>{stat.value}</h3>
+                    <p className="text-white/70 text-[8px] md:text-[10px] uppercase font-black tracking-widest">{stat.title}</p>
                   </div>
                 ))}
               </div>
@@ -137,10 +137,10 @@ const Admin = () => {
             {/* USERS TAB */}
             {activeTab === 'users' && (
               <>
-                {/* Desktop Table View */}
-                <div className="hidden md:block bg-[#111] border border-white/10 rounded-[2rem] overflow-hidden">
+                {/* Desktop Table View (Glassmorphism) */}
+                <div className="hidden md:block bg-white/10 backdrop-blur-xl border border-white/20 rounded-[2rem] overflow-hidden shadow-2xl">
                   <table className="w-full text-left text-sm whitespace-nowrap">
-                    <thead className="bg-black/40 text-white/40 text-[10px] uppercase tracking-widest">
+                    <thead className="bg-black/30 text-white/70 text-[10px] uppercase tracking-widest border-b border-white/20">
                       <tr>
                         <th className="px-6 py-4 font-black">User</th>
                         <th className="px-6 py-4 font-black">Email</th>
@@ -149,26 +149,26 @@ const Admin = () => {
                         <th className="px-6 py-4 font-black text-right">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5">
+                    <tbody className="divide-y divide-white/10">
                       {usersList.map(u => (
                         <tr key={u._id} className="hover:bg-white/5 transition-colors">
                           <td className="px-6 py-4 flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center font-black text-white">{u.name.charAt(0)}</div>
+                            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center font-black text-white border border-white/10">{u.name.charAt(0)}</div>
                             <div>
                               <p className="font-bold text-white">{u.name}</p>
-                              {u.isAdmin && <span className="text-[8px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded font-black uppercase">Admin</span>}
+                              {u.isAdmin && <span className="text-[8px] bg-red-600 text-white px-2 py-0.5 rounded font-black uppercase shadow-sm">Admin</span>}
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-white/60">{u.email}</td>
-                          <td className="px-6 py-4 font-black text-yellow-400">{u.points} XP</td>
-                          <td className="px-6 py-4 text-white/40">{new Date(u.createdAt).toLocaleDateString()}</td>
+                          <td className="px-6 py-4 text-white/80">{u.email}</td>
+                          <td className="px-6 py-4 font-black text-yellow-400 drop-shadow-sm">{u.points} XP</td>
+                          <td className="px-6 py-4 text-white/60">{new Date(u.createdAt).toLocaleDateString()}</td>
                           <td className="px-6 py-4 text-right flex justify-end gap-2">
                             {u._id !== user._id && (
                               <>
-                                <button onClick={() => handleToggleRole(u._id, u.name, u.isAdmin)} className={`p-2 rounded-lg transition-all ${u.isAdmin ? 'bg-orange-500/10 text-orange-400 hover:bg-orange-500 hover:text-white' : 'bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white'}`} title={u.isAdmin ? "Revoke Admin" : "Make Admin"}>
+                                <button onClick={() => handleToggleRole(u._id, u.name, u.isAdmin)} className={`p-2 rounded-lg transition-all border ${u.isAdmin ? 'bg-orange-500/20 text-orange-300 border-orange-500/30 hover:bg-orange-500 hover:text-white' : 'bg-blue-500/20 text-blue-300 border-blue-500/30 hover:bg-blue-500 hover:text-white'}`} title={u.isAdmin ? "Revoke Admin" : "Make Admin"}>
                                   {u.isAdmin ? <FaUserTimes /> : <FaUserShield />}
                                 </button>
-                                <button onClick={() => handleDeleteUser(u._id, u.name)} className="bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white p-2 rounded-lg transition-all" title="Ban User">
+                                <button onClick={() => handleDeleteUser(u._id, u.name)} className="bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-600 hover:text-white p-2 rounded-lg transition-all" title="Ban User">
                                   <FaBan />
                                 </button>
                               </>
@@ -180,38 +180,38 @@ const Admin = () => {
                   </table>
                 </div>
 
-                {/* Mobile Card View */}
+                {/* Mobile Card View (Glassmorphism) */}
                 <div className="grid grid-cols-1 gap-4 md:hidden">
                   {usersList.map(u => (
-                    <div key={u._id} className="bg-[#111] border border-white/10 rounded-2xl p-4 flex flex-col gap-4">
+                    <div key={u._id} className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-4 flex flex-col gap-4 shadow-lg">
                       <div className="flex justify-between items-start">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center font-black text-white text-lg">{u.name.charAt(0)}</div>
+                          <div className="w-10 h-10 rounded-xl bg-white/20 border border-white/10 flex items-center justify-center font-black text-white text-lg">{u.name.charAt(0)}</div>
                           <div>
                             <p className="font-bold text-white leading-tight">{u.name}</p>
-                            <p className="text-white/40 text-[10px] flex items-center gap-1 mt-1"><FaEnvelope /> {u.email}</p>
+                            <p className="text-white/60 text-[10px] flex items-center gap-1 mt-1"><FaEnvelope /> {u.email}</p>
                           </div>
                         </div>
-                        {u.isAdmin && <span className="text-[8px] bg-red-500 text-white px-2 py-1 rounded font-black uppercase">Admin</span>}
+                        {u.isAdmin && <span className="text-[8px] bg-red-600 text-white px-2 py-1 rounded font-black uppercase shadow-sm">Admin</span>}
                       </div>
                       
-                      <div className="flex justify-between items-center py-2 border-y border-white/5">
+                      <div className="flex justify-between items-center py-2 border-y border-white/10">
                         <div>
-                          <p className="text-[8px] text-white/40 uppercase font-black">Points</p>
-                          <p className="text-yellow-400 font-black text-xs">{u.points} XP</p>
+                          <p className="text-[8px] text-white/50 uppercase font-black">Points</p>
+                          <p className="text-yellow-400 font-black text-xs drop-shadow-sm">{u.points} XP</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-[8px] text-white/40 uppercase font-black">Joined</p>
-                          <p className="text-white/60 font-bold text-xs">{new Date(u.createdAt).toLocaleDateString()}</p>
+                          <p className="text-[8px] text-white/50 uppercase font-black">Joined</p>
+                          <p className="text-white/80 font-bold text-xs">{new Date(u.createdAt).toLocaleDateString()}</p>
                         </div>
                       </div>
 
                       {u._id !== user._id && (
                         <div className="flex gap-2">
-                          <button onClick={() => handleToggleRole(u._id, u.name, u.isAdmin)} className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all active:scale-95 ${u.isAdmin ? 'bg-orange-500/20 text-orange-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                          <button onClick={() => handleToggleRole(u._id, u.name, u.isAdmin)} className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all active:scale-95 border ${u.isAdmin ? 'bg-orange-500/20 text-orange-300 border-orange-500/30' : 'bg-blue-500/20 text-blue-300 border-blue-500/30'}`}>
                             {u.isAdmin ? <><FaUserTimes /> Demote</> : <><FaUserShield /> Promote</>}
                           </button>
-                          <button onClick={() => handleDeleteUser(u._id, u.name)} className="flex-1 bg-red-500/20 text-red-500 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all active:scale-95">
+                          <button onClick={() => handleDeleteUser(u._id, u.name)} className="flex-1 bg-red-500/20 text-red-400 border border-red-500/30 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all active:scale-95">
                             <FaBan /> Banish
                           </button>
                         </div>
@@ -225,10 +225,10 @@ const Admin = () => {
             {/* LISTINGS TAB */}
             {activeTab === 'listings' && (
               <>
-                {/* Desktop Table View */}
-                <div className="hidden md:block bg-[#111] border border-white/10 rounded-[2rem] overflow-hidden">
+                {/* Desktop Table View (Glassmorphism) */}
+                <div className="hidden md:block bg-white/10 backdrop-blur-xl border border-white/20 rounded-[2rem] overflow-hidden shadow-2xl">
                   <table className="w-full text-left text-sm whitespace-nowrap">
-                    <thead className="bg-black/40 text-white/40 text-[10px] uppercase tracking-widest">
+                    <thead className="bg-black/30 text-white/70 text-[10px] uppercase tracking-widest border-b border-white/20">
                       <tr>
                         <th className="px-6 py-4 font-black">Type</th>
                         <th className="px-6 py-4 font-black">Title</th>
@@ -237,19 +237,19 @@ const Admin = () => {
                         <th className="px-6 py-4 font-black text-right">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5">
+                    <tbody className="divide-y divide-white/10">
                       {listings.map(l => (
                         <tr key={l._id} className="hover:bg-white/5 transition-colors">
                           <td className="px-6 py-4">
-                            <span className={`text-[9px] font-black uppercase px-2 py-1 rounded ${l.listingType === 'request' ? 'bg-blue-500/20 text-blue-400' : 'bg-teal-500/20 text-teal-400'}`}>{l.listingType}</span>
+                            <span className={`text-[9px] font-black uppercase px-2 py-1 rounded border ${l.listingType === 'request' ? 'bg-blue-900/40 text-blue-300 border-blue-500/30' : 'bg-teal-900/40 text-teal-300 border-teal-500/30'}`}>{l.listingType}</span>
                           </td>
                           <td className="px-6 py-4 font-bold text-white max-w-[200px] truncate">{l.title}</td>
-                          <td className="px-6 py-4 text-white/60">{l.donorId?.name || 'Deleted User'}</td>
+                          <td className="px-6 py-4 text-white/80">{l.donorId?.name || 'Deleted User'}</td>
                           <td className="px-6 py-4">
-                             <span className={`text-[9px] font-black uppercase px-2 py-1 rounded ${l.status === 'fulfilled' ? 'text-green-400' : 'text-yellow-400'}`}>{l.status}</span>
+                             <span className={`text-[9px] font-black uppercase px-2 py-1 rounded border ${l.status === 'fulfilled' ? 'bg-green-900/40 text-green-400 border-green-500/30' : 'bg-yellow-900/40 text-yellow-400 border-yellow-500/30'}`}>{l.status}</span>
                           </td>
                           <td className="px-6 py-4 text-right">
-                            <button onClick={() => handleDeleteListing(l._id)} className="bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white p-2 rounded-lg transition-all" title="Force Delete">
+                            <button onClick={() => handleDeleteListing(l._id)} className="bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-600 hover:text-white p-2 rounded-lg transition-all" title="Force Delete">
                               <FaTrash />
                             </button>
                           </td>
@@ -259,21 +259,21 @@ const Admin = () => {
                   </table>
                 </div>
 
-                {/* Mobile Card View */}
+                {/* Mobile Card View (Glassmorphism) */}
                 <div className="grid grid-cols-1 gap-4 md:hidden">
                   {listings.map(l => (
-                    <div key={l._id} className="bg-[#111] border border-white/10 rounded-2xl p-4 space-y-3">
+                    <div key={l._id} className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-4 space-y-3 shadow-lg">
                        <div className="flex justify-between items-center">
-                         <span className={`text-[9px] font-black uppercase px-2 py-1 rounded ${l.listingType === 'request' ? 'bg-blue-500/20 text-blue-400' : 'bg-teal-500/20 text-teal-400'}`}>{l.listingType}</span>
+                         <span className={`text-[9px] font-black uppercase px-2 py-1 rounded border ${l.listingType === 'request' ? 'bg-blue-900/40 text-blue-300 border-blue-500/30' : 'bg-teal-900/40 text-teal-300 border-teal-500/30'}`}>{l.listingType}</span>
                          <span className={`text-[9px] font-black uppercase ${l.status === 'fulfilled' ? 'text-green-400' : 'text-yellow-400'}`}>{l.status}</span>
                        </div>
-                       <h4 className="text-white font-bold leading-snug">{l.title}</h4>
-                       <div className="flex justify-between items-center pt-3 border-t border-white/5">
+                       <h4 className="text-white font-bold leading-snug drop-shadow-sm">{l.title}</h4>
+                       <div className="flex justify-between items-center pt-3 border-t border-white/10">
                           <div>
-                            <p className="text-[8px] text-white/40 uppercase font-black">Owner</p>
-                            <p className="text-white/80 text-xs">{l.donorId?.name || 'Deleted User'}</p>
+                            <p className="text-[8px] text-white/50 uppercase font-black">Owner</p>
+                            <p className="text-white/90 text-xs font-bold">{l.donorId?.name || 'Deleted User'}</p>
                           </div>
-                          <button onClick={() => handleDeleteListing(l._id)} className="bg-red-500/20 text-red-500 p-3 rounded-xl active:bg-red-500 active:text-white transition-all active:scale-95">
+                          <button onClick={() => handleDeleteListing(l._id)} className="bg-red-500/20 border border-red-500/30 text-red-400 p-3 rounded-xl active:bg-red-600 active:text-white transition-all active:scale-95">
                             <FaTrash size={14} />
                           </button>
                        </div>

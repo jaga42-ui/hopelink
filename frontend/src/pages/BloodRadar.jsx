@@ -4,7 +4,7 @@ import L from 'leaflet';
 import AuthContext from '../context/AuthContext';
 import Layout from '../components/Layout';
 import { useNavigate, useSearchParams } from 'react-router-dom'; 
-import { FaHeartbeat, FaLocationArrow, FaSpinner, FaBullhorn, FaExclamationTriangle, FaRunning, FaFilter } from 'react-icons/fa';
+import { FaHeartbeat, FaLocationArrow, FaSpinner, FaBullhorn, FaExclamationTriangle, FaRunning, FaFilter, FaTimes } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
@@ -112,55 +112,55 @@ const BloodRadar = () => {
 
   return (
     <Layout>
-      {/* Dynamic Viewport Height: Fills screen on mobile, rounded box on desktop */}
-      <div className="relative w-full h-[calc(100dvh-70px)] md:h-[85vh] md:max-w-6xl md:mx-auto md:mt-4 md:rounded-[2rem] overflow-hidden bg-[#0a0a0a]">
+      {/* Dynamic Viewport Height container */}
+      <div className="relative w-full h-[calc(100dvh-70px)] md:h-[85vh] md:max-w-6xl md:mx-auto md:mt-4 md:rounded-[2rem] overflow-hidden text-white">
         
-        {/* FLOATING TOP BAR (Replaces bulky header) */}
+        {/* FLOATING TOP BAR (Glassmorphism) */}
         <div className="absolute top-4 left-4 right-4 z-[1000] flex flex-wrap items-center justify-between gap-2 pointer-events-none">
           
-          {/* Live Status */}
-          <div className="bg-black/60 backdrop-blur-md border border-white/10 px-4 py-2.5 rounded-2xl flex items-center gap-3 shadow-xl pointer-events-auto">
-            <div className={`w-2.5 h-2.5 rounded-full ${loading ? 'bg-yellow-500 animate-pulse' : 'bg-green-500 animate-pulse shadow-[0_0_10px_#22c55e]'}`} />
+          {/* Live Status Glass Card */}
+          <div className="bg-white/10 backdrop-blur-xl border border-white/20 px-4 py-2.5 rounded-2xl flex items-center gap-3 shadow-lg pointer-events-auto">
+            <div className={`w-2.5 h-2.5 rounded-full ${loading ? 'bg-yellow-400 animate-pulse' : 'bg-teal-400 animate-pulse shadow-[0_0_10px_rgba(45,212,191,0.8)]'}`} />
             <span className="text-white text-[10px] md:text-xs font-black uppercase tracking-widest">
               {donors.length} Nearby
             </span>
           </div>
 
-          {/* Floating Filters */}
+          {/* Floating Filters Glass Cards */}
           <div className="flex gap-2 pointer-events-auto">
             <select 
               value={bloodGroup} 
               onChange={e => setBloodGroup(e.target.value)}
-              className="bg-black/60 backdrop-blur-md border border-white/10 rounded-xl px-3 py-2.5 text-white text-xs font-black outline-none appearance-none text-center shadow-xl focus:border-red-500 transition-all"
+              className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl px-3 py-2.5 text-white text-xs font-black outline-none appearance-none text-center shadow-lg focus:border-teal-400 transition-all cursor-pointer"
             >
-              <option value="All">ALL TYPE</option>
-              {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bg => <option key={bg} value={bg}>{bg}</option>)}
+              <option value="All" className="text-black">ALL TYPE</option>
+              {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bg => <option key={bg} value={bg} className="text-black">{bg}</option>)}
             </select>
 
             <select 
               value={radius} 
               onChange={e => setRadius(Number(e.target.value))}
-              className="bg-black/60 backdrop-blur-md border border-white/10 rounded-xl px-3 py-2.5 text-white text-xs font-black outline-none appearance-none text-center shadow-xl focus:border-red-500 transition-all"
+              className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl px-3 py-2.5 text-white text-xs font-black outline-none appearance-none text-center shadow-lg focus:border-teal-400 transition-all cursor-pointer"
             >
-              <option value={5000}>5 KM</option>
-              <option value={15000}>15 KM</option>
-              <option value={50000}>50 KM</option>
+              <option value={5000} className="text-black">5 KM</option>
+              <option value={15000} className="text-black">15 KM</option>
+              <option value={50000} className="text-black">50 KM</option>
             </select>
           </div>
         </div>
 
-        {/* MISSION DETECTED BANNER */}
+        {/* MISSION DETECTED BANNER (Glassmorphism Warning) */}
         <AnimatePresence>
           {blastId && (
             <motion.div 
               initial={{ y: -100, x: '-50%', opacity: 0 }} 
               animate={{ y: 80, x: '-50%', opacity: 1 }} 
               exit={{ y: -100, x: '-50%', opacity: 0 }}
-              className="absolute top-0 left-1/2 z-[2000] bg-red-600/95 backdrop-blur-md border border-red-400 p-4 rounded-2xl shadow-[0_0_40px_rgba(220,38,38,0.5)] flex flex-col sm:flex-row items-center gap-4 w-[90%] max-w-lg pointer-events-auto"
+              className="absolute top-0 left-1/2 z-[2000] bg-red-600/40 backdrop-blur-2xl border border-red-500/50 p-4 rounded-2xl shadow-[0_0_40px_rgba(220,38,38,0.5)] flex flex-col sm:flex-row items-center gap-4 w-[90%] max-w-lg pointer-events-auto"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white text-red-600 rounded-full flex items-center justify-center text-xl shrink-0">
-                  <FaExclamationTriangle className="animate-pulse" />
+                <div className="w-10 h-10 bg-white/20 text-white border border-white/30 rounded-full flex items-center justify-center text-xl shrink-0">
+                  <FaExclamationTriangle className="animate-pulse text-red-400" />
                 </div>
                 <div className="flex-1 text-left">
                   <h3 className="text-white font-black tracking-tighter leading-tight text-sm md:text-base">EMERGENCY DETECTED</h3>
@@ -169,7 +169,7 @@ const BloodRadar = () => {
               </div>
               <button 
                 onClick={handleIAmComing} 
-                className="w-full sm:w-auto bg-white text-red-600 px-6 py-3 rounded-xl font-black uppercase tracking-widest text-xs hover:scale-105 active:scale-95 transition-transform flex items-center justify-center gap-2 shadow-lg shrink-0"
+                className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white border border-red-500 px-6 py-3 rounded-xl font-black uppercase tracking-widest text-xs active:scale-95 transition-all flex items-center justify-center gap-2 shadow-xl shrink-0"
               >
                 <FaRunning className="text-lg" /> I'M COMING
               </button>
@@ -178,41 +178,41 @@ const BloodRadar = () => {
         </AnimatePresence>
 
         {/* THE MAP */}
-        <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 z-0 bg-black/50">
           {!myLocation ? (
-            <div className="h-full w-full flex flex-col items-center justify-center space-y-4 text-white/50 bg-[#0a0a0a]">
-              <FaSpinner className="animate-spin text-4xl text-red-500" />
+            <div className="h-full w-full flex flex-col items-center justify-center space-y-4 text-white/70">
+              <FaSpinner className="animate-spin text-4xl text-teal-400" />
               <p className="font-bold tracking-[0.2em] uppercase text-xs">Acquiring GPS Lock...</p>
             </div>
           ) : (
             <MapContainer 
               center={myLocation} 
               zoom={13} 
-              zoomControl={false} // Removed default zoom for cleaner mobile look
+              zoomControl={false} 
               scrollWheelZoom={true} 
               className="w-full h-full"
             >
               <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
               <FlyToLocation center={myLocation} />
-              <Circle center={myLocation} radius={radius} pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.08, weight: 1.5 }} />
+              <Circle center={myLocation} radius={radius} pathOptions={{ color: '#0d9488', fillColor: '#14b8a6', fillOpacity: 0.1, weight: 1.5 }} />
               
               <Marker position={myLocation} icon={myIcon}>
-                <Popup className="custom-popup border-none"><b className="text-xs">Your Location</b></Popup>
+                <Popup className="custom-popup border-none"><b className="text-xs text-black">Your Location</b></Popup>
               </Marker>
 
               {donors.map(donor => (
                 <Marker key={donor._id} position={[donor.location.coordinates[1], donor.location.coordinates[0]]} icon={donorIcon}>
                   <Popup className="rounded-2xl overflow-hidden border-0 p-0 shadow-2xl">
-                    <div className="text-center p-3 w-44 bg-white">
-                      <img src={donor.profilePic || 'https://via.placeholder.com/50'} className="w-14 h-14 rounded-full mx-auto mb-2 object-cover border-2 border-red-500 shadow-md" />
-                      <h3 className="font-black text-gray-900 truncate text-sm">{donor.name}</h3>
-                      <div className="flex justify-center items-center gap-1 mt-1 mb-3">
+                    <div className="text-center p-4 w-48 bg-white/95 backdrop-blur-md border border-white/20">
+                      <img src={donor.profilePic || 'https://via.placeholder.com/50'} className="w-16 h-16 rounded-full mx-auto mb-2 object-cover border-2 border-teal-500 shadow-md" />
+                      <h3 className="font-black text-teal-900 truncate text-sm">{donor.name}</h3>
+                      <div className="flex justify-center items-center gap-1 mt-1 mb-4">
                         <FaHeartbeat className="text-red-500 text-xs" />
                         <span className="bg-red-100 text-red-600 font-black px-2 py-0.5 rounded text-[10px]">{donor.bloodGroup}</span>
                       </div>
                       <button 
                         onClick={() => navigate(`/chat/direct_${donor._id}`, { state: { otherUserId: donor._id, otherUserName: donor.name } })}
-                        className="w-full py-3 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white rounded-xl text-xs font-black tracking-wider transition-colors"
+                        className="w-full py-3 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white rounded-xl text-xs font-black tracking-wider transition-colors shadow-lg"
                       >
                         MESSAGE
                       </button>
@@ -224,51 +224,49 @@ const BloodRadar = () => {
           )}
         </div>
 
-        {/* FLOATING SOS BUTTON */}
-        <div className="absolute bottom-8 left-0 right-0 z-[1000] flex justify-center pointer-events-none">
+        {/* 👉 FIXED: FLOATING SOS BUTTON (Pushed up to clear mobile nav) */}
+        <div className="absolute bottom-24 md:bottom-8 left-0 right-0 z-[1000] flex justify-center pointer-events-none">
           <button 
             onClick={() => setShowBlastModal(true)}
             className="group relative flex items-center justify-center pointer-events-auto"
           >
-            {/* Ping animation under button */}
             <div className="absolute inset-0 bg-red-600 rounded-full animate-ping opacity-30" />
-            <div className="relative bg-red-600 text-white px-8 py-4 md:px-10 md:py-5 rounded-full flex items-center gap-3 shadow-[0_0_30px_rgba(239,68,68,0.5)] transition-transform active:scale-95 hover:bg-red-700">
+            <div className="relative bg-red-600 border border-red-400 text-white px-8 py-4 md:px-10 md:py-5 rounded-full flex items-center gap-3 shadow-[0_0_30px_rgba(239,68,68,0.5)] transition-transform active:scale-95 hover:bg-red-700">
               <FaBullhorn className="text-xl animate-bounce" />
               <span className="text-xs md:text-sm font-black uppercase tracking-widest text-shadow-sm">Send SOS Blast</span>
             </div>
           </button>
         </div>
 
-        {/* EMERGENCY BLAST MODAL */}
+        {/* EMERGENCY BLAST MODAL (Glassmorphism) */}
         <AnimatePresence>
           {showBlastModal && (
             <div className="fixed inset-0 z-[3000] flex items-end sm:items-center justify-center p-0 sm:p-4">
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowBlastModal(false)} />
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowBlastModal(false)} />
               
-              {/* Bottom Sheet on Mobile, Centered Modal on Desktop */}
               <motion.div 
                 initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="relative w-full max-w-lg bg-[#111] border-t-2 sm:border-2 border-red-500/30 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl"
+                className="relative w-full max-w-lg bg-white/10 backdrop-blur-2xl border-t sm:border border-white/20 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl text-white"
               >
-                {/* Mobile pull tab */}
-                <div className="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-6 sm:hidden" />
+                <div className="w-12 h-1.5 bg-white/30 rounded-full mx-auto mb-6 sm:hidden" />
+                <button type="button" onClick={() => setShowBlastModal(false)} className="hidden sm:block absolute top-6 right-6 text-white/50 hover:text-white"><FaTimes className="text-xl" /></button>
                 
-                <h2 className="text-2xl sm:text-3xl font-black text-white italic tracking-tighter mb-1">SOS BROADCAST</h2>
-                <p className="text-white/50 text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-6">Alert all {bloodGroup === 'All' ? 'donors' : bloodGroup + ' donors'} within {radius/1000}km</p>
+                <h2 className="text-2xl sm:text-3xl font-black italic tracking-tighter mb-1 drop-shadow-md text-red-400">SOS BROADCAST</h2>
+                <p className="text-white/70 text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-6">Alert all {bloodGroup === 'All' ? 'donors' : bloodGroup + ' donors'} within {radius/1000}km</p>
                 
                 <textarea 
                   value={emotionalMessage}
                   onChange={(e) => setEmotionalMessage(e.target.value)}
                   placeholder="Explain the emergency... e.g. 'Critical surgery at Apollo Hospital. Need O+ blood immediately.'"
-                  className="w-full h-32 sm:h-40 bg-black/50 border border-white/10 rounded-2xl p-4 text-white text-sm outline-none focus:border-red-500 transition-all resize-none mb-6"
+                  className="w-full h-32 sm:h-40 bg-black/30 border border-white/20 rounded-2xl p-4 text-white text-sm outline-none focus:border-red-500 transition-all resize-none mb-6 shadow-inner"
                 />
 
                 <div className="flex gap-3 sm:gap-4 pb-4 sm:pb-0">
-                  <button onClick={() => setShowBlastModal(false)} className="flex-1 py-4 bg-white/5 hover:bg-white/10 rounded-2xl text-white/60 font-black uppercase tracking-widest text-[10px] transition-colors">Cancel</button>
+                  <button onClick={() => setShowBlastModal(false)} className="flex-1 py-4 bg-white/10 hover:bg-white/20 border border-white/10 rounded-2xl text-white/80 font-black uppercase tracking-widest text-[10px] transition-colors">Cancel</button>
                   <button 
                     onClick={handleEmergencyBlast}
                     disabled={isBlasting}
-                    className="flex-[2] bg-red-600 active:bg-red-700 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-xs flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 transition-all"
+                    className="flex-[2] bg-red-600 active:bg-red-700 hover:bg-red-500 border border-red-500 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-xs flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 transition-all disabled:opacity-50"
                   >
                     {isBlasting ? <FaSpinner className="animate-spin text-lg" /> : "Broadcast Now"}
                   </button>
