@@ -19,9 +19,20 @@ export const AuthProvider = ({ children }) => {
     return savedUser ? JSON.parse(savedUser) : null;
   });
 
-  // 🚨 SECURITY TRIPWIRE: Listen for real-time admin role changes
+  // 👉 NEW: Global Unread Message Counter
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // 🚨 SECURITY TRIPWIRE & GLOBAL LISTENERS
   useEffect(() => {
     if (!user) return;
+
+    // 1. Fetch initial unread count on app load
+    api.get('/chat/inbox').then(res => {
+      if (Array.isArray(res.data)) {
+        const count = res.data.reduce((acc, chat) => acc + chat.unreadCount, 0);
+        setUnreadCount(count);
+      }
+    }).catch(console.error);
 
     // 👉 Connect to the live server
     const socket = io(BACKEND_URL, {
@@ -29,6 +40,14 @@ export const AuthProvider = ({ children }) => {
     });
     
     socket.emit('setup', user._id);
+
+    // 👉 2. Listen for messages globally across the entire app
+    socket.on('new_message_notification', () => {
+      setUnreadCount(prev => prev + 1);
+      toast("💬 Secure Transmission Received!", {
+        style: { background: '#0f172a', color: '#fff', border: '1px solid #1e293b' }
+      });
+    });
 
     const handleRoleUpdate = (data) => {
       // If the alert from the server is about ME...
@@ -38,14 +57,14 @@ export const AuthProvider = ({ children }) => {
         setUser(updatedUser);
         localStorage.setItem('user', JSON.stringify(updatedUser));
         
-        // Tactical Notifications (Updated to Solid Dark Slate Theme)
+        // Tactical Notifications (Solid Dark Slate Theme)
         if (!data.isAdmin) {
           toast.error("SECURITY ALERT: Your Admin privileges have been revoked.", {
-            style: { background: '#0f172a', color: '#ef4444', border: '1px solid #7f1d1d' } // slate-900 bg, red-900 border
+            style: { background: '#0f172a', color: '#ef4444', border: '1px solid #7f1d1d' } 
           });
         } else {
           toast.success("You have been promoted to System Admin!", {
-            style: { background: '#0f172a', color: '#14b8a6', border: '1px solid #134e4a' } // slate-900 bg, teal-900 border
+            style: { background: '#0f172a', color: '#14b8a6', border: '1px solid #134e4a' } 
           });
         }
       }
@@ -56,6 +75,7 @@ export const AuthProvider = ({ children }) => {
     // Cleanup listener when unmounting
     return () => {
       socket.off('role_updated', handleRoleUpdate);
+      socket.off('new_message_notification');
       socket.disconnect();
     };
   }, [user]);
@@ -72,7 +92,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('user', JSON.stringify(updatedUser));
       
       toast.success(`Switched to ${data.activeRole.charAt(0).toUpperCase() + data.activeRole.slice(1)} Mode`, {
-        style: { background: '#0f172a', color: '#fff', border: '1px solid #1e293b' } // slate-900 bg, slate-800 border
+        style: { background: '#0f172a', color: '#fff', border: '1px solid #1e293b' } 
       });
     } catch (error) {
       toast.error("Failed to switch roles in the system.", {
@@ -104,11 +124,13 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     setUser(null);
+    setUnreadCount(0); // 👉 Clear unread count on logout
     localStorage.removeItem('user');
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, switchRole, setUser }}>
+    // 👉 Pass unreadCount and setUnreadCount down to Layout & Dashboard
+    <AuthContext.Provider value={{ user, login, logout, switchRole, setUser, unreadCount, setUnreadCount }}>
       {children}
     </AuthContext.Provider>
   );

@@ -14,13 +14,10 @@ import {
   FaTrash,
   FaBoxOpen,
   FaLocationArrow,
-  FaEnvelope,
   FaCheckCircle,
   FaCheck,
   FaCalendarAlt,
-  FaSearch,
   FaLock,
-  FaStar,
   FaUsers,
   FaRunning,
   FaDownload,
@@ -29,7 +26,6 @@ import {
   FaCalendarPlus,
   FaClock,
   FaEdit,
-  FaChevronRight,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -55,7 +51,6 @@ const Dashboard = () => {
   const [feed, setFeed] = useState([]);
   const [eventsFeed, setEventsFeed] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [responders, setResponders] = useState([]);
   const [filterCategory, setFilterCategory] = useState("All");
   const [sortOrder, setSortOrder] = useState("urgent");
@@ -85,8 +80,8 @@ const Dashboard = () => {
     button: isDonor
       ? "bg-teal-600 hover:bg-teal-500 text-white"
       : "bg-blue-600 hover:bg-blue-500 text-white",
-    cardBg: "bg-slate-900", // Solid dark background for readability
-    inputBg: "bg-slate-950", // Darker background for inputs
+    cardBg: "bg-slate-900",
+    inputBg: "bg-slate-950",
     borderColor: "border-slate-800",
   };
 
@@ -119,6 +114,7 @@ const Dashboard = () => {
     pin: "",
     rating: 5,
   });
+
   const [requestsModal, setRequestsModal] = useState({
     isOpen: false,
     donation: null,
@@ -160,13 +156,6 @@ const Dashboard = () => {
           const { data } = await api.get("/events");
           setEventsFeed(data);
         }
-
-        const { data: inboxData } = await api.get("/chat/inbox");
-        if (Array.isArray(inboxData)) {
-          setUnreadCount(
-            inboxData.reduce((acc, chat) => acc + chat.unreadCount, 0),
-          );
-        }
         setLoading(false);
       } catch (error) {
         setLoading(false);
@@ -182,20 +171,7 @@ const Dashboard = () => {
     const socket = io(BACKEND_URL, { transports: ["websocket", "polling"] });
     socket.emit("setup", user._id);
 
-    // 1. Direct Messages
-    socket.on("new_message_notification", () => {
-      setUnreadCount((prev) => prev + 1);
-      toast("💬 Secure Transmission Received!", {
-        style: {
-          borderRadius: "1rem",
-          background: "#0f172a",
-          color: "#fff",
-          border: "1px solid #1e293b",
-        },
-      });
-    });
-
-    // 2. SOS Responders
+    // SOS Responders
     socket.on("donor_coming", (data) => {
       setResponders((prev) => [...prev, data]);
       toast.success(`${data.donorName} is en route to help! 🦸‍♂️`, {
@@ -204,7 +180,7 @@ const Dashboard = () => {
       });
     });
 
-    // 3. REAL-TIME: NEW POST CREATED
+    // REAL-TIME: NEW POST CREATED
     socket.on("new_listing", (newDonation) => {
       setFeed((prev) => [newDonation, ...prev]);
       if (newDonation.isEmergency) {
@@ -215,19 +191,19 @@ const Dashboard = () => {
       }
     });
 
-    // 4. REAL-TIME: POST UPDATED (Requested/Approved)
+    // REAL-TIME: POST UPDATED (Requested/Approved)
     socket.on("listing_updated", (updatedItem) => {
       setFeed((prev) =>
         prev.map((item) => (item._id === updatedItem._id ? updatedItem : item)),
       );
     });
 
-    // 5. REAL-TIME: POST DELETED
+    // REAL-TIME: POST DELETED
     socket.on("listing_deleted", (deletedId) => {
       setFeed((prev) => prev.filter((item) => item._id !== deletedId));
     });
 
-    // 6. REAL-TIME: EVENT UPDATES
+    // REAL-TIME: EVENT UPDATES
     socket.on("new_event", (newEvent) => {
       setEventsFeed((prev) => [newEvent, ...prev]);
     });
@@ -242,7 +218,6 @@ const Dashboard = () => {
     const newRole = isDonor ? "receiver" : "donor";
     setLocalRole(newRole);
     switchRole();
-    toast.success(`Switched to ${newRole.toUpperCase()} Mode`, { icon: "🔄" });
   };
 
   const loadMoreListings = async () => {
@@ -386,8 +361,7 @@ const Dashboard = () => {
       if (sosData.lat) formData.append("lat", sosData.lat);
       if (sosData.lng) formData.append("lng", sosData.lng);
 
-      const { data } = await api.post("/donations", formData);
-      // We don't need to manually setFeed here anymore because the Socket will receive 'new_listing' and do it for us!
+      await api.post("/donations", formData);
       setShowSOS(false);
       setSosData({
         bloodGroup: "",
@@ -478,7 +452,6 @@ const Dashboard = () => {
     if (window.confirm("Delete this event completely?")) {
       try {
         await api.delete(`/events/${id}`);
-        // Socket will handle UI removal
         toast.success("Event removed.");
       } catch (error) {
         toast.error("Failed to delete event.");
@@ -490,7 +463,6 @@ const Dashboard = () => {
     if (window.confirm("Retract this transmission?")) {
       try {
         await api.delete(`/donations/${id}`);
-        // Socket handles UI removal instantly
         toast.success("Transmission successfully retracted.");
       } catch (error) {
         toast.error("Failed to delete the listing.");
@@ -518,11 +490,13 @@ const Dashboard = () => {
 
       setRequestsModal({ isOpen: false, donation: null });
       toast.success("Approved! Secure comms channel established.");
+
+      // 👉 Route donor straight into the secure chat room
       navigate(`/chat/${data.chatRoomId}`, {
         state: {
           otherUserId: receiverId,
           otherUserName: receiverName,
-          itemTitle: requestsModal.donation.title,
+          itemTitle: requestsModal.donation?.title,
         },
       });
     } catch (error) {
@@ -604,7 +578,6 @@ const Dashboard = () => {
               HOPE<span className={roleTheme.text}>LINK.</span>
             </motion.h1>
 
-            {/* ROLE SWITCHER ANIMATED */}
             {!user.isAdmin && (
               <div
                 onClick={handleRoleToggle}
@@ -626,7 +599,6 @@ const Dashboard = () => {
             )}
           </div>
 
-          {/* ACTION BUTTONS ROW */}
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
             <button
               onClick={() => setShowSOS(true)}
@@ -680,9 +652,7 @@ const Dashboard = () => {
           </button>
         </div>
 
-        {/* ========================================= */}
-        {/* VIEW 1: PEER TO PEER FEED                 */}
-        {/* ========================================= */}
+        {/* VIEW 1: PEER TO PEER FEED */}
         {viewMode === "p2p" && (
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -731,6 +701,8 @@ const Dashboard = () => {
                     const alreadyReq = item.requestedBy?.some(
                       (r) => r._id === user._id,
                     );
+                    const isApprovedReceiver =
+                      item.status === "pending" && item.receiverId === user._id;
                     const isEmergency = item.isEmergency;
 
                     return (
@@ -820,87 +792,89 @@ const Dashboard = () => {
                           </div>
                         </div>
 
-                        {/* TACTICAL ACTION BAR */}
+                        {/* 👉 MASTER UX FIX: The Action Bar */}
                         <div
                           className={`p-4 mt-2 ${roleTheme.inputBg} border-t ${roleTheme.borderColor}`}
                         >
                           {isMine ? (
-                            <button
-                              onClick={() =>
-                                item.status === "active"
-                                  ? setRequestsModal({
+                            // DONOR VIEW
+                            item.status === "fulfilled" ? (
+                              <button
+                                disabled
+                                className="w-full py-4 rounded-3xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest transition-all bg-slate-900 text-green-500 border border-slate-800"
+                              >
+                                <FaCheckCircle /> Mission Accomplished
+                              </button>
+                            ) : (
+                              <div className="flex gap-2 w-full">
+                                <button
+                                  onClick={() =>
+                                    setRequestsModal({
                                       isOpen: true,
                                       donation: item,
                                     })
-                                  : setFulfillModal({
-                                      isOpen: true,
-                                      donationId: item._id,
-                                      pin: "",
-                                      rating: 5,
-                                    })
-                              }
-                              className={`w-full py-4 rounded-3xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest transition-all ${item.status === "active" ? "bg-slate-800 hover:bg-slate-700 text-white border border-slate-700" : "bg-yellow-600 hover:bg-yellow-500 text-white"}`}
-                            >
-                              {item.status === "active" ? (
-                                <>
-                                  <FaUsers /> View{" "}
-                                  {item.requestedBy?.length || 0} Responses
-                                </>
-                              ) : (
-                                <>
-                                  <FaCheckCircle /> Verify Handshake
-                                </>
-                              )}
-                            </button>
-                          ) : (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => {
-                                  if (item.status === "active") {
-                                    if (!alreadyReq)
-                                      handleRequestItem(item._id);
-                                    else toast("Awaiting approval.");
                                   }
-                                }}
-                                disabled={
-                                  alreadyReq || item.status !== "active"
-                                }
-                                className={`flex-1 py-4 rounded-3xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest transition-all ${
-                                  item.status !== "active"
-                                    ? "bg-slate-800 text-slate-500 cursor-not-allowed"
-                                    : alreadyReq
-                                      ? "bg-slate-800 text-teal-500 border border-teal-900 cursor-default"
-                                      : isEmergency
-                                        ? "bg-red-600 hover:bg-red-500 text-white shadow-lg"
-                                        : roleTheme.button
-                                }`}
-                              >
-                                {item.status !== "active" ? (
-                                  <>
-                                    <FaLock /> Resolved
-                                  </>
-                                ) : alreadyReq ? (
-                                  <>
-                                    <FaCheck /> Signal Sent
-                                  </>
-                                ) : (
-                                  <>
-                                    <FaHandsHelping /> Send Signal
-                                  </>
-                                )}
-                              </button>
-                              {item.status === "pending" &&
-                                item.receiverId === user._id && (
+                                  disabled={!item.requestedBy?.length}
+                                  className={`flex-1 py-4 rounded-3xl flex items-center justify-center gap-2 font-black text-xs uppercase tracking-widest transition-all ${item.requestedBy?.length > 0 ? "bg-slate-800 text-white hover:bg-slate-700 border border-slate-700 shadow-md" : "bg-slate-900 text-slate-600 border border-slate-800 cursor-not-allowed"}`}
+                                >
+                                  <FaUsers /> {item.requestedBy?.length || 0}
+                                </button>
+
+                                {item.status === "pending" && (
                                   <button
                                     onClick={() =>
-                                      navigate(`/chat/${item._id}_${user._id}`)
+                                      setFulfillModal({
+                                        isOpen: true,
+                                        donationId: item._id,
+                                        pin: "",
+                                        rating: 5,
+                                      })
                                     }
-                                    className="w-14 h-14 rounded-3xl bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center shadow-lg active:scale-95 shrink-0"
+                                    className="flex-[2] py-4 rounded-3xl flex items-center justify-center gap-2 font-black text-xs uppercase tracking-widest transition-all bg-yellow-600 hover:bg-yellow-500 text-white shadow-lg shadow-yellow-900/50"
                                   >
-                                    <FaCommentDots size={20} />
+                                    <FaCheckCircle /> Verify PIN
                                   </button>
                                 )}
-                            </div>
+                              </div>
+                            )
+                          ) : // RECEIVER VIEW
+                          item.status === "fulfilled" ? (
+                            <button
+                              disabled
+                              className="w-full py-4 rounded-3xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest bg-slate-900 text-slate-600 border border-slate-800 cursor-not-allowed"
+                            >
+                              <FaLock /> Fulfilled
+                            </button>
+                          ) : isApprovedReceiver ? (
+                            <button
+                              onClick={() =>
+                                navigate(`/chat/${item._id}_${user._id}`, {
+                                  state: {
+                                    otherUserId: item.donorId._id,
+                                    otherUserName: item.donorId.name,
+                                    itemTitle: item.title,
+                                  },
+                                })
+                              }
+                              className="w-full py-4 rounded-3xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest transition-all bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/50"
+                            >
+                              <FaCommentDots className="text-lg" /> Open Secure
+                              Chat
+                            </button>
+                          ) : alreadyReq ? (
+                            <button
+                              disabled
+                              className="w-full py-4 rounded-3xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest bg-slate-800 text-teal-500 border border-teal-900 cursor-default"
+                            >
+                              <FaCheck /> Awaiting Approval
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleRequestItem(item._id)}
+                              className={`w-full py-4 rounded-3xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest transition-all ${isEmergency ? "bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/50" : roleTheme.button}`}
+                            >
+                              <FaHandsHelping /> Send Signal
+                            </button>
                           )}
                         </div>
                       </motion.div>
@@ -927,9 +901,7 @@ const Dashboard = () => {
           </motion.div>
         )}
 
-        {/* ========================================= */}
-        {/* VIEW 2: ORGANIZATION EVENTS FEED          */}
-        {/* ========================================= */}
+        {/* VIEW 2: ORGANIZATION EVENTS FEED */}
         {viewMode === "events" && (
           <motion.div
             initial={{ opacity: 0, x: 20 }}
@@ -1046,11 +1018,9 @@ const Dashboard = () => {
                               </div>
                             </div>
                           </div>
-
                           <p className="text-slate-300 text-[13px] leading-relaxed line-clamp-3 mb-6 flex-1">
                             {event.description}
                           </p>
-
                           <div className="pt-6 border-t border-slate-800 flex items-center justify-between mt-auto">
                             <div className="flex items-center gap-3">
                               <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-[10px] font-black text-purple-400 overflow-hidden border border-slate-700">
@@ -1078,26 +1048,7 @@ const Dashboard = () => {
           </motion.div>
         )}
 
-        {/* Floating Inbox Button */}
-        <button
-          onClick={() => navigate("/chat/inbox")}
-          className="fixed bottom-24 right-4 md:bottom-8 md:right-8 z-40 bg-teal-600 hover:bg-teal-500 text-white w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center shadow-lg shadow-teal-900/50 active:scale-95 transition-transform"
-        >
-          <div className="relative">
-            <FaEnvelope className="text-xl md:text-2xl" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-2 -right-3 bg-red-600 text-white text-[10px] font-bold min-w-[20px] h-5 px-1 rounded-full flex items-center justify-center border-2 border-teal-600">
-                {unreadCount > 9 ? "9+" : unreadCount}
-              </span>
-            )}
-          </div>
-        </button>
-
-        {/* ========================================= */}
-        {/* MODALS SECTION                            */}
-        {/* ========================================= */}
-
-        {/* SOS MODAL */}
+        {/* MODALS SECTION */}
         <AnimatePresence>
           {showSOS && (
             <div className="fixed inset-0 z-[3000] flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -1254,7 +1205,6 @@ const Dashboard = () => {
           )}
         </AnimatePresence>
 
-        {/* EVENT CREATE/EDIT MODAL */}
         <AnimatePresence>
           {showEventModal && (
             <div className="fixed inset-0 z-[4000] flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -1479,7 +1429,6 @@ const Dashboard = () => {
           )}
         </AnimatePresence>
 
-        {/* FULFILL MODAL */}
         <AnimatePresence>
           {fulfillModal.isOpen && (
             <div className="fixed inset-0 z-[3000] flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -1545,7 +1494,6 @@ const Dashboard = () => {
           )}
         </AnimatePresence>
 
-        {/* REQUESTS MODAL */}
         <AnimatePresence>
           {requestsModal.isOpen && requestsModal.donation && (
             <div className="fixed inset-0 z-[3000] flex items-end sm:items-center justify-center p-0 sm:p-4">

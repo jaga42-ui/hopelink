@@ -50,22 +50,34 @@ const BloodRadar = () => {
   const [isBlasting, setIsBlasting] = useState(false);
   const [activeSOS, setActiveSOS] = useState(null);
 
+  // 👉 THE GPS FIX: Forcing hardware precision
   useEffect(() => {
     if (!navigator.geolocation) return toast.error("GPS not supported by your browser.");
     setLoading(true);
+    
+    const toastId = toast.loading("Acquiring satellite lock. Please step near a window...", {
+      style: { background: '#0f172a', color: '#fff', border: '1px solid #1e293b' }
+    });
+
     navigator.geolocation.getCurrentPosition(
       async (position) => {
+        toast.dismiss(toastId);
         const { latitude, longitude } = position.coords;
         setMyLocation([latitude, longitude]);
         try {
           await api.put('/auth/location', { lat: latitude, lng: longitude });
         } catch(e) { console.error("Location update failed"); }
       },
-      () => {
+      (error) => {
+        toast.dismiss(toastId);
         setLoading(false);
-        toast.error("Please allow location access to use the radar.");
+        toast.error("GPS signal weak. Please ensure location services are enabled.");
       },
-      { enableHighAccuracy: true }
+      { 
+        enableHighAccuracy: true, 
+        timeout: 20000, // Give it 20 seconds to find a satellite
+        maximumAge: 0   // Force it to ignore old cached Wi-Fi locations
+      }
     );
   }, [user]);
 
