@@ -26,6 +26,7 @@ import {
   FaCalendarPlus,
   FaClock,
   FaEdit,
+  FaKey,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -34,7 +35,6 @@ import api from "../utils/api";
 
 const BACKEND_URL = "https://hopelink-api.onrender.com";
 
-// 👉 COMPRESSION ENGINE
 const optimizeImageUrl = (url) => {
   if (!url) return "";
   if (!url.includes("cloudinary.com"))
@@ -62,13 +62,11 @@ const Dashboard = () => {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstallable, setIsInstallable] = useState(false);
 
-  // Modals
   const [showSOS, setShowSOS] = useState(false);
   const [showEventModal, setShowEventModal] = useState(false);
   const [editingEventId, setEditingEventId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 👉 SOLID DARK THEME CONFIG
   const isDonor = localRole === "donor";
   const roleTheme = {
     primary: isDonor
@@ -124,6 +122,7 @@ const Dashboard = () => {
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [typingTimeout, setTypingTimeout] = useState(null);
 
+  // PWA Install Prompt
   useEffect(() => {
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
@@ -161,17 +160,14 @@ const Dashboard = () => {
         setLoading(false);
       }
     };
-
     fetchDashboardData();
   }, [user, viewMode]);
 
-  // 👉 REAL-TIME SOCKET LISTENER GRID
   useEffect(() => {
     if (!user) return;
     const socket = io(BACKEND_URL, { transports: ["websocket", "polling"] });
     socket.emit("setup", user._id);
 
-    // SOS Responders
     socket.on("donor_coming", (data) => {
       setResponders((prev) => [...prev, data]);
       toast.success(`${data.donorName} is en route to help! 🦸‍♂️`, {
@@ -180,7 +176,6 @@ const Dashboard = () => {
       });
     });
 
-    // REAL-TIME: NEW POST CREATED
     socket.on("new_listing", (newDonation) => {
       setFeed((prev) => [newDonation, ...prev]);
       if (newDonation.isEmergency) {
@@ -191,19 +186,16 @@ const Dashboard = () => {
       }
     });
 
-    // REAL-TIME: POST UPDATED (Requested/Approved)
     socket.on("listing_updated", (updatedItem) => {
       setFeed((prev) =>
         prev.map((item) => (item._id === updatedItem._id ? updatedItem : item)),
       );
     });
 
-    // REAL-TIME: POST DELETED
     socket.on("listing_deleted", (deletedId) => {
       setFeed((prev) => prev.filter((item) => item._id !== deletedId));
     });
 
-    // REAL-TIME: EVENT UPDATES
     socket.on("new_event", (newEvent) => {
       setEventsFeed((prev) => [newEvent, ...prev]);
     });
@@ -251,7 +243,9 @@ const Dashboard = () => {
       return toast.error("Geolocation is not supported.");
 
     setIsFetchingLocation(true);
-    toast.loading("Locking onto GPS...", { id: "gps-toast" });
+    const toastId = toast.loading("Locking onto GPS...", {
+      style: { background: "#0f172a", color: "#fff" },
+    });
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -282,20 +276,18 @@ const Dashboard = () => {
               lng: longitude,
             }));
           }
-          toast.success(`Coordinates locked: ${cityString}`, {
-            id: "gps-toast",
-          });
+          toast.success(`Coordinates locked: ${cityString}`, { id: toastId });
         } catch (error) {
-          toast.error("Could not resolve address.", { id: "gps-toast" });
+          toast.error("Could not resolve address.", { id: toastId });
         } finally {
           setIsFetchingLocation(false);
         }
       },
       (error) => {
         setIsFetchingLocation(false);
-        toast.error("Failed to acquire location.", { id: "gps-toast" });
+        toast.error("Failed to acquire location.", { id: toastId });
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
     );
   };
 
@@ -487,12 +479,10 @@ const Dashboard = () => {
       const receiverName =
         requestsModal.donation.requestedBy.find((r) => r._id === receiverId)
           ?.name || "Receiver";
-
       setRequestsModal({ isOpen: false, donation: null });
       toast.success("Approved! Secure comms channel established.");
 
-      // 👉 Route donor straight into the secure chat room
-      navigate(`/chat/${data.chatRoomId}`, {
+      navigate(`/chat/${donationId}_${receiverId}`, {
         state: {
           otherUserId: receiverId,
           otherUserName: receiverName,
@@ -518,6 +508,22 @@ const Dashboard = () => {
       toast.error(error.response?.data?.message || "Incorrect Access PIN");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Push Notification Request Button Function
+  const handleRequestNotifications = async () => {
+    toast.loading("Requesting permission...", { id: "notify" });
+    try {
+      // Re-trigger the Firebase function from AuthContext logic manually if needed,
+      // or instruct the user. Usually, logging out and logging back in works best
+      // if site data was cleared.
+      toast.success(
+        "Please log out and log back in to reactivate notifications.",
+        { id: "notify" },
+      );
+    } catch (e) {
+      toast.error("Failed to request permission", { id: "notify" });
     }
   };
 
@@ -631,6 +637,15 @@ const Dashboard = () => {
                 className="flex-shrink-0 px-5 py-3 bg-slate-700 hover:bg-slate-600 rounded-2xl flex items-center gap-2 font-black text-xs uppercase tracking-widest text-white shadow-lg border border-slate-600 transition-colors"
               >
                 <FaDownload /> App
+              </button>
+            )}
+            {/* If notifications are disabled, show a button to fix it */}
+            {Notification.permission !== "granted" && (
+              <button
+                onClick={handleRequestNotifications}
+                className="flex-shrink-0 px-5 py-3 bg-orange-600 hover:bg-orange-500 rounded-2xl flex items-center gap-2 font-black text-xs uppercase tracking-widest text-white shadow-lg border border-orange-500 transition-colors"
+              >
+                <FaBullhorn /> Enable Alerts
               </button>
             )}
           </div>
@@ -790,14 +805,30 @@ const Dashboard = () => {
                                 "Nearby"}
                             </span>
                           </div>
+
+                          {/* 👉 FIX 1: DISPLAY THE PIN TO THE DONOR */}
+                          {isMine &&
+                            item.pickupPIN &&
+                            item.status !== "fulfilled" && (
+                              <div className="mt-4 bg-slate-950 border border-slate-800 rounded-2xl p-3 flex items-center justify-between">
+                                <div className="flex items-center gap-2 text-slate-400">
+                                  <FaKey className="text-teal-500" />
+                                  <span className="text-[10px] font-black uppercase tracking-widest">
+                                    Handshake PIN:
+                                  </span>
+                                </div>
+                                <span className="text-lg font-black tracking-widest text-white bg-slate-800 px-3 py-1 rounded-xl">
+                                  {item.pickupPIN}
+                                </span>
+                              </div>
+                            )}
                         </div>
 
-                        {/* 👉 MASTER UX FIX: The Action Bar */}
+                        {/* ACTION BAR */}
                         <div
                           className={`p-4 mt-2 ${roleTheme.inputBg} border-t ${roleTheme.borderColor}`}
                         >
                           {isMine ? (
-                            // DONOR VIEW
                             item.status === "fulfilled" ? (
                               <button
                                 disabled
@@ -814,7 +845,6 @@ const Dashboard = () => {
                                       donation: item,
                                     })
                                   }
-                                  disabled={!item.requestedBy?.length}
                                   className={`flex-1 py-4 rounded-3xl flex items-center justify-center gap-2 font-black text-xs uppercase tracking-widest transition-all ${item.requestedBy?.length > 0 ? "bg-slate-800 text-white hover:bg-slate-700 border border-slate-700 shadow-md" : "bg-slate-900 text-slate-600 border border-slate-800 cursor-not-allowed"}`}
                                 >
                                   <FaUsers /> {item.requestedBy?.length || 0}
@@ -837,8 +867,7 @@ const Dashboard = () => {
                                 )}
                               </div>
                             )
-                          ) : // RECEIVER VIEW
-                          item.status === "fulfilled" ? (
+                          ) : item.status === "fulfilled" ? (
                             <button
                               disabled
                               className="w-full py-4 rounded-3xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest bg-slate-900 text-slate-600 border border-slate-800 cursor-not-allowed"
@@ -936,6 +965,7 @@ const Dashboard = () => {
                         exit={{ opacity: 0, y: 20 }}
                         className="group relative overflow-hidden rounded-[2.5rem] border border-slate-800 bg-slate-900 flex flex-col shadow-lg"
                       >
+                        {/* Event UI Render... */}
                         {event.image ? (
                           <div className="h-56 w-full relative overflow-hidden shrink-0 border-b border-slate-800">
                             <img
@@ -986,7 +1016,6 @@ const Dashboard = () => {
                             )}
                           </div>
                         )}
-
                         <div className="p-6 flex-1 flex flex-col">
                           <div className="flex gap-4 items-start mb-6">
                             <div className="bg-slate-800 border border-slate-700 rounded-2xl p-3 flex flex-col items-center justify-center w-16 shadow-md shrink-0">
@@ -1048,7 +1077,7 @@ const Dashboard = () => {
           </motion.div>
         )}
 
-        {/* MODALS SECTION */}
+        {/* MODALS */}
         <AnimatePresence>
           {showSOS && (
             <div className="fixed inset-0 z-[3000] flex items-end sm:items-center justify-center p-0 sm:p-4">
