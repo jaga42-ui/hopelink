@@ -2,29 +2,30 @@
 
 @layer utilities {
   .bg-brand-gradient {
-    /* Fallback */
-    background: #229985;
+    /* Fallback to deep slate */
+    background: #020617; 
     
-    /* The New 168deg Gradient */
-    background: -webkit-linear-gradient(168deg, rgba(34, 153, 133, 1) 0%, rgba(87, 199, 133, 1) 50%, rgba(173, 166, 222, 1) 100%);
-    background: -moz-linear-gradient(168deg, rgba(34, 153, 133, 1) 0%, rgba(87, 199, 133, 1) 50%, rgba(173, 166, 222, 1) 100%);
-    background: linear-gradient(168deg, rgba(34, 153, 133, 1) 0%, rgba(87, 199, 133, 1) 50%, rgba(173, 166, 222, 1) 100%);
+    /* Deep Solid Dark Teal & Slate Gradient (No more bright pastel colors) */
+    background: -webkit-linear-gradient(168deg, #020617 0%, #064e3b 50%, #0f172a 100%);
+    background: -moz-linear-gradient(168deg, #020617 0%, #064e3b 50%, #0f172a 100%);
+    background: linear-gradient(168deg, #020617 0%, #064e3b 50%, #0f172a 100%);
   }
 }
+
 @layer components {
   /* Soft, bouncy buttons */
   .btn-aesthetic {
-    @apply px-8 py-4 rounded-2xl font-black transition-all active:scale-95 shadow-xl;
+    @apply px-8 py-4 rounded-2xl font-black transition-all active:scale-95 shadow-lg;
   }
   
-  /* Inputs that feel like part of the glass */
+  /* Inputs updated to Solid Dark (Slate-950) */
   .input-glass {
-    @apply bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white placeholder-white/30 focus:bg-white/10 focus:border-white/30 outline-none transition-all;
+    @apply bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white placeholder-slate-500 focus:bg-slate-900 focus:border-teal-500 outline-none transition-all shadow-inner;
   }
 
-  /* The main "Container" style for all cards */
+  /* Cards updated to Solid Dark (Slate-900) */
   .glass-card {
-    @apply bg-white/10 backdrop-blur-xl border border-white/20 rounded-[3rem] shadow-2xl;
+    @apply bg-slate-900 border border-slate-800 rounded-[2.5rem] shadow-xl;
   }
 }
 
@@ -33,34 +34,34 @@
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
 /* -----------------------------------------
-   LEAFLET DARK MODE & GLASSMORPHISM FIXES
+   LEAFLET SOLID DARK MODE FIXES (No more blur)
 ------------------------------------------ */
 .leaflet-popup-content-wrapper {
-  background: rgba(17, 17, 17, 0.85) !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
-  color: #fff !important;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #0f172a !important; /* matches bg-slate-900 */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  color: #f8fafc !important; /* matches text-slate-50 */
+  border: 1px solid #1e293b; /* matches border-slate-800 */
   border-radius: 1.5rem !important;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8) !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5) !important;
 }
 
 .leaflet-popup-tip {
-  background: rgba(17, 17, 17, 0.9) !important;
+  background: #0f172a !important; /* matches bg-slate-900 */
 }
 
 .leaflet-container a.leaflet-popup-close-button {
-  color: rgba(255, 255, 255, 0.5) !important;
+  color: #64748b !important; /* matches text-slate-500 */
   padding: 4px !important;
 }
 
 .leaflet-container a.leaflet-popup-close-button:hover {
-  color: #fff !important;
+  color: #f8fafc !important; /* matches text-white */
   background: transparent !important;
 }
 
 /* Make the map container match the rounded corners perfectly */
 .leaflet-container {
-  background: #0a0a0a !important;
+  background: #020617 !important; /* matches bg-slate-950 */
   border-radius: inherit;
 }

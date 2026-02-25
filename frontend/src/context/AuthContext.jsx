@@ -38,14 +38,14 @@ export const AuthProvider = ({ children }) => {
         setUser(updatedUser);
         localStorage.setItem('user', JSON.stringify(updatedUser));
         
-        // Tactical Notifications
+        // Tactical Notifications (Updated to Solid Dark Slate Theme)
         if (!data.isAdmin) {
           toast.error("SECURITY ALERT: Your Admin privileges have been revoked.", {
-            style: { background: '#111', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.5)' }
+            style: { background: '#0f172a', color: '#ef4444', border: '1px solid #7f1d1d' } // slate-900 bg, red-900 border
           });
         } else {
           toast.success("You have been promoted to System Admin!", {
-            style: { background: '#111', color: '#14b8a6', border: '1px solid rgba(20, 184, 166, 0.5)' }
+            style: { background: '#0f172a', color: '#14b8a6', border: '1px solid #134e4a' } // slate-900 bg, teal-900 border
           });
         }
       }
@@ -71,9 +71,13 @@ export const AuthProvider = ({ children }) => {
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));
       
-      toast.success(`Switched to ${data.activeRole.charAt(0).toUpperCase() + data.activeRole.slice(1)} Mode`);
+      toast.success(`Switched to ${data.activeRole.charAt(0).toUpperCase() + data.activeRole.slice(1)} Mode`, {
+        style: { background: '#0f172a', color: '#fff', border: '1px solid #1e293b' } // slate-900 bg, slate-800 border
+      });
     } catch (error) {
-      toast.error("Failed to switch roles in the system.");
+      toast.error("Failed to switch roles in the system.", {
+        style: { background: '#0f172a', color: '#ef4444', border: '1px solid #7f1d1d' }
+      });
     }
   };
 

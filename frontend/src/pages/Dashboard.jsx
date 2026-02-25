@@ -5,11 +5,31 @@ import { io } from "socket.io-client";
 import AuthContext from "../context/AuthContext";
 import Layout from "../components/Layout";
 import {
-  FaHeartbeat, FaMapMarkerAlt, FaCommentDots, FaSpinner, FaTimes,
-  FaExclamationTriangle, FaTrash, FaBoxOpen, FaLocationArrow,
-  FaEnvelope, FaCheckCircle, FaCheck, FaCalendarAlt, // 👉 FaCheck is added here!
-  FaSearch, FaLock, FaStar, FaUsers, FaRunning, FaDownload,
-  FaHandsHelping, FaBullhorn, FaCalendarPlus, FaClock, FaEdit, FaChevronRight
+  FaHeartbeat,
+  FaMapMarkerAlt,
+  FaCommentDots,
+  FaSpinner,
+  FaTimes,
+  FaExclamationTriangle,
+  FaTrash,
+  FaBoxOpen,
+  FaLocationArrow,
+  FaEnvelope,
+  FaCheckCircle,
+  FaCheck,
+  FaCalendarAlt,
+  FaSearch,
+  FaLock,
+  FaStar,
+  FaUsers,
+  FaRunning,
+  FaDownload,
+  FaHandsHelping,
+  FaBullhorn,
+  FaCalendarPlus,
+  FaClock,
+  FaEdit,
+  FaChevronRight,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -53,18 +73,21 @@ const Dashboard = () => {
   const [editingEventId, setEditingEventId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Theme Config based on Role
+  // 👉 SOLID DARK THEME CONFIG
   const isDonor = localRole === "donor";
   const roleTheme = {
     primary: isDonor
-      ? "from-teal-500 to-emerald-600"
-      : "from-blue-500 to-indigo-600",
+      ? "from-teal-600 to-teal-800"
+      : "from-blue-600 to-blue-800",
     text: isDonor ? "text-teal-400" : "text-blue-400",
-    bg: isDonor ? "bg-teal-500/10" : "bg-blue-500/10",
-    border: isDonor ? "border-teal-500/30" : "border-blue-500/30",
+    bg: isDonor ? "bg-teal-900/30" : "bg-blue-900/30",
+    border: isDonor ? "border-teal-800" : "border-blue-800",
     button: isDonor
-      ? "bg-teal-600 hover:bg-teal-500"
-      : "bg-blue-600 hover:bg-blue-500",
+      ? "bg-teal-600 hover:bg-teal-500 text-white"
+      : "bg-blue-600 hover:bg-blue-500 text-white",
+    cardBg: "bg-slate-900", // Solid dark background for readability
+    inputBg: "bg-slate-950", // Darker background for inputs
+    borderColor: "border-slate-800",
   };
 
   const [sosData, setSosData] = useState({
@@ -123,7 +146,6 @@ const Dashboard = () => {
     if (user?.activeRole) setLocalRole(user.activeRole);
   }, [user?.activeRole]);
 
-  // Fetch Data Based on Active Tab
   useEffect(() => {
     if (!user?.token) return;
 
@@ -164,10 +186,9 @@ const Dashboard = () => {
       toast("💬 Secure Transmission Received!", {
         style: {
           borderRadius: "1rem",
-          background: "rgba(255,255,255,0.1)",
-          backdropFilter: "blur(10px)",
+          background: "#0f172a",
           color: "#fff",
-          border: "1px solid rgba(255,255,255,0.2)",
+          border: "1px solid #1e293b",
         },
       });
     });
@@ -546,7 +567,7 @@ const Dashboard = () => {
                 initial={{ x: 100, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                className="bg-red-600 border border-red-400 p-3 md:p-4 rounded-xl shadow-2xl flex items-center gap-3 pointer-events-auto"
+                className="bg-red-600 border border-red-500 p-3 md:p-4 rounded-xl shadow-2xl flex items-center gap-3 pointer-events-auto"
               >
                 <div className="w-8 h-8 md:w-10 md:h-10 bg-white/20 rounded-full flex items-center justify-center text-white shrink-0">
                   <FaRunning className="text-lg md:text-xl" />
@@ -579,17 +600,17 @@ const Dashboard = () => {
             {!user.isAdmin && (
               <div
                 onClick={handleRoleToggle}
-                className="relative w-32 h-10 bg-white/10 rounded-full border border-white/20 flex items-center cursor-pointer p-1 overflow-hidden shrink-0"
+                className="relative w-32 h-10 bg-slate-900 rounded-full border border-slate-700 flex items-center cursor-pointer p-1 overflow-hidden shrink-0 shadow-inner"
               >
                 <motion.div
                   animate={{ x: isDonor ? 0 : 76 }}
-                  className={`absolute w-14 h-8 rounded-full bg-gradient-to-r ${roleTheme.primary} shadow-lg shadow-teal-500/20`}
+                  className={`absolute w-14 h-8 rounded-full bg-gradient-to-r ${roleTheme.primary} shadow-md`}
                 />
                 <div className="z-10 w-full flex justify-around text-[10px] font-black uppercase tracking-widest text-white">
-                  <span className={isDonor ? "text-black" : "opacity-50"}>
+                  <span className={isDonor ? "text-white" : "text-slate-400"}>
                     Give
                   </span>
-                  <span className={!isDonor ? "text-black" : "opacity-50"}>
+                  <span className={!isDonor ? "text-white" : "text-slate-400"}>
                     Take
                   </span>
                 </div>
@@ -601,14 +622,14 @@ const Dashboard = () => {
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
             <button
               onClick={() => setShowSOS(true)}
-              className="flex-shrink-0 px-5 py-3 bg-red-600 rounded-2xl flex items-center gap-2 font-black text-xs uppercase tracking-widest text-white shadow-lg shadow-red-600/30 border border-red-500"
+              className="flex-shrink-0 px-5 py-3 bg-red-600 hover:bg-red-500 rounded-2xl flex items-center gap-2 font-black text-xs uppercase tracking-widest text-white shadow-lg border border-red-500 transition-colors"
             >
               <FaHeartbeat className="animate-pulse" /> Emergency SOS
             </button>
             {isDonor && viewMode === "p2p" && (
               <button
                 onClick={() => navigate("/donations")}
-                className="flex-shrink-0 px-5 py-3 bg-white rounded-2xl flex items-center gap-2 font-black text-xs uppercase tracking-widest text-teal-900 shadow-xl"
+                className="flex-shrink-0 px-5 py-3 bg-teal-600 hover:bg-teal-500 rounded-2xl flex items-center gap-2 font-black text-xs uppercase tracking-widest text-white shadow-lg border border-teal-500 transition-colors"
               >
                 <FaBoxOpen /> Create Post
               </button>
@@ -619,7 +640,7 @@ const Dashboard = () => {
                   setEditingEventId(null);
                   setShowEventModal(true);
                 }}
-                className="flex-shrink-0 px-5 py-3 bg-purple-600 rounded-2xl flex items-center gap-2 font-black text-xs uppercase tracking-widest text-white shadow-xl border border-purple-400"
+                className="flex-shrink-0 px-5 py-3 bg-purple-600 hover:bg-purple-500 rounded-2xl flex items-center gap-2 font-black text-xs uppercase tracking-widest text-white shadow-lg border border-purple-500 transition-colors"
               >
                 <FaCalendarPlus /> Post Drive
               </button>
@@ -627,7 +648,7 @@ const Dashboard = () => {
             {isInstallable && (
               <button
                 onClick={handleInstallClick}
-                className="flex-shrink-0 px-5 py-3 bg-teal-500 rounded-2xl flex items-center gap-2 font-black text-xs uppercase tracking-widest text-white shadow-xl border border-teal-400"
+                className="flex-shrink-0 px-5 py-3 bg-slate-700 hover:bg-slate-600 rounded-2xl flex items-center gap-2 font-black text-xs uppercase tracking-widest text-white shadow-lg border border-slate-600 transition-colors"
               >
                 <FaDownload /> App
               </button>
@@ -636,16 +657,16 @@ const Dashboard = () => {
         </header>
 
         {/* FEED TOGGLE */}
-        <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 mb-6">
+        <div className="flex bg-slate-900 p-1 rounded-2xl border border-slate-800 mb-6 shadow-inner">
           <button
             onClick={() => setViewMode("p2p")}
-            className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${viewMode === "p2p" ? "bg-white text-slate-900 shadow-xl" : "text-white/40"}`}
+            className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${viewMode === "p2p" ? "bg-teal-600 text-white shadow-md" : "text-slate-400 hover:text-white"}`}
           >
             Community
           </button>
           <button
             onClick={() => setViewMode("events")}
-            className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${viewMode === "events" ? "bg-white text-slate-900 shadow-xl" : "text-white/40"}`}
+            className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${viewMode === "events" ? "bg-teal-600 text-white shadow-md" : "text-slate-400 hover:text-white"}`}
           >
             Events
           </button>
@@ -660,13 +681,13 @@ const Dashboard = () => {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 bg-white/10 backdrop-blur-xl p-3 md:p-4 rounded-2xl md:rounded-[2rem] border border-white/20 shadow-lg">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 bg-slate-900 p-3 md:p-4 rounded-2xl md:rounded-[2rem] border border-slate-800 shadow-md">
               <div className="flex gap-2 overflow-x-auto w-full md:w-auto no-scrollbar pb-1 md:pb-0 scroll-smooth">
                 {["All", "Blood", "Food", "Clothes", "Book"].map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setFilterCategory(cat)}
-                    className={`px-5 py-2.5 rounded-xl font-extrabold text-[11px] whitespace-nowrap transition-colors ${filterCategory === cat ? "bg-white text-teal-800" : "bg-white/10 text-white"}`}
+                    className={`px-5 py-2.5 rounded-xl font-extrabold text-[11px] whitespace-nowrap transition-colors ${filterCategory === cat ? "bg-teal-600 text-white" : "bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700"}`}
                   >
                     {cat}
                   </button>
@@ -675,12 +696,12 @@ const Dashboard = () => {
               <select
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value)}
-                className="bg-black/40 border border-white/20 rounded-lg px-3 py-2 text-white text-[11px] font-bold outline-none cursor-pointer"
+                className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-[11px] font-bold outline-none cursor-pointer focus:border-teal-500"
               >
-                <option value="urgent" className="text-black">
+                <option value="urgent" className="text-white">
                   Urgent First
                 </option>
-                <option value="newest" className="text-black">
+                <option value="newest" className="text-white">
                   Newest First
                 </option>
               </select>
@@ -688,10 +709,10 @@ const Dashboard = () => {
 
             {loading ? (
               <div className="flex justify-center py-20">
-                <FaSpinner className="animate-spin text-4xl text-white" />
+                <FaSpinner className="animate-spin text-4xl text-teal-600" />
               </div>
             ) : processedFeed.length === 0 ? (
-              <div className="text-center py-20 text-white/70 font-medium text-sm">
+              <div className="text-center py-20 text-slate-500 font-medium text-sm">
                 No listings found.
               </div>
             ) : (
@@ -711,18 +732,18 @@ const Dashboard = () => {
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.9 }}
-                        className={`relative overflow-hidden flex flex-col rounded-[2.5rem] border bg-white/5 backdrop-blur-3xl transition-all ${isEmergency ? "border-red-500/50 ring-1 ring-red-500/20 shadow-2xl shadow-red-500/10" : "border-white/10"}`}
+                        className={`relative overflow-hidden flex flex-col rounded-[2.5rem] border ${roleTheme.cardBg} transition-all shadow-lg ${isEmergency ? "border-red-900 ring-1 ring-red-900/50 shadow-red-900/10" : roleTheme.borderColor}`}
                       >
                         <div className="p-5 flex-1 flex flex-col">
                           <div className="flex justify-between items-start mb-4">
                             <div className="flex items-center gap-3">
                               <div
-                                className={`w-10 h-10 rounded-2xl overflow-hidden border-2 ${isDonor ? "border-teal-500/50" : "border-blue-500/50"}`}
+                                className={`w-10 h-10 rounded-2xl overflow-hidden border-2 ${roleTheme.border}`}
                               >
                                 <img
                                   src={
                                     item.donorId?.profilePic ||
-                                    `https://ui-avatars.com/api/?name=${item.donorId?.name}`
+                                    `https://ui-avatars.com/api/?name=${item.donorId?.name}&background=0D8B96&color=fff`
                                   }
                                   className="w-full h-full object-cover"
                                   alt="User"
@@ -733,7 +754,7 @@ const Dashboard = () => {
                                   {item.donorId?.name}
                                 </p>
                                 <p
-                                  className={`text-[10px] font-black uppercase tracking-widest mt-1 opacity-50`}
+                                  className={`text-[10px] font-black uppercase tracking-widest mt-1 text-slate-400`}
                                 >
                                   {item.category}{" "}
                                   {item.bloodGroup && `• ${item.bloodGroup}`}
@@ -743,7 +764,7 @@ const Dashboard = () => {
                             {isMine && (
                               <button
                                 onClick={() => handleDeletePost(item._id)}
-                                className="w-10 h-10 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 flex items-center justify-center active:scale-90 transition-transform shrink-0"
+                                className="w-10 h-10 rounded-2xl bg-slate-800 border border-slate-700 text-slate-400 hover:text-red-400 hover:bg-red-900/20 flex items-center justify-center active:scale-90 transition-all shrink-0"
                               >
                                 <FaTrash size={14} />
                               </button>
@@ -751,7 +772,7 @@ const Dashboard = () => {
                           </div>
 
                           {item.image ? (
-                            <div className="w-full h-44 rounded-[2rem] overflow-hidden mb-4 relative shrink-0">
+                            <div className="w-full h-44 rounded-[2rem] overflow-hidden mb-4 relative shrink-0 border border-slate-800">
                               <img
                                 src={optimizeImageUrl(item.image)}
                                 className="w-full h-full object-cover"
@@ -765,8 +786,8 @@ const Dashboard = () => {
                             </div>
                           ) : (
                             item.category === "blood" && (
-                              <div className="w-full h-32 mb-4 rounded-2xl overflow-hidden border border-red-500/20 bg-red-900/20 flex flex-col items-center justify-center shrink-0">
-                                <FaHeartbeat className="text-4xl text-red-400 mb-2" />
+                              <div className="w-full h-32 mb-4 rounded-2xl overflow-hidden border border-red-900/50 bg-red-950/30 flex flex-col items-center justify-center shrink-0">
+                                <FaHeartbeat className="text-4xl text-red-500 mb-2" />
                                 <span className="text-2xl font-black text-white">
                                   {item.bloodGroup}
                                 </span>
@@ -777,11 +798,11 @@ const Dashboard = () => {
                           <h3 className="text-xl font-black text-white leading-tight mb-2 line-clamp-1">
                             {item.title}
                           </h3>
-                          <p className="text-white/60 text-xs leading-relaxed line-clamp-2 mb-4 flex-1">
+                          <p className="text-slate-300 text-xs leading-relaxed line-clamp-2 mb-4 flex-1">
                             {item.description}
                           </p>
 
-                          <div className="flex items-center gap-2 text-white/40 text-[10px] font-bold mt-auto">
+                          <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold mt-auto">
                             <FaMapMarkerAlt className={roleTheme.text} />{" "}
                             <span className="truncate">
                               {item.location?.addressText ||
@@ -792,7 +813,9 @@ const Dashboard = () => {
                         </div>
 
                         {/* TACTICAL ACTION BAR */}
-                        <div className="p-4 mt-2 bg-white/5 border-t border-white/5">
+                        <div
+                          className={`p-4 mt-2 ${roleTheme.inputBg} border-t ${roleTheme.borderColor}`}
+                        >
                           {isMine ? (
                             <button
                               onClick={() =>
@@ -808,7 +831,7 @@ const Dashboard = () => {
                                       rating: 5,
                                     })
                               }
-                              className={`w-full py-4 rounded-3xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest transition-all ${item.status === "active" ? "bg-white text-slate-900" : "bg-yellow-500 text-black"}`}
+                              className={`w-full py-4 rounded-3xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest transition-all ${item.status === "active" ? "bg-slate-800 hover:bg-slate-700 text-white border border-slate-700" : "bg-yellow-600 hover:bg-yellow-500 text-white"}`}
                             >
                               {item.status === "active" ? (
                                 <>
@@ -836,12 +859,12 @@ const Dashboard = () => {
                                 }
                                 className={`flex-1 py-4 rounded-3xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest transition-all ${
                                   item.status !== "active"
-                                    ? "bg-black/40 text-white/30"
+                                    ? "bg-slate-800 text-slate-500 cursor-not-allowed"
                                     : alreadyReq
-                                      ? "bg-white/10 text-white/30"
+                                      ? "bg-slate-800 text-teal-500 border border-teal-900 cursor-default"
                                       : isEmergency
-                                        ? "bg-red-600 text-white shadow-lg shadow-red-500/20"
-                                        : `bg-gradient-to-r ${roleTheme.primary} text-white shadow-lg shadow-teal-500/20`
+                                        ? "bg-red-600 hover:bg-red-500 text-white shadow-lg"
+                                        : roleTheme.button
                                 }`}
                               >
                                 {item.status !== "active" ? (
@@ -864,7 +887,7 @@ const Dashboard = () => {
                                     onClick={() =>
                                       navigate(`/chat/${item._id}_${user._id}`)
                                     }
-                                    className="w-14 h-14 rounded-3xl bg-blue-500 text-white flex items-center justify-center shadow-lg active:scale-95 shrink-0"
+                                    className="w-14 h-14 rounded-3xl bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center shadow-lg active:scale-95 shrink-0"
                                   >
                                     <FaCommentDots size={20} />
                                   </button>
@@ -883,7 +906,7 @@ const Dashboard = () => {
                 <button
                   onClick={loadMoreListings}
                   disabled={loadingMore}
-                  className="px-10 py-4 bg-white/5 border border-white/10 rounded-3xl text-[10px] font-black uppercase tracking-[0.3em] text-white hover:bg-white/10 transition-all flex items-center gap-3"
+                  className="px-10 py-4 bg-slate-900 border border-slate-800 rounded-3xl text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 hover:text-white hover:bg-slate-800 transition-all flex items-center gap-3 shadow-md"
                 >
                   {loadingMore ? (
                     <FaSpinner className="animate-spin" />
@@ -907,15 +930,15 @@ const Dashboard = () => {
           >
             {loading ? (
               <div className="flex justify-center py-20">
-                <FaSpinner className="animate-spin text-4xl text-purple-500" />
+                <FaSpinner className="animate-spin text-4xl text-purple-600" />
               </div>
             ) : eventsFeed.length === 0 ? (
-              <div className="text-center py-20 bg-white/5 rounded-[2rem] border border-white/10 backdrop-blur-xl">
-                <FaBullhorn className="text-6xl text-white/20 mx-auto mb-4" />
+              <div className="text-center py-20 bg-slate-900 rounded-[2rem] border border-slate-800 shadow-md">
+                <FaBullhorn className="text-6xl text-slate-700 mx-auto mb-4" />
                 <h3 className="text-xl font-bold text-white mb-2">
                   No Upcoming Events
                 </h3>
-                <p className="text-white/50 text-sm">
+                <p className="text-slate-400 text-sm">
                   There are no blood camps or drives scheduled nearby.
                 </p>
               </div>
@@ -931,28 +954,28 @@ const Dashboard = () => {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 20 }}
-                        className="group relative overflow-hidden rounded-[2.5rem] border border-purple-500/30 bg-purple-900/5 backdrop-blur-3xl flex flex-col"
+                        className="group relative overflow-hidden rounded-[2.5rem] border border-slate-800 bg-slate-900 flex flex-col shadow-lg"
                       >
                         {event.image ? (
-                          <div className="h-56 w-full relative overflow-hidden shrink-0">
+                          <div className="h-56 w-full relative overflow-hidden shrink-0 border-b border-slate-800">
                             <img
                               src={optimizeImageUrl(event.image)}
-                              className="w-full h-full object-cover grayscale-[30%] group-hover:grayscale-0 transition-all duration-700"
+                              className="w-full h-full object-cover grayscale-[20%] group-hover:grayscale-0 transition-all duration-700"
                               alt="event"
                             />
-                            <div className="absolute inset-0 bg-gradient-to-t from-[#0b0f19] via-transparent to-transparent" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent" />
                             <div className="absolute top-4 right-4 flex gap-2">
                               {(user?.isAdmin || isOwner) && (
                                 <>
                                   <button
                                     onClick={() => openEditEventModal(event)}
-                                    className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white flex items-center justify-center active:scale-90"
+                                    className="w-10 h-10 rounded-2xl bg-slate-900/80 backdrop-blur-md border border-slate-700 text-white flex items-center justify-center hover:bg-slate-800 active:scale-90"
                                   >
                                     <FaEdit size={14} />
                                   </button>
                                   <button
                                     onClick={() => handleDeleteEvent(event._id)}
-                                    className="w-10 h-10 rounded-2xl bg-red-500/20 backdrop-blur-md border border-red-500/30 text-red-400 flex items-center justify-center active:scale-90"
+                                    className="w-10 h-10 rounded-2xl bg-red-900/80 backdrop-blur-md border border-red-800 text-red-300 flex items-center justify-center hover:bg-red-800 hover:text-white active:scale-90"
                                   >
                                     <FaTrash size={14} />
                                   </button>
@@ -961,7 +984,7 @@ const Dashboard = () => {
                             </div>
                           </div>
                         ) : (
-                          <div className="h-20 bg-purple-500/10 border-b border-purple-500/20 flex items-center justify-between px-6 shrink-0">
+                          <div className="h-20 bg-slate-950 border-b border-slate-800 flex items-center justify-between px-6 shrink-0">
                             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-purple-400">
                               {event.category}
                             </span>
@@ -969,13 +992,13 @@ const Dashboard = () => {
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => openEditEventModal(event)}
-                                  className="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center active:scale-90"
+                                  className="w-8 h-8 rounded-full bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 flex items-center justify-center active:scale-90"
                                 >
                                   <FaEdit size={12} />
                                 </button>
                                 <button
                                   onClick={() => handleDeleteEvent(event._id)}
-                                  className="w-8 h-8 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center active:scale-90"
+                                  className="w-8 h-8 rounded-full bg-red-900/30 text-red-400 hover:bg-red-900 hover:text-white flex items-center justify-center active:scale-90"
                                 >
                                   <FaTrash size={12} />
                                 </button>
@@ -986,8 +1009,8 @@ const Dashboard = () => {
 
                         <div className="p-6 flex-1 flex flex-col">
                           <div className="flex gap-4 items-start mb-6">
-                            <div className="bg-purple-600 rounded-2xl p-3 flex flex-col items-center justify-center w-16 shadow-lg shadow-purple-600/20 shrink-0">
-                              <span className="text-[9px] font-black uppercase text-white/70">
+                            <div className="bg-slate-800 border border-slate-700 rounded-2xl p-3 flex flex-col items-center justify-center w-16 shadow-md shrink-0">
+                              <span className="text-[9px] font-black uppercase text-purple-400">
                                 {new Date(event.eventDate).toLocaleDateString(
                                   "en-US",
                                   { month: "short" },
@@ -1001,13 +1024,13 @@ const Dashboard = () => {
                               <h3 className="font-black text-xl text-white leading-tight mb-2">
                                 {event.title}
                               </h3>
-                              <div className="flex flex-col gap-1 text-purple-300/60 text-[10px] font-bold uppercase tracking-widest">
+                              <div className="flex flex-col gap-1 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
                                 <span className="flex items-center gap-1.5">
-                                  <FaClock className="shrink-0" />{" "}
+                                  <FaClock className="shrink-0 text-purple-500" />{" "}
                                   {event.startTime} - {event.endTime}
                                 </span>
                                 <span className="flex items-center gap-1.5">
-                                  <FaMapMarkerAlt className="shrink-0" />{" "}
+                                  <FaMapMarkerAlt className="shrink-0 text-purple-500" />{" "}
                                   <span className="truncate">
                                     {event.locationText.split(",")[0]}
                                   </span>
@@ -1016,13 +1039,13 @@ const Dashboard = () => {
                             </div>
                           </div>
 
-                          <p className="text-white/50 text-[13px] leading-relaxed line-clamp-3 mb-6 flex-1">
+                          <p className="text-slate-300 text-[13px] leading-relaxed line-clamp-3 mb-6 flex-1">
                             {event.description}
                           </p>
 
-                          <div className="pt-6 border-t border-white/5 flex items-center justify-between mt-auto">
+                          <div className="pt-6 border-t border-slate-800 flex items-center justify-between mt-auto">
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-black text-purple-400 overflow-hidden">
+                              <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-[10px] font-black text-purple-400 overflow-hidden border border-slate-700">
                                 {event.organizationId?.profilePic ? (
                                   <img
                                     src={event.organizationId.profilePic}
@@ -1032,7 +1055,7 @@ const Dashboard = () => {
                                   event.organizationId?.name?.charAt(0)
                                 )}
                               </div>
-                              <span className="text-[11px] font-bold text-white/70 uppercase tracking-wider">
+                              <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
                                 {event.organizationId?.name}
                               </span>
                             </div>
@@ -1050,12 +1073,12 @@ const Dashboard = () => {
         {/* Floating Inbox Button */}
         <button
           onClick={() => navigate("/chat/inbox")}
-          className="fixed bottom-24 right-4 md:bottom-8 md:right-8 z-40 bg-white text-teal-800 hover:bg-gray-100 w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.3)] border border-white/20 active:scale-95 transition-transform"
+          className="fixed bottom-24 right-4 md:bottom-8 md:right-8 z-40 bg-teal-600 hover:bg-teal-500 text-white w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center shadow-lg shadow-teal-900/50 active:scale-95 transition-transform"
         >
           <div className="relative">
             <FaEnvelope className="text-xl md:text-2xl" />
             {unreadCount > 0 && (
-              <span className="absolute -top-2 -right-3 bg-red-600 text-white text-[10px] font-bold min-w-[20px] h-5 px-1 rounded-full flex items-center justify-center border-2 border-white">
+              <span className="absolute -top-2 -right-3 bg-red-600 text-white text-[10px] font-bold min-w-[20px] h-5 px-1 rounded-full flex items-center justify-center border-2 border-teal-600">
                 {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             )}
@@ -1074,7 +1097,7 @@ const Dashboard = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+                className="absolute inset-0 bg-slate-950/80"
                 onClick={() => setShowSOS(false)}
               />
               <motion.div
@@ -1082,12 +1105,12 @@ const Dashboard = () => {
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="relative w-full max-w-md bg-white/10 backdrop-blur-3xl border-t sm:border border-white/20 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar text-white"
+                className="relative w-full max-w-md bg-slate-900 border-t sm:border border-slate-700 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar text-white"
               >
                 <button
                   type="button"
                   onClick={() => setShowSOS(false)}
-                  className="absolute top-6 right-6 text-white/50 hover:text-white bg-black/20 p-2 rounded-full"
+                  className="absolute top-6 right-6 text-slate-400 hover:text-white bg-slate-800 p-2 rounded-full"
                 >
                   <FaTimes className="text-sm" />
                 </button>
@@ -1100,7 +1123,7 @@ const Dashboard = () => {
                 <form onSubmit={handleSOSSubmit} className="space-y-4">
                   <div className="flex gap-3">
                     <div className="flex-1">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-1">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">
                         Blood Group
                       </label>
                       <select
@@ -1109,14 +1132,14 @@ const Dashboard = () => {
                         onChange={(e) =>
                           setSosData({ ...sosData, bloodGroup: e.target.value })
                         }
-                        className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3.5 outline-none focus:border-red-500"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3.5 outline-none focus:border-red-500 text-white"
                       >
-                        <option value="" disabled className="text-black">
+                        <option value="" disabled>
                           Select
                         </option>
                         {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map(
                           (bg) => (
-                            <option key={bg} value={bg} className="text-black">
+                            <option key={bg} value={bg}>
                               {bg}
                             </option>
                           ),
@@ -1124,7 +1147,7 @@ const Dashboard = () => {
                       </select>
                     </div>
                     <div className="w-1/3">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-1">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">
                         Units
                       </label>
                       <input
@@ -1135,12 +1158,12 @@ const Dashboard = () => {
                         onChange={(e) =>
                           setSosData({ ...sosData, quantity: e.target.value })
                         }
-                        className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3.5 outline-none focus:border-red-500"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3.5 outline-none focus:border-red-500 text-white"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">
                       Hospital
                     </label>
                     <input
@@ -1149,11 +1172,11 @@ const Dashboard = () => {
                       onChange={(e) =>
                         setSosData({ ...sosData, hospital: e.target.value })
                       }
-                      className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3.5 outline-none focus:border-red-500"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3.5 outline-none focus:border-red-500 text-white"
                     />
                   </div>
                   <div className="relative">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">
                       Area / GPS
                     </label>
                     <div className="flex gap-2">
@@ -1161,13 +1184,13 @@ const Dashboard = () => {
                         required
                         value={sosData.addressText}
                         onChange={(e) => handleLocationType(e, false)}
-                        className="flex-1 w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3.5 outline-none focus:border-red-500"
+                        className="flex-1 w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3.5 outline-none focus:border-red-500 text-white"
                       />
                       <button
                         type="button"
                         onClick={() => handleGetLocation(false)}
                         disabled={isFetchingLocation}
-                        className="px-5 bg-red-500/20 text-red-400 rounded-2xl border border-red-500/30 flex items-center justify-center"
+                        className="px-5 bg-slate-800 text-red-400 rounded-2xl border border-slate-700 hover:bg-slate-700 flex items-center justify-center"
                       >
                         {isFetchingLocation ? (
                           <FaSpinner className="animate-spin text-lg" />
@@ -1177,12 +1200,12 @@ const Dashboard = () => {
                       </button>
                     </div>
                     {suggestions.length > 0 && (
-                      <div className="absolute bottom-full mb-2 z-50 w-full bg-[#111] border border-white/20 rounded-2xl max-h-40 overflow-y-auto">
+                      <div className="absolute bottom-full mb-2 z-50 w-full bg-slate-800 border border-slate-700 rounded-2xl max-h-40 overflow-y-auto shadow-xl">
                         {suggestions.map((s, idx) => (
                           <div
                             key={idx}
                             onClick={() => handleSelectSuggestion(s, false)}
-                            className="px-4 py-3 text-sm text-white/80 border-b border-white/10 cursor-pointer"
+                            className="px-4 py-3 text-sm text-slate-300 border-b border-slate-700 cursor-pointer hover:bg-slate-700"
                           >
                             {s.display_name}
                           </div>
@@ -1191,7 +1214,7 @@ const Dashboard = () => {
                     )}
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">
                       Details
                     </label>
                     <textarea
@@ -1201,13 +1224,13 @@ const Dashboard = () => {
                         setSosData({ ...sosData, description: e.target.value })
                       }
                       rows="2"
-                      className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3.5 outline-none focus:border-red-500 resize-none"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3.5 outline-none focus:border-red-500 text-white resize-none"
                     ></textarea>
                   </div>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full mt-4 py-4 bg-red-600 hover:bg-red-500 rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-red-600/30 text-white"
+                    className="w-full mt-4 py-4 bg-red-600 hover:bg-red-500 rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50 text-white shadow-md"
                   >
                     {isSubmitting ? (
                       <FaSpinner className="animate-spin" />
@@ -1231,7 +1254,7 @@ const Dashboard = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+                className="absolute inset-0 bg-slate-950/80"
                 onClick={closeEventModal}
               />
               <motion.div
@@ -1239,16 +1262,16 @@ const Dashboard = () => {
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="relative w-full max-w-lg bg-white/10 backdrop-blur-3xl border-t sm:border border-white/20 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl max-h-[95vh] overflow-y-auto no-scrollbar text-white"
+                className="relative w-full max-w-lg bg-slate-900 border-t sm:border border-slate-700 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl max-h-[95vh] overflow-y-auto no-scrollbar text-white"
               >
                 <button
                   type="button"
                   onClick={closeEventModal}
-                  className="absolute top-6 right-6 text-white/50 hover:text-white bg-black/20 p-2 rounded-full"
+                  className="absolute top-6 right-6 text-slate-400 hover:text-white bg-slate-800 p-2 rounded-full"
                 >
                   <FaTimes className="text-sm" />
                 </button>
-                <div className="flex items-center gap-3 mb-6 text-purple-400">
+                <div className="flex items-center gap-3 mb-6 text-purple-500">
                   <FaCalendarPlus className="text-3xl" />
                   <h2 className="text-2xl font-black tracking-tight">
                     {editingEventId ? "Edit Drive" : "Schedule Drive"}
@@ -1256,7 +1279,7 @@ const Dashboard = () => {
                 </div>
                 <form onSubmit={handleEventSubmit} className="space-y-4">
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">
                       Event Title
                     </label>
                     <input
@@ -1266,12 +1289,12 @@ const Dashboard = () => {
                         setEventData({ ...eventData, title: e.target.value })
                       }
                       placeholder="e.g. City-Wide Blood Camp"
-                      className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3.5 outline-none focus:border-purple-500"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3.5 outline-none focus:border-purple-500 text-white"
                     />
                   </div>
                   <div className="flex gap-3">
                     <div className="flex-1">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-1">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">
                         Category
                       </label>
                       <select
@@ -1283,30 +1306,19 @@ const Dashboard = () => {
                             category: e.target.value,
                           })
                         }
-                        className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3.5 outline-none focus:border-purple-500"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3.5 outline-none focus:border-purple-500 text-white"
                       >
-                        <option className="text-black" value="Blood Camp">
-                          Blood Camp
-                        </option>
-                        <option className="text-black" value="Food Drive">
-                          Food Drive
-                        </option>
-                        <option className="text-black" value="Clothes Drive">
-                          Clothes Drive
-                        </option>
-                        <option className="text-black" value="Fundraiser">
-                          Fundraiser
-                        </option>
-                        <option
-                          className="text-black"
-                          value="General Announcement"
-                        >
+                        <option value="Blood Camp">Blood Camp</option>
+                        <option value="Food Drive">Food Drive</option>
+                        <option value="Clothes Drive">Clothes Drive</option>
+                        <option value="Fundraiser">Fundraiser</option>
+                        <option value="General Announcement">
                           General Announcement
                         </option>
                       </select>
                     </div>
                     <div className="flex-1">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-1">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">
                         Date
                       </label>
                       <input
@@ -1319,14 +1331,14 @@ const Dashboard = () => {
                             eventDate: e.target.value,
                           })
                         }
-                        className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3.5 outline-none focus:border-purple-500 text-white invert-calendar-icon"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3.5 outline-none focus:border-purple-500 text-white invert-calendar-icon"
                         style={{ colorScheme: "dark" }}
                       />
                     </div>
                   </div>
                   <div className="flex gap-3">
                     <div className="flex-1">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-1">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">
                         Start Time
                       </label>
                       <input
@@ -1339,12 +1351,12 @@ const Dashboard = () => {
                             startTime: e.target.value,
                           })
                         }
-                        className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3.5 outline-none focus:border-purple-500"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3.5 outline-none focus:border-purple-500 text-white"
                         style={{ colorScheme: "dark" }}
                       />
                     </div>
                     <div className="flex-1">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-1">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">
                         End Time
                       </label>
                       <input
@@ -1357,13 +1369,13 @@ const Dashboard = () => {
                             endTime: e.target.value,
                           })
                         }
-                        className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3.5 outline-none focus:border-purple-500"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3.5 outline-none focus:border-purple-500 text-white"
                         style={{ colorScheme: "dark" }}
                       />
                     </div>
                   </div>
                   <div className="relative">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">
                       Exact Location (GPS Required)
                     </label>
                     <div className="flex gap-2">
@@ -1372,13 +1384,13 @@ const Dashboard = () => {
                         value={eventData.addressText}
                         onChange={(e) => handleLocationType(e, true)}
                         placeholder="Search address to set 10km radius..."
-                        className="flex-1 w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3.5 outline-none focus:border-purple-500"
+                        className="flex-1 w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3.5 outline-none focus:border-purple-500 text-white"
                       />
                       <button
                         type="button"
                         onClick={() => handleGetLocation(true)}
                         disabled={isFetchingLocation}
-                        className="px-5 bg-purple-500/20 text-purple-400 rounded-2xl border border-purple-500/30 flex items-center justify-center"
+                        className="px-5 bg-slate-800 text-purple-400 hover:bg-slate-700 rounded-2xl border border-slate-700 flex items-center justify-center"
                       >
                         {isFetchingLocation ? (
                           <FaSpinner className="animate-spin text-lg" />
@@ -1388,12 +1400,12 @@ const Dashboard = () => {
                       </button>
                     </div>
                     {suggestions.length > 0 && (
-                      <div className="absolute bottom-full mb-2 z-50 w-full bg-[#111] border border-white/20 rounded-2xl max-h-40 overflow-y-auto">
+                      <div className="absolute bottom-full mb-2 z-50 w-full bg-slate-800 border border-slate-700 rounded-2xl max-h-40 overflow-y-auto shadow-xl">
                         {suggestions.map((s, idx) => (
                           <div
                             key={idx}
                             onClick={() => handleSelectSuggestion(s, true)}
-                            className="px-4 py-3 text-sm text-white/80 border-b border-white/10 cursor-pointer"
+                            className="px-4 py-3 text-sm text-slate-300 border-b border-slate-700 cursor-pointer hover:bg-slate-700"
                           >
                             {s.display_name}
                           </div>
@@ -1402,7 +1414,7 @@ const Dashboard = () => {
                     )}
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">
                       Event Poster (Optional)
                     </label>
                     <input
@@ -1411,11 +1423,11 @@ const Dashboard = () => {
                       onChange={(e) =>
                         setEventData({ ...eventData, image: e.target.files[0] })
                       }
-                      className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 outline-none focus:border-purple-500 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:uppercase file:tracking-widest file:bg-purple-500/20 file:text-purple-400 hover:file:bg-purple-500/30"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 outline-none focus:border-purple-500 text-sm text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:uppercase file:tracking-widest file:bg-slate-800 file:text-purple-400 hover:file:bg-slate-700"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">
                       Details
                     </label>
                     <textarea
@@ -1429,13 +1441,13 @@ const Dashboard = () => {
                       }
                       rows="3"
                       placeholder="What to bring, requirements, contact info..."
-                      className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3.5 outline-none focus:border-purple-500 resize-none"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3.5 outline-none focus:border-purple-500 text-white resize-none"
                     ></textarea>
                   </div>
                   <button
                     type="submit"
                     disabled={isSubmitting || !eventData.lat}
-                    className="w-full mt-4 py-4 bg-purple-600 hover:bg-purple-500 rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-purple-600/30 text-white"
+                    className="w-full mt-4 py-4 bg-purple-600 hover:bg-purple-500 rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50 text-white shadow-md"
                   >
                     {isSubmitting ? (
                       <FaSpinner className="animate-spin" />
@@ -1449,7 +1461,7 @@ const Dashboard = () => {
                     )}
                   </button>
                   {!eventData.lat && (
-                    <p className="text-center text-[10px] text-red-500 mt-2 font-black uppercase tracking-widest">
+                    <p className="text-center text-[10px] text-red-400 mt-2 font-black uppercase tracking-widest">
                       ⚠️ GPS Location is required to notify nearby users
                     </p>
                   )}
@@ -1467,7 +1479,7 @@ const Dashboard = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+                className="absolute inset-0 bg-slate-950/80"
                 onClick={() =>
                   setFulfillModal({
                     isOpen: false,
@@ -1482,15 +1494,15 @@ const Dashboard = () => {
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="relative w-full max-w-sm bg-white/10 backdrop-blur-3xl border-t sm:border border-white/20 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 sm:p-8 text-center shadow-2xl text-white"
+                className="relative w-full max-w-sm bg-slate-900 border-t sm:border border-slate-700 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 sm:p-8 text-center shadow-2xl text-white"
               >
-                <div className="w-16 h-16 bg-white/20 text-white rounded-full flex items-center justify-center text-3xl mx-auto mb-4 border border-white/30">
+                <div className="w-16 h-16 bg-slate-800 text-slate-300 rounded-full flex items-center justify-center text-3xl mx-auto mb-4 border border-slate-700">
                   <FaLock />
                 </div>
                 <h2 className="text-2xl font-black tracking-tight mb-2">
                   Secure Exchange
                 </h2>
-                <p className="text-white/50 text-xs uppercase font-bold tracking-widest mb-6">
+                <p className="text-slate-400 text-xs uppercase font-bold tracking-widest mb-6">
                   Enter the 4-digit PIN
                 </p>
                 <form onSubmit={handleFulfillSubmit}>
@@ -1506,12 +1518,12 @@ const Dashboard = () => {
                         pin: e.target.value.replace(/\D/g, ""),
                       })
                     }
-                    className="w-full bg-black/40 border-2 border-dashed border-white/30 rounded-3xl px-5 py-6 text-center text-white text-3xl tracking-[1em] font-black outline-none focus:border-white mb-6"
+                    className="w-full bg-slate-950 border-2 border-dashed border-slate-700 rounded-3xl px-5 py-6 text-center text-white text-3xl tracking-[1em] font-black outline-none focus:border-teal-500 mb-6"
                   />
                   <button
                     type="submit"
                     disabled={isSubmitting || fulfillModal.pin.length !== 4}
-                    className="w-full py-4 bg-white text-slate-900 rounded-3xl font-black uppercase tracking-widest disabled:opacity-50"
+                    className="w-full py-4 bg-teal-600 hover:bg-teal-500 text-white rounded-3xl font-black uppercase tracking-widest disabled:opacity-50"
                   >
                     {isSubmitting ? (
                       <FaSpinner className="animate-spin mx-auto text-xl" />
@@ -1533,7 +1545,7 @@ const Dashboard = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+                className="absolute inset-0 bg-slate-950/80"
                 onClick={() =>
                   setRequestsModal({ isOpen: false, donation: null })
                 }
@@ -1543,23 +1555,23 @@ const Dashboard = () => {
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="relative w-full max-w-md bg-white/10 backdrop-blur-3xl border-t sm:border border-white/20 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl text-white"
+                className="relative w-full max-w-md bg-slate-900 border-t sm:border border-slate-700 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl text-white"
               >
-                <div className="w-12 h-1.5 bg-white/30 rounded-full mx-auto mb-6 sm:hidden" />
+                <div className="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-6 sm:hidden" />
                 <h2 className="text-2xl font-black tracking-tight mb-1">
                   Community Requests
                 </h2>
-                <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-6 border-b border-white/10 pb-4">
+                <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-6 border-b border-slate-800 pb-4">
                   Select a user to connect with
                 </p>
                 <div className="space-y-3 max-h-[50vh] overflow-y-auto no-scrollbar pb-4">
                   {requestsModal.donation.requestedBy.map((requester) => (
                     <div
                       key={requester._id}
-                      className="flex items-center justify-between bg-black/40 border border-white/10 p-4 rounded-3xl"
+                      className="flex items-center justify-between bg-slate-950 border border-slate-800 p-4 rounded-3xl"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-black text-white">
+                        <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center font-black text-white">
                           {requester.name?.charAt(0)}
                         </div>
                         <span className="font-bold text-sm">
@@ -1573,7 +1585,7 @@ const Dashboard = () => {
                             requester._id,
                           )
                         }
-                        className="px-5 py-3 bg-white text-slate-900 rounded-2xl text-xs font-black uppercase tracking-widest shadow-md"
+                        className="px-5 py-3 bg-teal-600 hover:bg-teal-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-md"
                       >
                         Approve
                       </button>

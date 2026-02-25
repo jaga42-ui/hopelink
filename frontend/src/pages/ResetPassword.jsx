@@ -27,7 +27,7 @@ const ResetPassword = () => {
       await api.post(`/auth/resetpassword/${id}/${token}`, { password });
       toast.success('Passcode updated securely. You may now access the network.', { 
         id: toastId,
-        style: { background: '#111', color: '#14b8a6', border: '1px solid rgba(20, 184, 166, 0.3)' }
+        style: { background: '#0f172a', color: '#fff', border: '1px solid #1e293b' } // matches slate-900 and slate-800
       });
       navigate('/login');
     } catch (error) {
@@ -45,32 +45,32 @@ const ResetPassword = () => {
     >
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label className="text-white/50 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-2 flex items-center gap-2 ml-1">
-            <FaLock className="text-teal-400/70" /> New Passcode
+          <label className="text-slate-400 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-2 flex items-center gap-2 ml-1">
+            <FaLock className="text-teal-500" /> New Passcode
           </label>
           <input 
             type="password" 
             value={password} 
             onChange={(e) => setPassword(e.target.value)} 
             required
-            className="w-full bg-[#111] border border-white/10 rounded-2xl px-5 py-4 text-white text-base md:text-sm placeholder-white/20 focus:border-teal-500 focus:bg-black outline-none transition-all"
+            className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-white text-base md:text-sm placeholder-slate-600 focus:border-teal-500 focus:bg-slate-900 outline-none transition-all shadow-inner"
             placeholder="••••••••"
           />
-          <p className="text-[9px] text-white/40 mt-2 ml-1 font-bold uppercase tracking-widest">
+          <p className="text-[9px] text-slate-500 mt-2 ml-1 font-bold uppercase tracking-widest">
             Min 8 chars, uppercase, number, & special char.
           </p>
         </div>
 
         <div>
-          <label className="text-white/50 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-2 flex items-center gap-2 ml-1">
-            <FaLock className="text-teal-400/70" /> Confirm Passcode
+          <label className="text-slate-400 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-2 flex items-center gap-2 ml-1">
+            <FaLock className="text-teal-500" /> Confirm Passcode
           </label>
           <input 
             type="password" 
             value={confirmPassword} 
             onChange={(e) => setConfirmPassword(e.target.value)} 
             required
-            className="w-full bg-[#111] border border-white/10 rounded-2xl px-5 py-4 text-white text-base md:text-sm placeholder-white/20 focus:border-teal-500 focus:bg-black outline-none transition-all"
+            className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-white text-base md:text-sm placeholder-slate-600 focus:border-teal-500 focus:bg-slate-900 outline-none transition-all shadow-inner"
             placeholder="••••••••"
           />
         </div>
@@ -78,14 +78,14 @@ const ResetPassword = () => {
         <button 
           type="submit"
           disabled={loading || !password || !confirmPassword}
-          className="w-full mt-4 bg-teal-500 hover:bg-teal-400 text-[#050505] font-black uppercase tracking-widest text-xs py-4 rounded-2xl transition-all shadow-[0_0_30px_rgba(20,184,166,0.2)] active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50 disabled:active:scale-100"
+          className="w-full mt-4 bg-teal-600 hover:bg-teal-500 text-white font-black uppercase tracking-widest text-xs py-4 rounded-2xl transition-all shadow-lg shadow-teal-900/50 active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50 disabled:active:scale-100"
         >
-          {loading ? <FaSpinner className="animate-spin text-xl text-black" /> : 'Confirm & Encrypt'}
+          {loading ? <FaSpinner className="animate-spin text-xl text-white" /> : 'Confirm & Encrypt'}
         </button>
       </form>
 
-      <div className="mt-8 text-center bg-white/5 py-4 rounded-2xl border border-white/5">
-        <Link to="/login" className="text-white/60 hover:text-white text-xs font-bold uppercase tracking-widest transition-colors">
+      <div className="mt-8 text-center bg-slate-900 py-4 rounded-2xl border border-slate-800 shadow-inner">
+        <Link to="/login" className="text-slate-400 hover:text-white text-xs font-bold uppercase tracking-widest transition-colors">
           Abort & Return to Login
         </Link>
       </div>
