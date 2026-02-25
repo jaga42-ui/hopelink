@@ -80,8 +80,12 @@ const createDonation = asyncHandler(async (req, res) => {
   res.status(201).json(donation);
 });
 
+// 👉 UPGRADED: Added Chunking (Pagination) to protect server memory
 const getDonations = asyncHandler(async (req, res) => {
   const { lat, lng } = req.query;
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 12; // Send 12 items at a time
+  const skip = (page - 1) * limit;
 
   let query = { status: { $ne: 'fulfilled' } };
 
@@ -98,17 +102,34 @@ const getDonations = asyncHandler(async (req, res) => {
   const donations = await Donation.find(query)
     .populate('donorId', 'name profilePic addressText phone')
     .populate('requestedBy', 'name profilePic')
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
 
-  res.json(donations);
+  // Tell the frontend if there is more data to fetch
+  const total = await Donation.countDocuments(query);
+  const hasMore = total > skip + donations.length;
+
+  res.json({ donations, hasMore });
 });
 
+// 👉 UPGRADED: Added Chunking (Pagination) to protect server memory
 const getNearbyFeed = asyncHandler(async (req, res) => {
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 12;
+  const skip = (page - 1) * limit;
+
   const donations = await Donation.find({ status: { $ne: 'fulfilled' } })
     .populate('donorId', 'name profilePic addressText points rank rating totalRatings phone')
     .populate('requestedBy', 'name profilePic') 
-    .sort({ createdAt: -1 });
-  res.json(donations);
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
+
+  const total = await Donation.countDocuments({ status: { $ne: 'fulfilled' } });
+  const hasMore = total > skip + donations.length;
+
+  res.json({ donations, hasMore });
 });
 
 const requestItem = asyncHandler(async (req, res) => {

@@ -73,6 +73,7 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/donations', require('./routes/donationRoutes'));
 app.use('/api/chat', require('./routes/chatRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
+app.use('/api/events', require('./routes/events'));
 
 // Socket.io Real-time Logic
 io.on('connection', (socket) => {
