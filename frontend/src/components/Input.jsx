@@ -1,12 +1,14 @@
 import { motion } from 'framer-motion';
 
-const Input = ({ icon: Icon, type, placeholder, name, value, onChange, required = false }) => {
+const Input = ({ icon: Icon, type, placeholder, name, value, onChange, required = false, className = "" }) => {
   return (
-    <div className="relative w-full">
-      {/* Absolute positioning for the icon to keep it perfectly centered vertically */}
+    // 👉 Added 'group' class here to allow the icon to react when the input is focused
+    <div className="relative w-full group">
+      
+      {/* Interactive Icon */}
       {Icon && (
-        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm pointer-events-none z-10">
-          <Icon size={16} />
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-lg pointer-events-none z-10 transition-colors duration-300 group-focus-within:text-white/80">
+          <Icon />
         </div>
       )}
       
@@ -19,10 +21,10 @@ const Input = ({ icon: Icon, type, placeholder, name, value, onChange, required 
         value={value}
         onChange={onChange}
         required={required}
-        // 👉 text-base prevents iOS Safari zoom. bg-[#111] matches the stealth aesthetic.
-        className={`w-full bg-[#111] border border-white/10 rounded-2xl py-3.5 sm:py-4 pr-4 text-white text-base sm:text-sm placeholder-white/20 outline-none focus:border-teal-500 focus:bg-black transition-colors shadow-inner ${
-          Icon ? 'pl-10 sm:pl-12' : 'pl-4 sm:pl-5'
-        }`}
+        // 👉 GLASSMORPHISM 2.0: Frosted background, interactive borders, and glowing shadow on focus
+        className={`w-full bg-black/20 backdrop-blur-xl border border-white/10 rounded-2xl py-4 pr-4 text-white text-base md:text-sm placeholder-white/30 outline-none focus:border-white/40 focus:bg-black/40 focus:shadow-[0_0_20px_rgba(255,255,255,0.05)] transition-all ${
+          Icon ? 'pl-12' : 'pl-5'
+        } ${className}`}
       />
     </div>
   );

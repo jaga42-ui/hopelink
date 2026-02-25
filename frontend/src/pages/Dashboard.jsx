@@ -16,10 +16,7 @@ import {
   FaLocationArrow,
   FaEnvelope,
   FaCheckCircle,
-  FaLeaf,
   FaCalendarAlt,
-  FaTags,
-  FaBook,
   FaSearch,
   FaLock,
   FaStar,
@@ -30,7 +27,8 @@ import {
   FaBullhorn,
   FaCalendarPlus,
   FaClock,
-  FaEdit, // 👉 NEW: Imported Edit Icon
+  FaEdit,
+  FaChevronRight,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -52,7 +50,6 @@ const Dashboard = () => {
   const navigate = useNavigate();
 
   const [viewMode, setViewMode] = useState("p2p");
-
   const [localRole, setLocalRole] = useState(user?.activeRole || "donor");
   const [feed, setFeed] = useState([]);
   const [eventsFeed, setEventsFeed] = useState([]);
@@ -72,8 +69,22 @@ const Dashboard = () => {
   // Modals
   const [showSOS, setShowSOS] = useState(false);
   const [showEventModal, setShowEventModal] = useState(false);
-  const [editingEventId, setEditingEventId] = useState(null); // 👉 NEW: Tracks which event we are editing
+  const [editingEventId, setEditingEventId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Theme Config based on Role
+  const isDonor = localRole === "donor";
+  const roleTheme = {
+    primary: isDonor
+      ? "from-teal-500 to-emerald-600"
+      : "from-blue-500 to-indigo-600",
+    text: isDonor ? "text-teal-400" : "text-blue-400",
+    bg: isDonor ? "bg-teal-500/10" : "bg-blue-500/10",
+    border: isDonor ? "border-teal-500/30" : "border-blue-500/30",
+    button: isDonor
+      ? "bg-teal-600 hover:bg-teal-500"
+      : "bg-blue-600 hover:bg-blue-500",
+  };
 
   const [sosData, setSosData] = useState({
     bloodGroup: "",
@@ -190,6 +201,13 @@ const Dashboard = () => {
 
     return () => socket.disconnect();
   }, [user]);
+
+  const handleRoleToggle = () => {
+    const newRole = isDonor ? "receiver" : "donor";
+    setLocalRole(newRole);
+    switchRole();
+    toast.success(`Switched to ${newRole.toUpperCase()} Mode`, { icon: "🔄" });
+  };
 
   const loadMoreListings = async () => {
     if (!hasMore || loadingMore || viewMode !== "p2p") return;
@@ -352,7 +370,6 @@ const Dashboard = () => {
     }
   };
 
-  // 👉 NEW: Opens the modal pre-filled with event data for editing
   const openEditEventModal = (event) => {
     setEditingEventId(event._id);
     const formattedDate = new Date(event.eventDate).toISOString().split("T")[0];
@@ -366,12 +383,11 @@ const Dashboard = () => {
       addressText: event.locationText,
       lat: event.location?.coordinates[1] || null,
       lng: event.location?.coordinates[0] || null,
-      image: null, // Keep null so we don't accidentally send a string back
+      image: null,
     });
     setShowEventModal(true);
   };
 
-  // 👉 NEW: Clears form when modal is closed
   const closeEventModal = () => {
     setShowEventModal(false);
     setEditingEventId(null);
@@ -389,7 +405,6 @@ const Dashboard = () => {
     });
   };
 
-  // 👉 UPGRADED: Handles both Create (POST) and Edit (PUT)
   const handleEventSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -407,19 +422,16 @@ const Dashboard = () => {
       if (eventData.image) formData.append("image", eventData.image);
 
       if (editingEventId) {
-        // We are editing an existing event!
         const { data } = await api.put(`/events/${editingEventId}`, formData);
         setEventsFeed(
           eventsFeed.map((ev) => (ev._id === editingEventId ? data : ev)),
         );
         toast.success("Event updated successfully!");
       } else {
-        // We are creating a new event!
         const { data } = await api.post("/events", formData);
         setEventsFeed([data, ...eventsFeed]);
         toast.success("Event broadcasted to all nearby users!");
       }
-
       closeEventModal();
     } catch (error) {
       toast.error(
@@ -507,6 +519,24 @@ const Dashboard = () => {
     }
   };
 
+  const handleFulfillSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      await api.patch(`/donations/${fulfillModal.donationId}/fulfill`, {
+        pin: fulfillModal.pin,
+        rating: fulfillModal.rating,
+      });
+      setFeed(feed.filter((item) => item._id !== fulfillModal.donationId));
+      toast.success("Handshake Verified! Points securely applied.");
+      setFulfillModal({ isOpen: false, donationId: null, pin: "", rating: 5 });
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Incorrect Access PIN");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const processedFeed = feed
     .filter((item) =>
       filterCategory === "All"
@@ -553,99 +583,91 @@ const Dashboard = () => {
           </AnimatePresence>
         </div>
 
-        {/* HEADER AREA */}
-        <header className="mb-6 pt-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div>
-            <h1 className="text-3xl md:text-5xl font-extrabold text-white drop-shadow-md tracking-tight">
-              COMMUNITY HUB
-            </h1>
+        {/* MOBILE HUD: HEADER */}
+        <header className="pt-6 pb-4 flex flex-col gap-4">
+          <div className="flex justify-between items-center">
+            <motion.h1
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="text-3xl font-black text-white tracking-tight"
+            >
+              HOPE<span className={roleTheme.text}>LINK.</span>
+            </motion.h1>
+
+            {/* ROLE SWITCHER ANIMATED */}
+            {!user.isAdmin && (
+              <div
+                onClick={handleRoleToggle}
+                className="relative w-32 h-10 bg-white/10 rounded-full border border-white/20 flex items-center cursor-pointer p-1 overflow-hidden shrink-0"
+              >
+                <motion.div
+                  animate={{ x: isDonor ? 0 : 76 }}
+                  className={`absolute w-14 h-8 rounded-full bg-gradient-to-r ${roleTheme.primary} shadow-lg shadow-teal-500/20`}
+                />
+                <div className="z-10 w-full flex justify-around text-[10px] font-black uppercase tracking-widest text-white">
+                  <span className={isDonor ? "text-black" : "opacity-50"}>
+                    Give
+                  </span>
+                  <span className={!isDonor ? "text-black" : "opacity-50"}>
+                    Take
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className="w-full md:w-auto grid grid-cols-2 md:flex gap-3 md:gap-4 items-center">
-            {user && !user.isAdmin && (
-              <button
-                onClick={() => {
-                  setLocalRole(localRole === "donor" ? "receiver" : "donor");
-                  switchRole();
-                }}
-                className="col-span-2 md:col-span-1 px-4 py-3 md:py-3.5 bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl flex items-center justify-center gap-3 active:bg-white/20 transition-all shadow-lg"
-              >
-                <span
-                  className={`text-[10px] md:text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${localRole === "donor" ? "text-white" : "text-white/50"}`}
-                >
-                  Donor
-                </span>
-                <div className="w-10 h-5 bg-black/30 rounded-full relative shrink-0 border border-white/10">
-                  <div
-                    className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform duration-300 ease-in-out ${localRole === "donor" ? "" : "translate-x-[19px]"}`}
-                  ></div>
-                </div>
-                <span
-                  className={`text-[10px] md:text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${localRole === "receiver" ? "text-white" : "text-white/50"}`}
-                >
-                  Receiver
-                </span>
-              </button>
-            )}
-
-            {isInstallable && (
-              <button
-                onClick={handleInstallClick}
-                className="col-span-2 md:col-span-1 px-4 py-3 bg-teal-500 hover:bg-teal-400 text-white rounded-2xl font-bold text-[11px] md:text-sm shadow-xl flex items-center justify-center gap-2"
-              >
-                <FaDownload /> App
-              </button>
-            )}
-
-            {localRole === "donor" && viewMode === "p2p" && (
+          {/* ACTION BUTTONS ROW */}
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+            <button
+              onClick={() => setShowSOS(true)}
+              className="flex-shrink-0 px-5 py-3 bg-red-600 rounded-2xl flex items-center gap-2 font-black text-xs uppercase tracking-widest text-white shadow-lg shadow-red-600/30 border border-red-500"
+            >
+              <FaHeartbeat className="animate-pulse" /> Emergency SOS
+            </button>
+            {isDonor && viewMode === "p2p" && (
               <button
                 onClick={() => navigate("/donations")}
-                className="px-4 py-3 bg-white text-teal-700 rounded-2xl font-extrabold text-[11px] md:text-sm shadow-xl flex items-center justify-center gap-2"
+                className="flex-shrink-0 px-5 py-3 bg-white rounded-2xl flex items-center gap-2 font-black text-xs uppercase tracking-widest text-teal-900 shadow-xl"
               >
-                <FaBoxOpen /> Post Item
+                <FaBoxOpen /> Create Post
               </button>
             )}
-
-            {/* If Admin and in Events mode, show Post Event button */}
             {user?.isAdmin && viewMode === "events" && (
               <button
                 onClick={() => {
-                  setEditingEventId(null); // Ensure we are in "Create" mode
+                  setEditingEventId(null);
                   setShowEventModal(true);
                 }}
-                className="col-span-2 md:col-span-1 px-4 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-2xl font-extrabold text-[11px] md:text-sm shadow-xl flex items-center justify-center gap-2 border border-purple-500"
+                className="flex-shrink-0 px-5 py-3 bg-purple-600 rounded-2xl flex items-center gap-2 font-black text-xs uppercase tracking-widest text-white shadow-xl border border-purple-400"
               >
-                <FaCalendarPlus /> Create Event
+                <FaCalendarPlus /> Post Drive
               </button>
             )}
-
-            {viewMode === "p2p" && (
+            {isInstallable && (
               <button
-                onClick={() => setShowSOS(true)}
-                className="col-span-2 md:col-span-1 px-4 py-3 bg-red-600 hover:bg-red-500 text-white rounded-2xl font-extrabold text-xs md:text-sm shadow-xl flex items-center justify-center gap-2 border border-red-500"
+                onClick={handleInstallClick}
+                className="flex-shrink-0 px-5 py-3 bg-teal-500 rounded-2xl flex items-center gap-2 font-black text-xs uppercase tracking-widest text-white shadow-xl border border-teal-400"
               >
-                <FaHeartbeat className="animate-pulse" /> SOS
+                <FaDownload /> App
               </button>
             )}
           </div>
         </header>
 
-        {/* THE GRAND TOGGLE (P2P vs EVENTS) */}
-        <div className="flex justify-center mb-8">
-          <div className="bg-black/30 p-1.5 rounded-2xl border border-white/10 inline-flex w-full md:w-auto">
-            <button
-              onClick={() => setViewMode("p2p")}
-              className={`flex-1 md:px-8 py-3 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${viewMode === "p2p" ? "bg-white text-teal-900 shadow-xl" : "text-white/50 hover:text-white"}`}
-            >
-              <FaUsers className="text-lg" /> Community Feed
-            </button>
-            <button
-              onClick={() => setViewMode("events")}
-              className={`flex-1 md:px-8 py-3 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${viewMode === "events" ? "bg-purple-600 text-white shadow-xl border border-purple-500" : "text-white/50 hover:text-white"}`}
-            >
-              <FaBullhorn className="text-lg" /> Local Events
-            </button>
-          </div>
+        {/* FEED TOGGLE */}
+        <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 mb-6">
+          <button
+            onClick={() => setViewMode("p2p")}
+            className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${viewMode === "p2p" ? "bg-white text-slate-900 shadow-xl" : "text-white/40"}`}
+          >
+            Community
+          </button>
+          <button
+            onClick={() => setViewMode("events")}
+            className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${viewMode === "events" ? "bg-white text-slate-900 shadow-xl" : "text-white/40"}`}
+          >
+            Events
+          </button>
         </div>
 
         {/* ========================================= */}
@@ -657,7 +679,6 @@ const Dashboard = () => {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3 }}
           >
-            {/* Filters */}
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 bg-white/10 backdrop-blur-xl p-3 md:p-4 rounded-2xl md:rounded-[2rem] border border-white/20 shadow-lg">
               <div className="flex gap-2 overflow-x-auto w-full md:w-auto no-scrollbar pb-1 md:pb-0 scroll-smooth">
                 {["All", "Blood", "Food", "Clothes", "Book"].map((cat) => (
@@ -693,196 +714,200 @@ const Dashboard = () => {
                 No listings found.
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
-                {processedFeed.map((item) => {
-                  const isMine = item.donorId?._id === user._id;
-                  const isEmergency = item.isEmergency;
-                  const isRequest =
-                    item.listingType === "request" && !isEmergency;
-                  const alreadyRequested = item.requestedBy?.some(
-                    (req) => req._id === user._id,
-                  );
-                  const isReceiver = item.receiverId === user._id;
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                <AnimatePresence mode="popLayout">
+                  {processedFeed.map((item) => {
+                    const isMine = item.donorId?._id === user._id;
+                    const alreadyReq = item.requestedBy?.some(
+                      (r) => r._id === user._id,
+                    );
+                    const isEmergency = item.isEmergency;
 
-                  let bannerClass = "bg-white/5 text-white/50";
-                  let bannerText = "Broadcasting...";
-                  let bannerIcon = (
-                    <FaSpinner className="animate-spin opacity-50" />
-                  );
-                  if (isMine) {
-                    if (
-                      item.status === "active" &&
-                      item.requestedBy?.length > 0
-                    ) {
-                      bannerClass = "bg-teal-500 text-white";
-                      bannerText = `View Responders`;
-                      bannerIcon = <FaUsers />;
-                    } else if (item.status === "pending") {
-                      bannerClass = "bg-yellow-500 text-black";
-                      bannerText = "Complete Handshake";
-                      bannerIcon = <FaCheckCircle />;
-                    }
-                  } else {
-                    if (item.status === "active") {
-                      if (alreadyRequested) {
-                        bannerClass = "bg-white/10 text-white/50";
-                        bannerText = "Response Pending...";
-                        bannerIcon = (
-                          <FaSpinner className="animate-spin opacity-50" />
-                        );
-                      } else {
-                        bannerClass = isEmergency
-                          ? "bg-red-600 text-white"
-                          : "bg-white text-teal-900";
-                        bannerText = isRequest ? "Offer Help" : "Respond";
-                        bannerIcon = <FaHandsHelping />;
-                      }
-                    } else if (item.status === "pending") {
-                      if (isReceiver) {
-                        bannerClass = "bg-blue-600 text-white";
-                        bannerText = `PIN: ${item.pickupPIN}`;
-                        bannerIcon = <FaCommentDots />;
-                      } else {
-                        bannerClass = "bg-black/40 text-white/30";
-                        bannerText = "Resolved";
-                        bannerIcon = <FaLock />;
-                      }
-                    }
-                  }
+                    return (
+                      <motion.div
+                        layout
+                        key={item._id}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        className={`relative overflow-hidden flex flex-col rounded-[2.5rem] border bg-white/5 backdrop-blur-3xl transition-all ${isEmergency ? "border-red-500/50 ring-1 ring-red-500/20 shadow-2xl shadow-red-500/10" : "border-white/10"}`}
+                      >
+                        <div className="p-5 flex-1 flex flex-col">
+                          <div className="flex justify-between items-start mb-4">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`w-10 h-10 rounded-2xl overflow-hidden border-2 ${isDonor ? "border-teal-500/50" : "border-blue-500/50"}`}
+                              >
+                                <img
+                                  src={
+                                    item.donorId?.profilePic ||
+                                    `https://ui-avatars.com/api/?name=${item.donorId?.name}`
+                                  }
+                                  className="w-full h-full object-cover"
+                                  alt="User"
+                                />
+                              </div>
+                              <div>
+                                <p className="text-sm font-black text-white leading-none">
+                                  {item.donorId?.name}
+                                </p>
+                                <p
+                                  className={`text-[10px] font-black uppercase tracking-widest mt-1 opacity-50`}
+                                >
+                                  {item.category}{" "}
+                                  {item.bloodGroup && `• ${item.bloodGroup}`}
+                                </p>
+                              </div>
+                            </div>
+                            {isMine && (
+                              <button
+                                onClick={() => handleDeletePost(item._id)}
+                                className="w-10 h-10 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 flex items-center justify-center active:scale-90 transition-transform shrink-0"
+                              >
+                                <FaTrash size={14} />
+                              </button>
+                            )}
+                          </div>
 
-                  let cardStyle = isEmergency
-                    ? "bg-red-900/30 border-red-500/30"
-                    : isRequest
-                      ? "bg-blue-900/30 border-blue-500/30"
-                      : "bg-white/5 border-white/10";
-
-                  return (
-                    <motion.div
-                      key={item._id}
-                      whileHover={{ y: -4 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => {
-                        if (isMine) {
-                          if (
-                            item.status === "active" &&
-                            item.requestedBy?.length > 0
-                          )
-                            setRequestsModal({ isOpen: true, donation: item });
-                          else if (item.status === "pending")
-                            setFulfillModal({
-                              isOpen: true,
-                              donationId: item._id,
-                              pin: "",
-                              rating: 5,
-                            });
-                        } else {
-                          if (item.status === "active") {
-                            if (!alreadyRequested) handleRequestItem(item._id);
-                            else toast("Awaiting approval.");
-                          } else if (item.status === "pending" && isReceiver)
-                            navigate(`/chat/${item._id}_${user._id}`);
-                        }
-                      }}
-                      className={`rounded-[2rem] flex flex-col overflow-hidden shadow-2xl border cursor-pointer group ${cardStyle}`}
-                    >
-                      {isMine && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeletePost(item._id);
-                          }}
-                          className="absolute top-3 right-3 w-8 h-8 bg-black/40 rounded-full flex items-center justify-center text-white/40 hover:text-red-400 z-20"
-                        >
-                          <FaTrash className="text-xs" />
-                        </button>
-                      )}
-                      {isEmergency && (
-                        <div className="w-full bg-red-600 text-white text-[10px] font-bold uppercase tracking-widest text-center py-1 z-10">
-                          <FaExclamationTriangle className="inline mr-1" />{" "}
-                          Emergency
-                        </div>
-                      )}
-
-                      <div className="p-5 md:p-6 flex-1 flex flex-col">
-                        <div className="flex items-center gap-3 mb-5">
-                          {item.donorId?.profilePic ? (
-                            <img
-                              src={item.donorId.profilePic}
-                              className="w-10 h-10 rounded-full object-cover border border-white/20 shadow-sm"
-                              referrerPolicy="no-referrer"
-                            />
+                          {item.image ? (
+                            <div className="w-full h-44 rounded-[2rem] overflow-hidden mb-4 relative shrink-0">
+                              <img
+                                src={optimizeImageUrl(item.image)}
+                                className="w-full h-full object-cover"
+                                alt="intel"
+                              />
+                              {isEmergency && (
+                                <div className="absolute top-3 left-3 px-3 py-1 bg-red-600 rounded-full text-[8px] font-black uppercase text-white shadow-xl">
+                                  SOS
+                                </div>
+                              )}
+                            </div>
                           ) : (
-                            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold text-white uppercase shadow-sm border border-white/10">
-                              {item.donorId?.name?.charAt(0) || "?"}
+                            item.category === "blood" && (
+                              <div className="w-full h-32 mb-4 rounded-2xl overflow-hidden border border-red-500/20 bg-red-900/20 flex flex-col items-center justify-center shrink-0">
+                                <FaHeartbeat className="text-4xl text-red-400 mb-2" />
+                                <span className="text-2xl font-black text-white">
+                                  {item.bloodGroup}
+                                </span>
+                              </div>
+                            )
+                          )}
+
+                          <h3 className="text-xl font-black text-white leading-tight mb-2 line-clamp-1">
+                            {item.title}
+                          </h3>
+                          <p className="text-white/60 text-xs leading-relaxed line-clamp-2 mb-4 flex-1">
+                            {item.description}
+                          </p>
+
+                          <div className="flex items-center gap-2 text-white/40 text-[10px] font-bold mt-auto">
+                            <FaMapMarkerAlt className={roleTheme.text} />{" "}
+                            <span className="truncate">
+                              {item.location?.addressText ||
+                                item.donorId?.addressText ||
+                                "Nearby"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* TACTICAL ACTION BAR */}
+                        <div className="p-4 mt-2 bg-white/5 border-t border-white/5">
+                          {isMine ? (
+                            <button
+                              onClick={() =>
+                                item.status === "active"
+                                  ? setRequestsModal({
+                                      isOpen: true,
+                                      donation: item,
+                                    })
+                                  : setFulfillModal({
+                                      isOpen: true,
+                                      donationId: item._id,
+                                      pin: "",
+                                      rating: 5,
+                                    })
+                              }
+                              className={`w-full py-4 rounded-3xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest transition-all ${item.status === "active" ? "bg-white text-slate-900" : "bg-yellow-500 text-black"}`}
+                            >
+                              {item.status === "active" ? (
+                                <>
+                                  <FaUsers /> View{" "}
+                                  {item.requestedBy?.length || 0} Responses
+                                </>
+                              ) : (
+                                <>
+                                  <FaCheckCircle /> Verify Handshake
+                                </>
+                              )}
+                            </button>
+                          ) : (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => {
+                                  if (item.status === "active") {
+                                    if (!alreadyReq)
+                                      handleRequestItem(item._id);
+                                    else toast("Awaiting approval.");
+                                  }
+                                }}
+                                disabled={
+                                  alreadyReq || item.status !== "active"
+                                }
+                                className={`flex-1 py-4 rounded-3xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest transition-all ${
+                                  item.status !== "active"
+                                    ? "bg-black/40 text-white/30"
+                                    : alreadyReq
+                                      ? "bg-white/10 text-white/30"
+                                      : isEmergency
+                                        ? "bg-red-600 text-white shadow-lg shadow-red-500/20"
+                                        : `bg-gradient-to-r ${roleTheme.primary} text-white shadow-lg shadow-teal-500/20`
+                                }`}
+                              >
+                                {item.status !== "active" ? (
+                                  <>
+                                    <FaLock /> Resolved
+                                  </>
+                                ) : alreadyReq ? (
+                                  <>
+                                    <FaCheck /> Signal Sent
+                                  </>
+                                ) : (
+                                  <>
+                                    <FaHandsHelping /> Send Signal
+                                  </>
+                                )}
+                              </button>
+                              {item.status === "pending" &&
+                                item.receiverId === user._id && (
+                                  <button
+                                    onClick={() =>
+                                      navigate(`/chat/${item._id}_${user._id}`)
+                                    }
+                                    className="w-14 h-14 rounded-3xl bg-blue-500 text-white flex items-center justify-center shadow-lg active:scale-95 shrink-0"
+                                  >
+                                    <FaCommentDots size={20} />
+                                  </button>
+                                )}
                             </div>
                           )}
-                          <div>
-                            <p className="text-white font-bold text-sm leading-tight">
-                              {item.donorId?.name || "Unknown"}
-                            </p>
-                            <p className="text-white/50 text-[9px] font-bold uppercase tracking-wider">
-                              {item.category}{" "}
-                              {item.bloodGroup && `• ${item.bloodGroup}`}
-                            </p>
-                          </div>
                         </div>
-
-                        {item.image ? (
-                          <div className="w-full h-44 mb-4 rounded-2xl overflow-hidden relative flex-shrink-0 border border-white/10">
-                            <img
-                              src={optimizeImageUrl(item.image)}
-                              loading="lazy"
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                            />
-                          </div>
-                        ) : (
-                          item.category === "blood" && (
-                            <div className="w-full h-32 mb-4 rounded-2xl overflow-hidden border border-red-500/20 bg-red-900/20 flex flex-col items-center justify-center">
-                              <FaHeartbeat className="text-4xl text-red-400 mb-2" />
-                              <span className="text-2xl font-black text-white">
-                                {item.bloodGroup}
-                              </span>
-                            </div>
-                          )
-                        )}
-
-                        <h3 className="text-lg font-bold text-white mb-1.5 leading-snug drop-shadow-sm line-clamp-1">
-                          {item.title}
-                        </h3>
-                        <p className="text-white/70 text-sm mb-5 flex-1 line-clamp-2">
-                          {item.description}
-                        </p>
-
-                        <div className="flex items-center gap-1.5 text-white/50 text-[11px] font-medium mt-auto">
-                          <FaMapMarkerAlt className="flex-shrink-0" />
-                          <span className="truncate">
-                            {item.location?.addressText ||
-                              item.donorId?.addressText ||
-                              "Unknown"}
-                          </span>
-                        </div>
-                      </div>
-                      <div
-                        className={`w-full py-4 flex items-center justify-center gap-2 font-black uppercase tracking-[0.15em] text-[10px] transition-all ${bannerClass}`}
-                      >
-                        {bannerIcon} {bannerText}
-                      </div>
-                    </motion.div>
-                  );
-                })}
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
               </div>
             )}
             {hasMore && (
-              <div className="flex justify-center mt-10">
+              <div className="mt-12 flex justify-center">
                 <button
                   onClick={loadMoreListings}
                   disabled={loadingMore}
-                  className="px-8 py-3 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-xl font-bold text-sm tracking-wider uppercase transition-all shadow-lg active:scale-95 flex items-center gap-2"
+                  className="px-10 py-4 bg-white/5 border border-white/10 rounded-3xl text-[10px] font-black uppercase tracking-[0.3em] text-white hover:bg-white/10 transition-all flex items-center gap-3"
                 >
                   {loadingMore ? (
-                    <FaSpinner className="animate-spin text-lg" />
+                    <FaSpinner className="animate-spin" />
                   ) : (
-                    "Load More Intel"
+                    "Request More Data"
                   )}
                 </button>
               </div>
@@ -915,114 +940,127 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {eventsFeed.map((event) => {
-                  // 👉 NEW: Check if the current user is the creator of the event
-                  const isEventOwner = user?._id === event.organizationId?._id;
-
-                  return (
-                    <div
-                      key={event._id}
-                      className="bg-gradient-to-br from-purple-900/40 to-black/60 backdrop-blur-xl border border-purple-500/30 rounded-[2rem] overflow-hidden shadow-2xl flex flex-col relative group"
-                    >
-                      {/* 👉 NEW: Edit & Delete buttons show if Owner or Admin */}
-                      {(user?.isAdmin || isEventOwner) && (
-                        <div className="absolute top-3 right-3 flex gap-2 z-20">
-                          <button
-                            onClick={() => openEditEventModal(event)}
-                            className="w-8 h-8 bg-black/50 rounded-full flex items-center justify-center text-white/50 hover:text-blue-400 transition-colors"
-                          >
-                            <FaEdit className="text-xs" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteEvent(event._id)}
-                            className="w-8 h-8 bg-black/50 rounded-full flex items-center justify-center text-white/50 hover:text-red-400 transition-colors"
-                          >
-                            <FaTrash className="text-xs" />
-                          </button>
-                        </div>
-                      )}
-
-                      {event.image ? (
-                        <div className="h-48 w-full relative overflow-hidden">
-                          <img
-                            src={optimizeImageUrl(event.image)}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
-                          <div className="absolute bottom-4 left-4">
-                            <span className="bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-lg">
+                <AnimatePresence mode="popLayout">
+                  {eventsFeed.map((event) => {
+                    const isOwner = user?._id === event.organizationId?._id;
+                    return (
+                      <motion.div
+                        layout
+                        key={event._id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 20 }}
+                        className="group relative overflow-hidden rounded-[2.5rem] border border-purple-500/30 bg-purple-900/5 backdrop-blur-3xl flex flex-col"
+                      >
+                        {event.image ? (
+                          <div className="h-56 w-full relative overflow-hidden shrink-0">
+                            <img
+                              src={optimizeImageUrl(event.image)}
+                              className="w-full h-full object-cover grayscale-[30%] group-hover:grayscale-0 transition-all duration-700"
+                              alt="event"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-[#0b0f19] via-transparent to-transparent" />
+                            <div className="absolute top-4 right-4 flex gap-2">
+                              {(user?.isAdmin || isOwner) && (
+                                <>
+                                  <button
+                                    onClick={() => openEditEventModal(event)}
+                                    className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white flex items-center justify-center active:scale-90"
+                                  >
+                                    <FaEdit size={14} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteEvent(event._id)}
+                                    className="w-10 h-10 rounded-2xl bg-red-500/20 backdrop-blur-md border border-red-500/30 text-red-400 flex items-center justify-center active:scale-90"
+                                  >
+                                    <FaTrash size={14} />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="h-20 bg-purple-500/10 border-b border-purple-500/20 flex items-center justify-between px-6 shrink-0">
+                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-purple-400">
                               {event.category}
                             </span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="h-32 w-full bg-purple-900/50 flex items-center justify-center border-b border-purple-500/30 relative">
-                          <FaCalendarAlt className="text-5xl text-purple-400/50" />
-                          <span className="absolute bottom-3 left-4 bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-lg">
-                            {event.category}
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="p-6 flex-1 flex flex-col">
-                        <div className="flex gap-4 items-start mb-4 bg-black/40 p-3 rounded-xl border border-white/5">
-                          <div className="bg-purple-500/20 text-purple-300 rounded-lg p-2 flex flex-col items-center justify-center w-14 shrink-0 border border-purple-500/30">
-                            <span className="text-[10px] font-bold uppercase">
-                              {new Date(event.eventDate).toLocaleDateString(
-                                "en-US",
-                                { month: "short" },
-                              )}
-                            </span>
-                            <span className="text-xl font-black">
-                              {new Date(event.eventDate).getDate()}
-                            </span>
-                          </div>
-                          <div>
-                            <h3 className="font-bold text-lg text-white leading-tight mb-1">
-                              {event.title}
-                            </h3>
-                            <p className="text-white/60 text-xs font-medium flex items-center gap-1.5">
-                              <FaClock className="text-purple-400" />{" "}
-                              {event.startTime} - {event.endTime}
-                            </p>
-                          </div>
-                        </div>
-
-                        <p className="text-white/70 text-sm mb-6 flex-1 line-clamp-3">
-                          {event.description}
-                        </p>
-
-                        <div className="mt-auto border-t border-white/10 pt-4 flex flex-col gap-3">
-                          <div className="flex items-center gap-2">
-                            {event.organizationId?.profilePic ? (
-                              <img
-                                src={event.organizationId.profilePic}
-                                className="w-6 h-6 rounded-full"
-                              />
-                            ) : (
-                              <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold">
-                                {event.organizationId?.name?.charAt(0)}
+                            {(user?.isAdmin || isOwner) && (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => openEditEventModal(event)}
+                                  className="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center active:scale-90"
+                                >
+                                  <FaEdit size={12} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteEvent(event._id)}
+                                  className="w-8 h-8 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center active:scale-90"
+                                >
+                                  <FaTrash size={12} />
+                                </button>
                               </div>
                             )}
-                            <span className="text-xs font-bold text-white/80">
-                              {event.organizationId?.name}
-                            </span>
-                            <FaCheckCircle
-                              className="text-teal-400 text-[10px]"
-                              title="Verified Organization"
-                            />
                           </div>
-                          <div className="flex items-center gap-1.5 text-white/50 text-[11px] font-medium">
-                            <FaMapMarkerAlt className="shrink-0 text-red-400" />
-                            <span className="truncate">
-                              {event.locationText}
-                            </span>
+                        )}
+
+                        <div className="p-6 flex-1 flex flex-col">
+                          <div className="flex gap-4 items-start mb-6">
+                            <div className="bg-purple-600 rounded-2xl p-3 flex flex-col items-center justify-center w-16 shadow-lg shadow-purple-600/20 shrink-0">
+                              <span className="text-[9px] font-black uppercase text-white/70">
+                                {new Date(event.eventDate).toLocaleDateString(
+                                  "en-US",
+                                  { month: "short" },
+                                )}
+                              </span>
+                              <span className="text-2xl font-black text-white">
+                                {new Date(event.eventDate).getDate()}
+                              </span>
+                            </div>
+                            <div>
+                              <h3 className="font-black text-xl text-white leading-tight mb-2">
+                                {event.title}
+                              </h3>
+                              <div className="flex flex-col gap-1 text-purple-300/60 text-[10px] font-bold uppercase tracking-widest">
+                                <span className="flex items-center gap-1.5">
+                                  <FaClock className="shrink-0" />{" "}
+                                  {event.startTime} - {event.endTime}
+                                </span>
+                                <span className="flex items-center gap-1.5">
+                                  <FaMapMarkerAlt className="shrink-0" />{" "}
+                                  <span className="truncate">
+                                    {event.locationText.split(",")[0]}
+                                  </span>
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <p className="text-white/50 text-[13px] leading-relaxed line-clamp-3 mb-6 flex-1">
+                            {event.description}
+                          </p>
+
+                          <div className="pt-6 border-t border-white/5 flex items-center justify-between mt-auto">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-black text-purple-400 overflow-hidden">
+                                {event.organizationId?.profilePic ? (
+                                  <img
+                                    src={event.organizationId.profilePic}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  event.organizationId?.name?.charAt(0)
+                                )}
+                              </div>
+                              <span className="text-[11px] font-bold text-white/70 uppercase tracking-wider">
+                                {event.organizationId?.name}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
               </div>
             )}
           </motion.div>
@@ -1031,7 +1069,7 @@ const Dashboard = () => {
         {/* Floating Inbox Button */}
         <button
           onClick={() => navigate("/chat/inbox")}
-          className="fixed bottom-24 right-4 md:bottom-8 md:right-8 z-40 bg-white text-teal-800 hover:bg-gray-100 w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.3)] border border-white/20"
+          className="fixed bottom-24 right-4 md:bottom-8 md:right-8 z-40 bg-white text-teal-800 hover:bg-gray-100 w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.3)] border border-white/20 active:scale-95 transition-transform"
         >
           <div className="relative">
             <FaEnvelope className="text-xl md:text-2xl" />
@@ -1042,6 +1080,10 @@ const Dashboard = () => {
             )}
           </div>
         </button>
+
+        {/* ========================================= */}
+        {/* MODALS SECTION                            */}
+        {/* ========================================= */}
 
         {/* SOS MODAL */}
         <AnimatePresence>
@@ -1059,23 +1101,25 @@ const Dashboard = () => {
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="relative w-full max-w-md bg-white/10 backdrop-blur-2xl border-t sm:border border-white/20 rounded-t-[2rem] sm:rounded-[2rem] p-6 sm:p-8 shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar text-white"
+                className="relative w-full max-w-md bg-white/10 backdrop-blur-3xl border-t sm:border border-white/20 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar text-white"
               >
                 <button
                   type="button"
                   onClick={() => setShowSOS(false)}
-                  className="absolute top-6 right-6 text-white/50 hover:text-white"
+                  className="absolute top-6 right-6 text-white/50 hover:text-white bg-black/20 p-2 rounded-full"
                 >
-                  <FaTimes className="text-xl" />
+                  <FaTimes className="text-sm" />
                 </button>
-                <div className="flex items-center gap-3 mb-6 text-red-400">
+                <div className="flex items-center gap-3 mb-6 text-red-500">
                   <FaHeartbeat className="text-4xl animate-pulse" />
-                  <h2 className="text-2xl font-black">Emergency Request</h2>
+                  <h2 className="text-2xl font-black tracking-tight">
+                    Emergency Request
+                  </h2>
                 </div>
                 <form onSubmit={handleSOSSubmit} className="space-y-4">
                   <div className="flex gap-3">
                     <div className="flex-1">
-                      <label className="text-[11px] font-bold uppercase tracking-wider text-white/70 block mb-1">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-1">
                         Blood Group
                       </label>
                       <select
@@ -1084,7 +1128,7 @@ const Dashboard = () => {
                         onChange={(e) =>
                           setSosData({ ...sosData, bloodGroup: e.target.value })
                         }
-                        className="w-full bg-black/30 border border-white/20 rounded-xl px-4 py-3 outline-none focus:border-red-400"
+                        className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3.5 outline-none focus:border-red-500"
                       >
                         <option value="" disabled className="text-black">
                           Select
@@ -1099,7 +1143,7 @@ const Dashboard = () => {
                       </select>
                     </div>
                     <div className="w-1/3">
-                      <label className="text-[11px] font-bold uppercase tracking-wider text-white/70 block mb-1">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-1">
                         Units
                       </label>
                       <input
@@ -1110,12 +1154,12 @@ const Dashboard = () => {
                         onChange={(e) =>
                           setSosData({ ...sosData, quantity: e.target.value })
                         }
-                        className="w-full bg-black/30 border border-white/20 rounded-xl px-4 py-3 outline-none focus:border-red-400"
+                        className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3.5 outline-none focus:border-red-500"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-white/70 block mb-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-1">
                       Hospital
                     </label>
                     <input
@@ -1124,11 +1168,11 @@ const Dashboard = () => {
                       onChange={(e) =>
                         setSosData({ ...sosData, hospital: e.target.value })
                       }
-                      className="w-full bg-black/30 border border-white/20 rounded-xl px-4 py-3 outline-none focus:border-red-400"
+                      className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3.5 outline-none focus:border-red-500"
                     />
                   </div>
                   <div className="relative">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-white/70 block mb-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-1">
                       Area / GPS
                     </label>
                     <div className="flex gap-2">
@@ -1136,13 +1180,13 @@ const Dashboard = () => {
                         required
                         value={sosData.addressText}
                         onChange={(e) => handleLocationType(e, false)}
-                        className="flex-1 w-full bg-black/30 border border-white/20 rounded-xl px-4 py-3 outline-none focus:border-red-400"
+                        className="flex-1 w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3.5 outline-none focus:border-red-500"
                       />
                       <button
                         type="button"
                         onClick={() => handleGetLocation(false)}
                         disabled={isFetchingLocation}
-                        className="px-4 bg-red-500/20 text-red-300 rounded-xl border border-red-500/40 flex items-center"
+                        className="px-5 bg-red-500/20 text-red-400 rounded-2xl border border-red-500/30 flex items-center justify-center"
                       >
                         {isFetchingLocation ? (
                           <FaSpinner className="animate-spin text-lg" />
@@ -1152,7 +1196,7 @@ const Dashboard = () => {
                       </button>
                     </div>
                     {suggestions.length > 0 && (
-                      <div className="absolute bottom-full mb-2 z-50 w-full bg-[#111] border border-white/20 rounded-xl max-h-40 overflow-y-auto">
+                      <div className="absolute bottom-full mb-2 z-50 w-full bg-[#111] border border-white/20 rounded-2xl max-h-40 overflow-y-auto">
                         {suggestions.map((s, idx) => (
                           <div
                             key={idx}
@@ -1166,7 +1210,7 @@ const Dashboard = () => {
                     )}
                   </div>
                   <div>
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-white/70 block mb-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-1">
                       Details
                     </label>
                     <textarea
@@ -1176,13 +1220,13 @@ const Dashboard = () => {
                         setSosData({ ...sosData, description: e.target.value })
                       }
                       rows="2"
-                      className="w-full bg-black/30 border border-white/20 rounded-xl px-4 py-3 outline-none focus:border-red-400"
+                      className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3.5 outline-none focus:border-red-500 resize-none"
                     ></textarea>
                   </div>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full mt-4 py-4 bg-red-600 hover:bg-red-500 rounded-xl font-bold uppercase flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full mt-4 py-4 bg-red-600 hover:bg-red-500 rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-red-600/30 text-white"
                   >
                     {isSubmitting ? (
                       <FaSpinner className="animate-spin" />
@@ -1198,7 +1242,7 @@ const Dashboard = () => {
           )}
         </AnimatePresence>
 
-        {/* 👉 CREATE / EDIT EVENT MODAL */}
+        {/* EVENT CREATE/EDIT MODAL */}
         <AnimatePresence>
           {showEventModal && (
             <div className="fixed inset-0 z-[4000] flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -1207,31 +1251,31 @@ const Dashboard = () => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-                onClick={closeEventModal} // 👉 NEW
+                onClick={closeEventModal}
               />
               <motion.div
                 initial={{ y: "100%" }}
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
-                className="relative w-full max-w-lg bg-white/10 backdrop-blur-2xl border-t sm:border border-white/20 rounded-t-[2rem] sm:rounded-[2rem] p-6 sm:p-8 shadow-2xl max-h-[95vh] overflow-y-auto no-scrollbar text-white"
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                className="relative w-full max-w-lg bg-white/10 backdrop-blur-3xl border-t sm:border border-white/20 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl max-h-[95vh] overflow-y-auto no-scrollbar text-white"
               >
                 <button
                   type="button"
-                  onClick={closeEventModal} // 👉 NEW
-                  className="absolute top-6 right-6 text-white/50 hover:text-white bg-black/40 p-2 rounded-full"
+                  onClick={closeEventModal}
+                  className="absolute top-6 right-6 text-white/50 hover:text-white bg-black/20 p-2 rounded-full"
                 >
-                  <FaTimes />
+                  <FaTimes className="text-sm" />
                 </button>
                 <div className="flex items-center gap-3 mb-6 text-purple-400">
                   <FaCalendarPlus className="text-3xl" />
-                  <h2 className="text-xl sm:text-2xl font-black">
+                  <h2 className="text-2xl font-black tracking-tight">
                     {editingEventId ? "Edit Drive" : "Schedule Drive"}
                   </h2>
                 </div>
-
                 <form onSubmit={handleEventSubmit} className="space-y-4">
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-white/50 block mb-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-1">
                       Event Title
                     </label>
                     <input
@@ -1241,13 +1285,12 @@ const Dashboard = () => {
                         setEventData({ ...eventData, title: e.target.value })
                       }
                       placeholder="e.g. City-Wide Blood Camp"
-                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-purple-400"
+                      className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3.5 outline-none focus:border-purple-500"
                     />
                   </div>
-
                   <div className="flex gap-3">
                     <div className="flex-1">
-                      <label className="text-[10px] font-bold uppercase text-white/50 block mb-1">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-1">
                         Category
                       </label>
                       <select
@@ -1259,7 +1302,7 @@ const Dashboard = () => {
                             category: e.target.value,
                           })
                         }
-                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-purple-400"
+                        className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3.5 outline-none focus:border-purple-500"
                       >
                         <option className="text-black" value="Blood Camp">
                           Blood Camp
@@ -1282,7 +1325,7 @@ const Dashboard = () => {
                       </select>
                     </div>
                     <div className="flex-1">
-                      <label className="text-[10px] font-bold uppercase text-white/50 block mb-1">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-1">
                         Date
                       </label>
                       <input
@@ -1295,15 +1338,14 @@ const Dashboard = () => {
                             eventDate: e.target.value,
                           })
                         }
-                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-purple-400 text-white invert-calendar-icon"
+                        className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3.5 outline-none focus:border-purple-500 text-white invert-calendar-icon"
                         style={{ colorScheme: "dark" }}
                       />
                     </div>
                   </div>
-
                   <div className="flex gap-3">
                     <div className="flex-1">
-                      <label className="text-[10px] font-bold uppercase text-white/50 block mb-1">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-1">
                         Start Time
                       </label>
                       <input
@@ -1316,12 +1358,12 @@ const Dashboard = () => {
                             startTime: e.target.value,
                           })
                         }
-                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-purple-400"
+                        className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3.5 outline-none focus:border-purple-500"
                         style={{ colorScheme: "dark" }}
                       />
                     </div>
                     <div className="flex-1">
-                      <label className="text-[10px] font-bold uppercase text-white/50 block mb-1">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-1">
                         End Time
                       </label>
                       <input
@@ -1334,14 +1376,13 @@ const Dashboard = () => {
                             endTime: e.target.value,
                           })
                         }
-                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-purple-400"
+                        className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3.5 outline-none focus:border-purple-500"
                         style={{ colorScheme: "dark" }}
                       />
                     </div>
                   </div>
-
                   <div className="relative">
-                    <label className="text-[10px] font-bold uppercase text-white/50 block mb-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-1">
                       Exact Location (GPS Required)
                     </label>
                     <div className="flex gap-2">
@@ -1350,13 +1391,13 @@ const Dashboard = () => {
                         value={eventData.addressText}
                         onChange={(e) => handleLocationType(e, true)}
                         placeholder="Search address to set 10km radius..."
-                        className="flex-1 w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-purple-400"
+                        className="flex-1 w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3.5 outline-none focus:border-purple-500"
                       />
                       <button
                         type="button"
                         onClick={() => handleGetLocation(true)}
                         disabled={isFetchingLocation}
-                        className="px-4 bg-purple-500/20 text-purple-300 rounded-xl border border-purple-500/40 flex items-center"
+                        className="px-5 bg-purple-500/20 text-purple-400 rounded-2xl border border-purple-500/30 flex items-center justify-center"
                       >
                         {isFetchingLocation ? (
                           <FaSpinner className="animate-spin text-lg" />
@@ -1366,7 +1407,7 @@ const Dashboard = () => {
                       </button>
                     </div>
                     {suggestions.length > 0 && (
-                      <div className="absolute bottom-full mb-2 z-50 w-full bg-[#111] border border-white/20 rounded-xl max-h-40 overflow-y-auto">
+                      <div className="absolute bottom-full mb-2 z-50 w-full bg-[#111] border border-white/20 rounded-2xl max-h-40 overflow-y-auto">
                         {suggestions.map((s, idx) => (
                           <div
                             key={idx}
@@ -1379,9 +1420,8 @@ const Dashboard = () => {
                       </div>
                     )}
                   </div>
-
                   <div>
-                    <label className="text-[10px] font-bold uppercase text-white/50 block mb-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-1">
                       Event Poster (Optional)
                     </label>
                     <input
@@ -1390,12 +1430,11 @@ const Dashboard = () => {
                       onChange={(e) =>
                         setEventData({ ...eventData, image: e.target.files[0] })
                       }
-                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 outline-none focus:border-purple-400 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-purple-500/20 file:text-purple-300 hover:file:bg-purple-500/30"
+                      className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 outline-none focus:border-purple-500 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:uppercase file:tracking-widest file:bg-purple-500/20 file:text-purple-400 hover:file:bg-purple-500/30"
                     />
                   </div>
-
                   <div>
-                    <label className="text-[10px] font-bold uppercase text-white/50 block mb-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-1">
                       Details
                     </label>
                     <textarea
@@ -1409,14 +1448,13 @@ const Dashboard = () => {
                       }
                       rows="3"
                       placeholder="What to bring, requirements, contact info..."
-                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-purple-400 resize-none"
+                      className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3.5 outline-none focus:border-purple-500 resize-none"
                     ></textarea>
                   </div>
-
                   <button
                     type="submit"
                     disabled={isSubmitting || !eventData.lat}
-                    className="w-full mt-4 py-4 bg-purple-600 hover:bg-purple-500 rounded-xl font-bold uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 transition-all border border-purple-400 shadow-[0_0_20px_rgba(147,51,234,0.3)]"
+                    className="w-full mt-4 py-4 bg-purple-600 hover:bg-purple-500 rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-purple-600/30 text-white"
                   >
                     {isSubmitting ? (
                       <FaSpinner className="animate-spin" />
@@ -1430,7 +1468,7 @@ const Dashboard = () => {
                     )}
                   </button>
                   {!eventData.lat && (
-                    <p className="text-center text-[10px] text-red-400 mt-2 font-bold uppercase">
+                    <p className="text-center text-[10px] text-red-500 mt-2 font-black uppercase tracking-widest">
                       ⚠️ GPS Location is required to notify nearby users
                     </p>
                   )}
@@ -1440,7 +1478,7 @@ const Dashboard = () => {
           )}
         </AnimatePresence>
 
-        {/* Fulfill Modal */}
+        {/* FULFILL MODAL */}
         <AnimatePresence>
           {fulfillModal.isOpen && (
             <div className="fixed inset-0 z-[3000] flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -1462,14 +1500,18 @@ const Dashboard = () => {
                 initial={{ y: "100%" }}
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
-                className="relative w-full max-w-sm bg-white/10 backdrop-blur-2xl border-t sm:border border-white/20 rounded-t-[2rem] sm:rounded-[2rem] p-6 sm:p-8 text-center shadow-2xl text-white"
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                className="relative w-full max-w-sm bg-white/10 backdrop-blur-3xl border-t sm:border border-white/20 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 sm:p-8 text-center shadow-2xl text-white"
               >
-                <div className="w-14 h-14 bg-white/20 text-white rounded-full flex items-center justify-center text-2xl mx-auto mb-4">
+                <div className="w-16 h-16 bg-white/20 text-white rounded-full flex items-center justify-center text-3xl mx-auto mb-4 border border-white/30">
                   <FaLock />
                 </div>
-                <h2 className="text-xl sm:text-2xl font-bold mb-1">
+                <h2 className="text-2xl font-black tracking-tight mb-2">
                   Secure Exchange
                 </h2>
+                <p className="text-white/50 text-xs uppercase font-bold tracking-widest mb-6">
+                  Enter the 4-digit PIN
+                </p>
                 <form onSubmit={handleFulfillSubmit}>
                   <input
                     type="text"
@@ -1483,15 +1525,15 @@ const Dashboard = () => {
                         pin: e.target.value.replace(/\D/g, ""),
                       })
                     }
-                    className="w-full bg-black/30 border-2 border-dashed border-white/40 rounded-2xl px-5 py-4 text-center text-white text-2xl tracking-[0.5em] font-black outline-none mb-6 mt-4"
+                    className="w-full bg-black/40 border-2 border-dashed border-white/30 rounded-3xl px-5 py-6 text-center text-white text-3xl tracking-[1em] font-black outline-none focus:border-white mb-6"
                   />
                   <button
                     type="submit"
                     disabled={isSubmitting || fulfillModal.pin.length !== 4}
-                    className="w-full py-4 bg-white text-teal-800 rounded-xl font-extrabold uppercase disabled:opacity-50"
+                    className="w-full py-4 bg-white text-slate-900 rounded-3xl font-black uppercase tracking-widest disabled:opacity-50"
                   >
                     {isSubmitting ? (
-                      <FaSpinner className="animate-spin" />
+                      <FaSpinner className="animate-spin mx-auto text-xl" />
                     ) : (
                       "Verify & Complete"
                     )}
@@ -1502,7 +1544,7 @@ const Dashboard = () => {
           )}
         </AnimatePresence>
 
-        {/* Requests Modal */}
+        {/* REQUESTS MODAL */}
         <AnimatePresence>
           {requestsModal.isOpen && requestsModal.donation && (
             <div className="fixed inset-0 z-[3000] flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -1519,16 +1561,26 @@ const Dashboard = () => {
                 initial={{ y: "100%" }}
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
-                className="relative w-full max-w-md bg-white/10 backdrop-blur-2xl border-t sm:border border-white/20 rounded-t-[2rem] sm:rounded-[2rem] p-6 sm:p-8 shadow-2xl text-white"
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                className="relative w-full max-w-md bg-white/10 backdrop-blur-3xl border-t sm:border border-white/20 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl text-white"
               >
-                <h2 className="text-xl font-bold mb-6">Community Requests</h2>
+                <div className="w-12 h-1.5 bg-white/30 rounded-full mx-auto mb-6 sm:hidden" />
+                <h2 className="text-2xl font-black tracking-tight mb-1">
+                  Community Requests
+                </h2>
+                <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-6 border-b border-white/10 pb-4">
+                  Select a user to connect with
+                </p>
                 <div className="space-y-3 max-h-[50vh] overflow-y-auto no-scrollbar pb-4">
                   {requestsModal.donation.requestedBy.map((requester) => (
                     <div
                       key={requester._id}
-                      className="flex items-center justify-between bg-black/20 border border-white/10 p-3 sm:p-4 rounded-xl"
+                      className="flex items-center justify-between bg-black/40 border border-white/10 p-4 rounded-3xl"
                     >
                       <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-black text-white">
+                          {requester.name?.charAt(0)}
+                        </div>
                         <span className="font-bold text-sm">
                           {requester.name}
                         </span>
@@ -1540,7 +1592,7 @@ const Dashboard = () => {
                             requester._id,
                           )
                         }
-                        className="px-4 py-2.5 bg-white text-teal-800 rounded-lg text-xs font-extrabold"
+                        className="px-5 py-3 bg-white text-slate-900 rounded-2xl text-xs font-black uppercase tracking-widest shadow-md"
                       >
                         Approve
                       </button>

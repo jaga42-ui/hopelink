@@ -179,6 +179,25 @@ const Layout = ({ children }) => {
               </Link>
             );
           })}
+
+          {/* 👉 NEW: Admin Button strictly for Mobile Nav */}
+          {user?.isAdmin && (
+            <Link 
+              to="/admin" 
+              className="flex flex-col items-center justify-center w-full h-full space-y-1 relative"
+            >
+              {location.pathname === "/admin" && (
+                <motion.div layoutId="mobileNavIndicator" className="absolute -top-px w-8 h-1 rounded-b-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)]" />
+              )}
+              <div className={`text-xl transition-transform duration-300 ${location.pathname === "/admin" ? 'text-white scale-110 drop-shadow-md' : 'text-white/50'}`}>
+                <FaShieldAlt />
+              </div>
+              <span className={`text-[9px] font-black uppercase tracking-wider ${location.pathname === "/admin" ? 'text-white' : 'text-white/50'}`}>
+                Admin
+              </span>
+            </Link>
+          )}
+
         </nav>
       </div>
 

@@ -4,15 +4,11 @@ import { io } from 'socket.io-client';
 import AuthContext from '../context/AuthContext';
 import Layout from '../components/Layout';
 import EmojiPicker from 'emoji-picker-react';
-import { FaPaperPlane, FaArrowLeft, FaSpinner, FaSmile, FaCheckDouble, FaCheck, FaChevronDown, FaTimes, FaEdit, FaTrash } from 'react-icons/fa';
+import { FaPaperPlane, FaArrowLeft, FaSpinner, FaSmile, FaCheckDouble, FaCheck, FaChevronDown, FaTimes, FaEdit, FaTrash, FaShieldAlt } from 'react-icons/fa';
 import toast from 'react-hot-toast';
-
-// 👉 IMPORT HARDWIRED API
 import api from '../utils/api';
 
-// 👉 HARDWIRED SOCKET URL (No more localhost fallback)
 const SOCKET_URL = 'https://hopelink-api.onrender.com';
-
 let socket;
 
 const Chat = () => {
@@ -35,6 +31,16 @@ const Chat = () => {
 
   const messagesEndRef = useRef(null);
 
+  // Dynamic Theme based on Role
+  const localRole = user?.activeRole || "donor";
+  const isDonor = localRole === "donor";
+  const roleTheme = {
+    primary: isDonor ? "from-teal-500 to-emerald-600" : "from-blue-500 to-indigo-600",
+    text: isDonor ? "text-teal-400" : "text-blue-400",
+    border: isDonor ? "border-teal-500/50" : "border-blue-500/50",
+    shadow: isDonor ? "shadow-teal-500/20" : "shadow-blue-500/20"
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -45,7 +51,6 @@ const Chat = () => {
       return;
     }
 
-    // 👉 Added transport fallbacks for connection stability on mobile/Render
     socket = io(SOCKET_URL, {
       transports: ['websocket', 'polling']
     });
@@ -126,10 +131,10 @@ const Chat = () => {
 
   const handleDeleteMessage = async (msgId) => {
     if (window.confirm("Purge this transmission from the logs?")) {
+      setMessages((prev) => prev.filter(msg => msg._id !== msgId));
       try {
         await api.delete(`/chat/${msgId}`);
         socket.emit('delete_message', { id: msgId, donationId });
-        setMessages((prev) => prev.filter(msg => msg._id !== msgId));
       } catch (error) { 
         toast.error("Failed to delete message"); 
       }
@@ -149,23 +154,27 @@ const Chat = () => {
 
   return (
     <Layout>
-      {/* MOBILE-FIRST CONTAINER */}
-      <div className="w-full h-[calc(100dvh-70px)] md:h-[85vh] md:max-w-4xl md:mx-auto md:my-4 flex flex-col bg-[#0b141a] md:border md:border-white/10 md:rounded-2xl overflow-hidden md:shadow-2xl relative">
+      {/* GLASSMORPHISM MOBILE-FIRST CONTAINER */}
+      <div className="w-full h-[calc(100dvh)] md:h-[85vh] md:max-w-4xl md:mx-auto md:my-4 flex flex-col bg-black/20 backdrop-blur-3xl md:border md:border-white/10 md:rounded-[2.5rem] overflow-hidden md:shadow-2xl relative">
         <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`, backgroundRepeat: 'repeat' }}></div>
 
         {/* CHAT HEADER */}
-        <header className="bg-[#202c33] p-3 md:p-4 flex items-center justify-between z-10 shadow-sm border-b border-white/5">
-          <div className="flex items-center gap-2 md:gap-4">
-            <button onClick={() => navigate('/chat/inbox')} className="text-[#aebac1] hover:text-white transition-colors p-2 active:scale-90">
-              <FaArrowLeft className="text-xl" />
+        <header className="bg-white/5 backdrop-blur-md p-3 md:p-5 flex items-center justify-between z-10 shadow-sm border-b border-white/10">
+          <div className="flex items-center gap-3 md:gap-5">
+            <button onClick={() => navigate('/chat/inbox')} className="text-white/50 hover:text-white transition-colors p-2 active:scale-90 bg-white/5 rounded-full">
+              <FaArrowLeft className="text-lg md:text-xl" />
             </button>
-            <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/profile/${otherUserId}`)}>
-              <div className="w-10 h-10 md:w-11 md:h-11 rounded-full bg-[#6b7c85] flex items-center justify-center text-white font-black text-lg md:text-xl uppercase shadow-inner shrink-0">
+            <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate(`/profile/${otherUserId}`)}>
+              <div className={`w-11 h-11 md:w-12 md:h-12 rounded-2xl flex items-center justify-center text-white font-black text-lg md:text-xl uppercase shadow-sm border ${roleTheme.border} ${isDonor ? 'bg-teal-500/20' : 'bg-blue-500/20'} group-hover:scale-105 transition-transform`}>
                 {otherUserName.charAt(0)}
               </div>
               <div className="flex flex-col">
-                <h2 className="text-[15px] md:text-[17px] font-semibold text-[#e9edef] leading-tight truncate max-w-[150px] sm:max-w-xs">{otherUserName}</h2>
-                <p className="text-[#8696a0] text-[11px] md:text-[13px] truncate max-w-[150px] sm:max-w-xs">Re: {itemTitle}</p>
+                <h2 className="text-[15px] md:text-[17px] font-black text-white leading-tight truncate max-w-[150px] sm:max-w-xs flex items-center gap-2">
+                  {otherUserName}
+                </h2>
+                <p className={`text-[10px] md:text-[11px] font-bold uppercase tracking-widest flex items-center gap-1 mt-0.5 ${roleTheme.text} truncate max-w-[150px] sm:max-w-xs`}>
+                  <FaShieldAlt className="text-[8px]" /> {itemTitle}
+                </p>
               </div>
             </div>
           </div>
@@ -173,16 +182,16 @@ const Chat = () => {
 
         {/* MESSAGES AREA */}
         <div 
-          className="flex-1 overflow-y-auto p-3 md:p-6 space-y-3 md:space-y-4 z-10 no-scrollbar relative"
+          className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 z-10 no-scrollbar relative"
           onClick={() => { setDropdownOpen(null); setShowEmojis(false); }}
         >
           {loading ? (
-            <div className="flex justify-center items-center h-full"><FaSpinner className="animate-spin text-4xl text-teal-500" /></div>
+            <div className="flex justify-center items-center h-full"><FaSpinner className="animate-spin text-4xl text-white/30" /></div>
           ) : activeConversation.length === 0 ? (
-            <div className="flex justify-center mt-10">
-              <div className="bg-[#182229] text-[#8696a0] text-xs md:text-[13px] px-6 py-3 rounded-xl text-center shadow-sm border border-white/5">
-                Start the conversation securely on HopeLink.
-              </div>
+            <div className="flex flex-col items-center justify-center h-full text-white/30 space-y-2">
+              <FaShieldAlt className="text-5xl mb-2 opacity-50" />
+              <p className="font-black text-xs uppercase tracking-[0.2em]">End-to-End Encrypted</p>
+              <p className="text-[10px] text-center max-w-[250px] font-medium">Messages are securely routed through the HopeLink grid.</p>
             </div>
           ) : (
             activeConversation.map((msg, index) => {
@@ -191,8 +200,10 @@ const Chat = () => {
               return (
                 <div key={index} className={`flex ${isMe ? 'justify-end' : 'justify-start'} w-full`}>
                   
-                  <div className={`relative max-w-[85%] md:max-w-[70%] px-3 md:px-4 py-2 shadow-sm flex flex-col group ${
-                    isMe ? 'bg-[#005c4b] text-[#e9edef] rounded-2xl rounded-tr-sm' : 'bg-[#202c33] text-[#e9edef] rounded-2xl rounded-tl-sm'
+                  <div className={`relative max-w-[85%] md:max-w-[70%] px-4 py-3 shadow-md flex flex-col group ${
+                    isMe 
+                      ? `bg-gradient-to-br ${roleTheme.primary} text-white rounded-3xl rounded-tr-sm ${roleTheme.shadow}` 
+                      : 'bg-white/10 border border-white/10 text-white rounded-3xl rounded-tl-sm backdrop-blur-md'
                   }`}>
                     
                     {/* Touch-Friendly Dropdown Toggle */}
@@ -200,21 +211,21 @@ const Chat = () => {
                       <div className="absolute top-1 right-1">
                         <button 
                           onClick={(e) => { e.stopPropagation(); setDropdownOpen(dropdownOpen === msg._id ? null : msg._id); }}
-                          className="text-white/50 hover:text-white p-2 md:p-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity active:bg-white/10 rounded-full"
+                          className="text-white/70 hover:text-white p-2 md:p-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity active:bg-white/20 rounded-full"
                         >
                           <FaChevronDown className="text-[10px] md:text-[12px]" />
                         </button>
 
                         {/* Dropdown Menu */}
                         {dropdownOpen === msg._id && (
-                          <div className="absolute right-0 top-8 bg-[#233138] border border-white/10 rounded-xl shadow-2xl z-50 flex flex-col overflow-hidden w-28 md:w-32">
+                          <div className="absolute right-0 top-8 bg-black/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden w-32">
                             <button 
                               onClick={() => { setEditingMessage(msg); setNewMessage(msg.content); setDropdownOpen(null); }} 
-                              className="px-4 py-3 md:py-2 text-xs text-white active:bg-white/10 md:hover:bg-white/5 text-left flex items-center gap-2"
+                              className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-white active:bg-white/10 md:hover:bg-white/10 text-left flex items-center gap-2"
                             ><FaEdit /> Edit</button>
                             <button 
                               onClick={() => { handleDeleteMessage(msg._id); setDropdownOpen(null); }} 
-                              className="px-4 py-3 md:py-2 text-xs text-red-400 active:bg-white/10 md:hover:bg-white/5 text-left flex items-center gap-2 border-t border-white/5"
+                              className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-red-400 active:bg-white/10 md:hover:bg-white/10 text-left flex items-center gap-2 border-t border-white/5"
                             ><FaTrash /> Delete</button>
                           </div>
                         )}
@@ -225,10 +236,10 @@ const Chat = () => {
                       {msg.content}
                     </p>
                     
-                    <div className="flex justify-end items-center gap-1 mt-1 opacity-70">
-                      <span className="text-[9px] md:text-[10px]">{formatTime(msg.createdAt)}</span>
+                    <div className="flex justify-end items-center gap-1 mt-1.5 opacity-70">
+                      <span className="text-[9px] md:text-[10px] font-bold">{formatTime(msg.createdAt)}</span>
                       {isMe && (
-                        msg.read ? <FaCheckDouble className="text-[#53bdeb] text-[10px] md:text-[12px]" /> : <FaCheck className="text-white/40 text-[10px] md:text-[12px]" />
+                        msg.read ? <FaCheckDouble className="text-white text-[10px] md:text-[12px]" /> : <FaCheck className="text-white/50 text-[10px] md:text-[12px]" />
                       )}
                     </div>
                   </div>
@@ -241,8 +252,8 @@ const Chat = () => {
 
         {/* EMOJI PICKER */}
         {showEmojis && (
-          <div className="absolute bottom-16 md:bottom-20 left-0 right-0 md:left-4 md:right-auto z-50 shadow-2xl flex justify-center md:block">
-            <div className="w-full md:w-[320px]">
+          <div className="absolute bottom-[130px] md:bottom-24 left-0 right-0 md:left-4 md:right-auto z-50 shadow-2xl flex justify-center md:block">
+            <div className="w-full md:w-[320px] rounded-3xl overflow-hidden border border-white/10">
                <EmojiPicker onEmojiClick={onEmojiClick} theme="dark" width="100%" height={350} />
             </div>
           </div>
@@ -250,38 +261,37 @@ const Chat = () => {
 
         {/* EDIT BANNER */}
         {editingMessage && (
-          <div className="bg-[#182229] px-4 py-2.5 flex justify-between items-center border-t border-white/10 z-10 shadow-lg">
-            <span className="text-teal-400 text-xs md:text-sm font-bold flex items-center gap-2"><FaEdit /> Editing transmission...</span>
-            <button onClick={() => { setEditingMessage(null); setNewMessage(''); }} className="text-white/50 active:text-white hover:text-white p-2 bg-white/5 rounded-full">
+          <div className="bg-black/60 backdrop-blur-xl px-5 py-3 flex justify-between items-center border-t border-white/10 z-10 shadow-lg">
+            <span className={`${roleTheme.text} text-xs font-black uppercase tracking-widest flex items-center gap-2`}><FaEdit /> Editing Transmission...</span>
+            <button onClick={() => { setEditingMessage(null); setNewMessage(''); }} className="text-white/50 active:text-white hover:text-white p-2 bg-white/5 rounded-full transition-colors">
               <FaTimes className="text-xs" />
             </button>
           </div>
         )}
 
-        {/* INPUT AREA */}
-        <div className="bg-[#202c33] p-2 md:p-3 flex items-center gap-2 md:gap-3 z-10 border-t border-white/5 mb-safe">
-          <button type="button" onClick={() => setShowEmojis(!showEmojis)} className={`p-2.5 rounded-full active:bg-white/5 transition-colors ${showEmojis ? 'text-teal-500 bg-white/5' : 'text-[#8696a0]'}`}>
+        {/* INPUT AREA WITH MOBILE PADDING */}
+        <div className="bg-black/40 backdrop-blur-xl px-3 pt-3 pb-[90px] md:p-4 flex items-center gap-2 md:gap-3 z-10 border-t border-white/10">
+          <button type="button" onClick={() => setShowEmojis(!showEmojis)} className={`p-3 rounded-full active:bg-white/10 transition-colors ${showEmojis ? roleTheme.text + ' bg-white/10' : 'text-white/50 hover:text-white'}`}>
             <FaSmile className="text-xl md:text-2xl" />
           </button>
 
           <form onSubmit={handleSendMessage} className="flex-1 flex gap-2 md:gap-3">
-            {/* 👉 text-base ensures iOS doesn't zoom in while typing! */}
             <input 
               type="text" 
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               onFocus={() => setShowEmojis(false)}
               placeholder="Transmit message..." 
-              className="flex-1 bg-[#2a3942] rounded-full px-4 md:px-5 py-3 text-[#e9edef] text-base md:text-[15px] outline-none placeholder-[#8696a0] focus:ring-1 focus:ring-teal-500/50 transition-all"
+              className={`flex-1 bg-white/5 border border-white/10 rounded-full px-5 py-3.5 text-white text-base md:text-[15px] outline-none placeholder-white/40 focus:bg-black/60 focus:border-${isDonor ? 'teal' : 'blue'}-500 transition-all shadow-inner`}
               autoComplete="off"
             />
             
             <button 
               type="submit" 
               disabled={!newMessage.trim()}
-              className={`w-12 h-12 rounded-full flex items-center justify-center text-white transition-all shadow-md shrink-0 active:scale-95 ${
-                editingMessage ? 'bg-blue-600' : 'bg-teal-600'
-              } disabled:bg-[#2a3942] disabled:text-[#8696a0] disabled:shadow-none`}
+              className={`w-12 h-12 rounded-full flex items-center justify-center text-white transition-all shadow-lg active:scale-95 ${
+                editingMessage ? 'bg-orange-500 shadow-orange-500/30' : `bg-gradient-to-r ${roleTheme.primary} ${roleTheme.shadow}`
+              } disabled:opacity-30 disabled:active:scale-100 shrink-0`}
             >
               {editingMessage ? <FaCheckDouble className="text-[16px]" /> : <FaPaperPlane className="text-[15px] -ml-1 mt-0.5" />}
             </button>
