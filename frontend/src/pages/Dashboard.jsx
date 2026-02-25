@@ -806,18 +806,18 @@ const Dashboard = () => {
                             </span>
                           </div>
 
-                          {/* 👉 FIX 1: DISPLAY THE PIN TO THE DONOR */}
-                          {isMine &&
+                          {/* 👉 THE REAL FIX: DISPLAY PIN TO THE APPROVED RECEIVER ONLY */}
+                          {isApprovedReceiver &&
                             item.pickupPIN &&
-                            item.status !== "fulfilled" && (
-                              <div className="mt-4 bg-slate-950 border border-slate-800 rounded-2xl p-3 flex items-center justify-between">
+                            item.status === "pending" && (
+                              <div className="mt-4 bg-slate-950 border border-slate-800 rounded-2xl p-3 flex items-center justify-between shadow-inner">
                                 <div className="flex items-center gap-2 text-slate-400">
-                                  <FaKey className="text-teal-500" />
+                                  <FaKey className="text-teal-500 animate-pulse" />
                                   <span className="text-[10px] font-black uppercase tracking-widest">
-                                    Handshake PIN:
+                                    Give this PIN to Donor:
                                   </span>
                                 </div>
-                                <span className="text-lg font-black tracking-widest text-white bg-slate-800 px-3 py-1 rounded-xl">
+                                <span className="text-xl font-black tracking-[0.2em] text-white bg-slate-800 border border-slate-700 px-4 py-1.5 rounded-xl shadow-md">
                                   {item.pickupPIN}
                                 </span>
                               </div>
