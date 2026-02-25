@@ -5,30 +5,11 @@ import { io } from "socket.io-client";
 import AuthContext from "../context/AuthContext";
 import Layout from "../components/Layout";
 import {
-  FaHeartbeat,
-  FaMapMarkerAlt,
-  FaCommentDots,
-  FaSpinner,
-  FaTimes,
-  FaExclamationTriangle,
-  FaTrash,
-  FaBoxOpen,
-  FaLocationArrow,
-  FaEnvelope,
-  FaCheckCircle,
-  FaCalendarAlt,
-  FaSearch,
-  FaLock,
-  FaStar,
-  FaUsers,
-  FaRunning,
-  FaDownload,
-  FaHandsHelping,
-  FaBullhorn,
-  FaCalendarPlus,
-  FaClock,
-  FaEdit,
-  FaChevronRight,
+  FaHeartbeat, FaMapMarkerAlt, FaCommentDots, FaSpinner, FaTimes,
+  FaExclamationTriangle, FaTrash, FaBoxOpen, FaLocationArrow,
+  FaEnvelope, FaCheckCircle, FaCheck, FaCalendarAlt, // 👉 FaCheck is added here!
+  FaSearch, FaLock, FaStar, FaUsers, FaRunning, FaDownload,
+  FaHandsHelping, FaBullhorn, FaCalendarPlus, FaClock, FaEdit, FaChevronRight
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
