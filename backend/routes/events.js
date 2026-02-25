@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { createEvent, getEvents, deleteEvent, updateEvent } = require('../controllers/eventController'); // 👉 ADDED updateEvent
+const { createEvent, getEvents, deleteEvent, updateEvent } = require('../controllers/eventController'); 
 const { protect } = require('../middleware/authMiddleware');
-const upload = require('../middleware/uploadMiddleware'); // Assuming you have a multer/cloudinary middleware
+
+// 👉 FIXED: Pointing to your existing Cloudinary setup!
+const { upload } = require('../config/cloudinary'); 
 
 router.route('/')
   .get(protect, getEvents)
@@ -10,6 +12,6 @@ router.route('/')
 
 router.route('/:id')
   .delete(protect, deleteEvent)
-  .put(protect, upload.single('image'), updateEvent); // 👉 ADDED the PUT route for editing
+  .put(protect, upload.single('image'), updateEvent);
 
 module.exports = router;
