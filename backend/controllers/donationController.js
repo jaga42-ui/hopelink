@@ -1,9 +1,8 @@
 const asyncHandler = require('express-async-handler');
 const Donation = require('../models/Donation');
 const User = require('../models/User');
-const admin = require('firebase-admin'); // 👉 NEW: Imported Firebase Admin
+const admin = require('firebase-admin');
 
-// 👉 INITIALIZE FIREBASE USING RENDER ENVIRONMENT VARIABLE
 if (!admin.apps.length) {
   try {
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
@@ -23,17 +22,15 @@ if (!admin.apps.length) {
 const createDonation = asyncHandler(async (req, res) => {
   const { listingType, category, title, description, quantity, addressText, condition, foodType, expiryDate, pickupTime, bookAuthor, isEmergency, bloodGroup, lat, lng } = req.body;
   
-  // 👉 Cloudinary puts the secure web URL directly into req.file.path
   let imageUrl = req.file ? req.file.path : ''; 
   const pickupPIN = Math.floor(1000 + Math.random() * 9000).toString();
 
-  // 👉 We securely parse the GPS coordinates from the frontend
   const parsedLat = parseFloat(lat) || 0;
   const parsedLng = parseFloat(lng) || 0;
 
   const isCriticalEmergency = isEmergency === 'true' || isEmergency === true;
 
-  const donation = await Donation.create({
+  const newDonation = await Donation.create({
     donorId: req.user._id,
     listingType: listingType || 'donation',
     category, title, description, quantity,
@@ -42,17 +39,26 @@ const createDonation = asyncHandler(async (req, res) => {
     image: imageUrl,
     isEmergency: isCriticalEmergency,
     bloodGroup,
-    // 👉 Now users actually show up on the map!
     location: { type: 'Point', coordinates: [parsedLng, parsedLat], addressText }
   });
 
-  // 👉 NEW: FIREBASE PUSH NOTIFICATION FOR SOS BLASTS
+  // Fetch the full populated donation to send back to the frontend UI
+  const populatedDonation = await Donation.findById(newDonation._id)
+    .populate('donorId', 'name profilePic addressText')
+    .populate('requestedBy', 'name profilePic');
+
+  // 👉 1. REAL-TIME: BROADCAST NEW LISTING TO EVERYONE ONLINE
+  const io = req.app.get('io');
+  if (io) {
+    io.emit('new_listing', populatedDonation);
+  }
+
+  // FIREBASE PUSH NOTIFICATION FOR SOS BLASTS
   if (isCriticalEmergency) {
     try {
-      // Find potential heroes who have active tokens
       const potentialSaviors = await User.find({
         activeRole: 'donor',
-        _id: { $ne: req.user._id }, // Don't ping the person asking for help
+        _id: { $ne: req.user._id },
         fcmToken: { $exists: true, $ne: null }
       });
 
@@ -73,28 +79,25 @@ const createDonation = asyncHandler(async (req, res) => {
       }
     } catch (pushError) {
       console.error('Failed to process push notifications:', pushError);
-      // We don't throw an error here so the donation still saves successfully!
     }
   }
   
-  res.status(201).json(donation);
+  res.status(201).json(populatedDonation);
 });
 
-// 👉 UPGRADED: Added Chunking (Pagination) to protect server memory
 const getDonations = asyncHandler(async (req, res) => {
   const { lat, lng } = req.query;
   const page = Number(req.query.page) || 1;
-  const limit = Number(req.query.limit) || 12; // Send 12 items at a time
+  const limit = Number(req.query.limit) || 12;
   const skip = (page - 1) * limit;
 
   let query = { status: { $ne: 'fulfilled' } };
 
-  // If the frontend sends GPS coordinates, sort/find nearby!
   if (lat && lng) {
     query.location = {
       $near: {
         $geometry: { type: 'Point', coordinates: [Number(lng), Number(lat)] },
-        $maxDistance: 50000 // 50km radius for items
+        $maxDistance: 50000 
       }
     };
   }
@@ -106,14 +109,12 @@ const getDonations = asyncHandler(async (req, res) => {
     .skip(skip)
     .limit(limit);
 
-  // Tell the frontend if there is more data to fetch
   const total = await Donation.countDocuments(query);
   const hasMore = total > skip + donations.length;
 
   res.json({ donations, hasMore });
 });
 
-// 👉 UPGRADED: Added Chunking (Pagination) to protect server memory
 const getNearbyFeed = asyncHandler(async (req, res) => {
   const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 12;
@@ -133,7 +134,7 @@ const getNearbyFeed = asyncHandler(async (req, res) => {
 });
 
 const requestItem = asyncHandler(async (req, res) => {
-  const donation = await Donation.findById(req.params.id);
+  let donation = await Donation.findById(req.params.id);
 
   if (!donation) { res.status(404); throw new Error('Item not found'); }
   if (donation.status !== 'active') { res.status(400); throw new Error('Donor is currently assisting someone else'); }
@@ -143,14 +144,22 @@ const requestItem = asyncHandler(async (req, res) => {
   donation.requestedBy.push(req.user._id);
   await donation.save();
 
-  // Notify Donor via Socket.io
+  // Refetch the donation to get populated fields for the UI
+  const updatedDonation = await Donation.findById(donation._id)
+    .populate('donorId', 'name profilePic addressText phone')
+    .populate('requestedBy', 'name profilePic');
+
   const io = req.app.get('io');
   if (io) {
+    // Notify the specific donor
     io.to(donation.donorId.toString()).emit('new_request_notification', {
       donationId: donation._id,
       title: donation.title,
       requesterName: req.user.name
     });
+
+    // 👉 2. REAL-TIME: Update the UI for everyone so the button says "Signal Sent"
+    io.emit('listing_updated', updatedDonation);
   }
 
   res.status(200).json({ message: 'Request sent to donor!', requestedBy: donation.requestedBy });
@@ -158,7 +167,7 @@ const requestItem = asyncHandler(async (req, res) => {
 
 const approveRequest = asyncHandler(async (req, res) => {
   const { receiverId } = req.body;
-  const donation = await Donation.findById(req.params.id);
+  let donation = await Donation.findById(req.params.id);
 
   if (!donation) { res.status(404); throw new Error('Item not found'); }
   if (donation.donorId.toString() !== req.user._id.toString()) { res.status(401); throw new Error('Only the donor can approve requests'); }
@@ -169,37 +178,53 @@ const approveRequest = asyncHandler(async (req, res) => {
   donation.status = 'pending'; 
   await donation.save();
 
+  // Refetch the donation to get populated fields
+  const updatedDonation = await Donation.findById(donation._id)
+    .populate('donorId', 'name profilePic addressText phone')
+    .populate('requestedBy', 'name profilePic');
+
   const chatRoomId = `${donation._id}_${receiverId}`;
 
-  // Notify Receiver via Socket.io
   const io = req.app.get('io');
   if (io) {
+    // Notify the receiver privately
     io.to(receiverId.toString()).emit('request_approved', {
       donationId: donation._id,
       title: donation.title,
       donorName: req.user.name,
       chatRoomId: chatRoomId
     });
+
+    // 👉 3. REAL-TIME: Update the UI globally so it shows "Resolved" for others
+    io.emit('listing_updated', updatedDonation);
   }
 
-  res.status(200).json({ message: 'Request approved successfully!', chatRoomId, donation });
+  res.status(200).json({ message: 'Request approved successfully!', chatRoomId, donation: updatedDonation });
 });
 
-// THE NEW EMERGENCY HANDLER
 const acceptSOS = asyncHandler(async (req, res) => {
   const donationId = req.params.id;
   const heroId = req.user._id;
 
-  const sosRequest = await Donation.findById(donationId).populate('donorId', 'name phone profilePic');
+  let sosRequest = await Donation.findById(donationId).populate('donorId', 'name phone profilePic');
 
   if (!sosRequest) { res.status(404); throw new Error('Emergency request not found.'); }
   if (!sosRequest.isEmergency) { res.status(400); throw new Error('This is not an emergency listing.'); }
   if (sosRequest.status !== 'active') { res.status(400); throw new Error('Someone else is already responding to this emergency!'); }
 
-  // Lock the request instantly to the hero
   sosRequest.receiverId = heroId;
   sosRequest.status = 'pending'; 
   await sosRequest.save();
+
+  const updatedDonation = await Donation.findById(donationId)
+    .populate('donorId', 'name profilePic addressText phone')
+    .populate('requestedBy', 'name profilePic');
+
+  const io = req.app.get('io');
+  if (io) {
+    // 👉 REAL-TIME: Lock the SOS on everyone's screen instantly
+    io.emit('listing_updated', updatedDonation);
+  }
 
   res.status(200).json(sosRequest);
 });
@@ -238,6 +263,12 @@ const markFulfilled = asyncHandler(async (req, res) => {
     await receiver.save();
   }
 
+  const io = req.app.get('io');
+  if (io) {
+    // 👉 REAL-TIME: Completely remove fulfilled items from the feed
+    io.emit('listing_deleted', donation._id);
+  }
+
   res.json({ message: "Handshake Successful", pointsEarned: 50 });
 });
 
@@ -262,6 +293,13 @@ const deleteDonation = asyncHandler(async (req, res) => {
     res.status(401); throw new Error('Not authorized');
   }
   await donation.deleteOne();
+
+  // 👉 4. REAL-TIME: Instantly wipe deleted posts off the screen
+  const io = req.app.get('io');
+  if (io) {
+    io.emit('listing_deleted', req.params.id);
+  }
+
   res.json({ id: req.params.id });
 });
 

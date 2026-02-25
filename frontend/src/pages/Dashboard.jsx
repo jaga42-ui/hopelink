@@ -176,11 +176,13 @@ const Dashboard = () => {
     fetchDashboardData();
   }, [user, viewMode]);
 
+  // 👉 REAL-TIME SOCKET LISTENER GRID
   useEffect(() => {
     if (!user) return;
     const socket = io(BACKEND_URL, { transports: ["websocket", "polling"] });
     socket.emit("setup", user._id);
 
+    // 1. Direct Messages
     socket.on("new_message_notification", () => {
       setUnreadCount((prev) => prev + 1);
       toast("💬 Secure Transmission Received!", {
@@ -193,12 +195,44 @@ const Dashboard = () => {
       });
     });
 
+    // 2. SOS Responders
     socket.on("donor_coming", (data) => {
       setResponders((prev) => [...prev, data]);
       toast.success(`${data.donorName} is en route to help! 🦸‍♂️`, {
         duration: 8000,
         style: { background: "#ef4444", color: "#fff", fontWeight: "bold" },
       });
+    });
+
+    // 3. REAL-TIME: NEW POST CREATED
+    socket.on("new_listing", (newDonation) => {
+      setFeed((prev) => [newDonation, ...prev]);
+      if (newDonation.isEmergency) {
+        toast.error("🚨 NEW SOS BROADCAST DETECTED!", {
+          duration: 6000,
+          style: { background: "#ef4444", color: "#fff", fontWeight: "bold" },
+        });
+      }
+    });
+
+    // 4. REAL-TIME: POST UPDATED (Requested/Approved)
+    socket.on("listing_updated", (updatedItem) => {
+      setFeed((prev) =>
+        prev.map((item) => (item._id === updatedItem._id ? updatedItem : item)),
+      );
+    });
+
+    // 5. REAL-TIME: POST DELETED
+    socket.on("listing_deleted", (deletedId) => {
+      setFeed((prev) => prev.filter((item) => item._id !== deletedId));
+    });
+
+    // 6. REAL-TIME: EVENT UPDATES
+    socket.on("new_event", (newEvent) => {
+      setEventsFeed((prev) => [newEvent, ...prev]);
+    });
+    socket.on("event_deleted", (deletedId) => {
+      setEventsFeed((prev) => prev.filter((ev) => ev._id !== deletedId));
     });
 
     return () => socket.disconnect();
@@ -353,7 +387,7 @@ const Dashboard = () => {
       if (sosData.lng) formData.append("lng", sosData.lng);
 
       const { data } = await api.post("/donations", formData);
-      setFeed([data, ...feed]);
+      // We don't need to manually setFeed here anymore because the Socket will receive 'new_listing' and do it for us!
       setShowSOS(false);
       setSosData({
         bloodGroup: "",
@@ -424,14 +458,10 @@ const Dashboard = () => {
       if (eventData.image) formData.append("image", eventData.image);
 
       if (editingEventId) {
-        const { data } = await api.put(`/events/${editingEventId}`, formData);
-        setEventsFeed(
-          eventsFeed.map((ev) => (ev._id === editingEventId ? data : ev)),
-        );
+        await api.put(`/events/${editingEventId}`, formData);
         toast.success("Event updated successfully!");
       } else {
-        const { data } = await api.post("/events", formData);
-        setEventsFeed([data, ...eventsFeed]);
+        await api.post("/events", formData);
         toast.success("Event broadcasted to all nearby users!");
       }
       closeEventModal();
@@ -448,7 +478,7 @@ const Dashboard = () => {
     if (window.confirm("Delete this event completely?")) {
       try {
         await api.delete(`/events/${id}`);
-        setEventsFeed(eventsFeed.filter((ev) => ev._id !== id));
+        // Socket will handle UI removal
         toast.success("Event removed.");
       } catch (error) {
         toast.error("Failed to delete event.");
@@ -460,7 +490,7 @@ const Dashboard = () => {
     if (window.confirm("Retract this transmission?")) {
       try {
         await api.delete(`/donations/${id}`);
-        setFeed(feed.filter((item) => item._id !== id));
+        // Socket handles UI removal instantly
         toast.success("Transmission successfully retracted.");
       } catch (error) {
         toast.error("Failed to delete the listing.");
@@ -469,25 +499,10 @@ const Dashboard = () => {
   };
 
   const handleRequestItem = async (donationId) => {
-    const previousFeed = [...feed];
-    setFeed(
-      feed.map((item) =>
-        item._id === donationId
-          ? {
-              ...item,
-              requestedBy: [
-                ...(item.requestedBy || []),
-                { _id: user._id, name: user.name },
-              ],
-            }
-          : item,
-      ),
-    );
     try {
       await api.post(`/donations/${donationId}/request`, {});
       toast.success("Response sent! The author has been notified.");
     } catch (error) {
-      setFeed(previousFeed);
       toast.error("Network unstable. Failed to send request.");
     }
   };
@@ -500,13 +515,7 @@ const Dashboard = () => {
       const receiverName =
         requestsModal.donation.requestedBy.find((r) => r._id === receiverId)
           ?.name || "Receiver";
-      setFeed(
-        feed.map((item) =>
-          item._id === donationId
-            ? { ...item, status: "pending", receiverId: receiverId }
-            : item,
-        ),
-      );
+
       setRequestsModal({ isOpen: false, donation: null });
       toast.success("Approved! Secure comms channel established.");
       navigate(`/chat/${data.chatRoomId}`, {
@@ -529,7 +538,6 @@ const Dashboard = () => {
         pin: fulfillModal.pin,
         rating: fulfillModal.rating,
       });
-      setFeed(feed.filter((item) => item._id !== fulfillModal.donationId));
       toast.success("Handshake Verified! Points securely applied.");
       setFulfillModal({ isOpen: false, donationId: null, pin: "", rating: 5 });
     } catch (error) {
