@@ -1,156 +1,187 @@
-import { useState, useContext, useEffect } from 'react';
+import { useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import AuthContext from '../context/AuthContext';
-import { FaUser, FaEnvelope, FaLock, FaPhone, FaMapMarkerAlt, FaSpinner, FaGoogle } from 'react-icons/fa';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FaUserPlus, FaEnvelope, FaLock, FaPhone, FaTint, FaShieldAlt, FaTimes, FaCheck } from 'react-icons/fa';
 import toast from 'react-hot-toast';
+import AuthContext from '../context/AuthContext';
 import api from '../utils/api';
 
-import AuthLayout from '../components/AuthLayout';
-
 const Register = () => {
-  const [formData, setFormData] = useState({
-    name: '', email: '', password: '', phone: '', activeRole: 'donor', lat: null, lng: null
-  });
-  const [locating, setLocating] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', phone: '', bloodGroup: '' });
+  const [activeRole, setActiveRole] = useState('donor');
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // 👉 NEW: Privacy Policy States
+  const [agreedToPolicy, setAgreedToPolicy] = useState(false);
+  const [showPolicyModal, setShowPolicyModal] = useState(false);
 
-  const { name, email, password, phone, activeRole, lat, lng } = formData;
-  const { user, login } = useContext(AuthContext);
+  const { login } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (user) navigate('/dashboard');
-  }, [user, navigate]);
-
-  const onChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
-
-  const getLocation = () => {
-    setLocating(true);
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setFormData({ ...formData, lat: pos.coords.latitude, lng: pos.coords.longitude });
-          setLocating(false);
-          toast.success("GPS Location Pinned!");
-        },
-        () => {
-          setLocating(false);
-          toast.error("Please allow location access to continue.");
-        }
-      );
-    } else {
-      setLocating(false);
-      toast.error("Geolocation not supported by this device.");
-    }
-  };
-
-  const onSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!lat || !lng) return toast.error("Please tap 'Lock GPS Coordinates' first.");
-    
-    setSubmitting(true);
+    if (!agreedToPolicy) {
+      return toast.error("You must agree to the Privacy Policy to join HopeLink.");
+    }
+
+    setIsLoading(true);
     try {
-      const { data } = await api.post('/auth/register', formData);
+      const { data } = await api.post('/auth/register', { ...formData, activeRole });
       login(data);
-      toast.success(`Welcome to the frontlines, ${data.name}.`, {
-        style: { background: '#111', color: '#14b8a6', border: '1px solid rgba(20, 184, 166, 0.3)' }
-      });
+      toast.success('Welcome to the HopeLink Community!');
       navigate('/dashboard');
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Registration Failed");
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Registration failed');
     } finally {
-      setSubmitting(false);
+      setIsLoading(false);
     }
   };
 
-  const handleGoogleRegister = () => {
-    if (!window.google) return toast.error("Secure gateway is still loading. Please wait a moment.");
-
-    const client = window.google.accounts.oauth2.initCodeClient({
-      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID, 
-      scope: 'email profile',
-      ux_mode: 'popup',
-      callback: async (response) => {
-        if (response.code) {
-          const toastId = toast.loading("Creating Secure Profile...");
-          try {
-            const { data } = await api.post('/auth/google', { code: response.code });
-            login(data);
-            toast.success(`Identity verified. Welcome, ${data.name}.`, { id: toastId });
-            navigate('/dashboard');
-          } catch (error) {
-            toast.error(error.response?.data?.message || "Google Registration Failed", { id: toastId });
-          }
-        }
-      },
-    });
-    
-    client.requestCode();
+  const handleAcceptPolicy = () => {
+    setAgreedToPolicy(true);
+    setShowPolicyModal(false);
   };
 
   return (
-    <AuthLayout title="JOIN THE NETWORK." subtitle="Establish your identity">
-      <form onSubmit={onSubmit} className="space-y-4">
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="relative">
-            <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm" />
-            <input type="text" name="name" placeholder="Full Name" onChange={onChange} required className="w-full bg-[#111] border border-white/10 rounded-2xl py-3.5 sm:py-4 pl-10 sm:pl-12 pr-4 text-white text-base sm:text-sm outline-none focus:border-teal-500 focus:bg-black transition-all" />
-          </div>
-
-          <div className="relative">
-            <FaPhone className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm" />
-            <input type="tel" name="phone" placeholder="Phone Number" onChange={onChange} required className="w-full bg-[#111] border border-white/10 rounded-2xl py-3.5 sm:py-4 pl-10 sm:pl-12 pr-4 text-white text-base sm:text-sm outline-none focus:border-teal-500 focus:bg-black transition-all" />
-          </div>
-        </div>
-
-        <div className="relative">
-          <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm" />
-          <input type="email" name="email" placeholder="Secured Email" onChange={onChange} required className="w-full bg-[#111] border border-white/10 rounded-2xl py-3.5 sm:py-4 pl-10 sm:pl-12 pr-4 text-white text-base sm:text-sm outline-none focus:border-teal-500 focus:bg-black transition-all" />
-        </div>
-
-        <div className="relative">
-          <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm" />
-          <input type="password" name="password" placeholder="Passcode" onChange={onChange} required className="w-full bg-[#111] border border-white/10 rounded-2xl py-3.5 sm:py-4 pl-10 sm:pl-12 pr-4 text-white text-base sm:text-sm outline-none focus:border-teal-500 focus:bg-black transition-all" />
-        </div>
-
-        <div className="pt-2">
-          <p className="text-white/40 text-[9px] sm:text-[10px] uppercase font-black tracking-widest ml-2 mb-2">Initial Directive (Changeable)</p>
-          <div className="flex gap-2 sm:gap-3 bg-[#111] p-1.5 sm:p-2 rounded-2xl border border-white/10">
-            <button type="button" onClick={() => setFormData({...formData, activeRole: 'donor'})} className={`flex-1 py-3 sm:py-3.5 rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-widest transition-all ${activeRole === 'donor' ? 'bg-teal-500 text-white shadow-md' : 'text-white/40 hover:text-white'}`}>I Want To Donate</button>
-            <button type="button" onClick={() => setFormData({...formData, activeRole: 'receiver'})} className={`flex-1 py-3 sm:py-3.5 rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-widest transition-all ${activeRole === 'receiver' ? 'bg-blue-600 text-white shadow-md' : 'text-white/40 hover:text-white'}`}>I Need An Item</button>
-          </div>
-        </div>
-
-        <button type="button" onClick={getLocation} disabled={locating} className={`w-full py-3.5 sm:py-4 mt-2 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all border ${lat ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-white/5 text-white/50 border-white/10 active:bg-white/10'}`}>
-          {locating ? <FaSpinner className="animate-spin text-lg" /> : <FaMapMarkerAlt className="text-sm" />}
-          {lat ? 'Location Pinned' : 'Lock GPS Coordinates *'}
-        </button>
-
-        <button type="submit" disabled={submitting || !lat} className="w-full bg-teal-500 hover:bg-teal-400 text-[#050505] py-4 sm:py-5 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-widest shadow-[0_0_30px_rgba(20,184,166,0.2)] active:scale-95 transition-all mt-4 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2">
-          {submitting ? <FaSpinner className="animate-spin text-xl text-black" /> : 'Enlist Now'}
-        </button>
-      </form>
-
-      <div className="relative mt-6 sm:mt-8 mb-6">
-        <div className="flex items-center">
-          <div className="flex-1 border-t border-white/10"></div>
-          <span className="px-4 text-white/30 text-[9px] font-black uppercase tracking-widest">Or Enlist Via</span>
-          <div className="flex-1 border-t border-white/10"></div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-brand-gradient flex items-center justify-center p-4 relative selection:bg-teal-500 selection:text-white overflow-hidden">
       
-      <button onClick={handleGoogleRegister} type="button" className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-xs uppercase tracking-widest py-3.5 sm:py-4 rounded-2xl transition-all flex items-center justify-center gap-3 active:scale-95">
-        <FaGoogle className="text-red-500 text-lg" /> Google Authorization
-      </button>
+      {/* Background Glows */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-white/10 blur-[120px] rounded-full pointer-events-none"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-teal-500/20 blur-[120px] rounded-full pointer-events-none"></div>
 
-      <div className="mt-8 text-center bg-white/5 py-4 rounded-2xl border border-white/5">
-        <p className="text-white/60 text-xs font-bold uppercase tracking-widest">
-          Already Active? 
-          <Link to="/login" className="block mt-2 text-teal-400 hover:text-white font-black transition-colors">Access Network</Link>
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} 
+        className="w-full max-w-md bg-white/10 backdrop-blur-2xl border border-white/20 rounded-[2.5rem] p-8 sm:p-10 shadow-2xl relative z-10"
+      >
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-white/10 border border-white/20 rounded-2xl flex items-center justify-center text-3xl text-white mx-auto mb-4 shadow-inner">
+            <FaUserPlus />
+          </div>
+          <h2 className="text-3xl font-extrabold text-white tracking-tight mb-1">Join HopeLink.</h2>
+          <p className="text-white/70 text-sm font-medium">Create your free account today.</p>
+        </div>
+
+        {/* Role Selector */}
+        <div className="flex bg-black/30 p-1.5 rounded-2xl mb-6 border border-white/10">
+          <button type="button" onClick={() => setActiveRole('donor')} className={`flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${activeRole === 'donor' ? 'bg-white text-teal-900 shadow-md' : 'text-white/50 hover:text-white'}`}>Donor</button>
+          <button type="button" onClick={() => setActiveRole('receiver')} className={`flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${activeRole === 'receiver' ? 'bg-white text-teal-900 shadow-md' : 'text-white/50 hover:text-white'}`}>Receiver</button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="relative">
+            <FaUserPlus className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" />
+            <input required type="text" placeholder="Full Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-black/20 border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-white text-sm outline-none focus:border-white/40 transition-colors" />
+          </div>
+
+          <div className="relative">
+            <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" />
+            <input required type="email" placeholder="Email Address" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full bg-black/20 border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-white text-sm outline-none focus:border-white/40 transition-colors" />
+          </div>
+
+          <div className="relative">
+            <FaPhone className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" />
+            <input required type="tel" placeholder="Phone Number" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full bg-black/20 border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-white text-sm outline-none focus:border-white/40 transition-colors" />
+          </div>
+
+          <div className="relative">
+            <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" />
+            <input required type="password" placeholder="Secure Password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full bg-black/20 border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-white text-sm outline-none focus:border-white/40 transition-colors" />
+          </div>
+
+          {activeRole === 'donor' && (
+            <div className="relative">
+              <FaTint className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400" />
+              <select value={formData.bloodGroup} onChange={e => setFormData({...formData, bloodGroup: e.target.value})} className="w-full bg-black/20 border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-white text-sm outline-none focus:border-white/40 transition-colors appearance-none">
+                <option value="" disabled className="text-black">Blood Group (Optional)</option>
+                {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bg => <option key={bg} value={bg} className="text-black">{bg}</option>)}
+              </select>
+            </div>
+          )}
+
+          {/* 👉 NEW: The Checkbox & Privacy Trigger */}
+          <div className="flex items-start gap-3 mt-6 mb-2">
+            <button 
+              type="button" 
+              onClick={() => setAgreedToPolicy(!agreedToPolicy)}
+              className={`w-5 h-5 mt-0.5 rounded border flex items-center justify-center shrink-0 transition-all ${agreedToPolicy ? 'bg-teal-500 border-teal-500' : 'bg-black/30 border-white/30'}`}
+            >
+              {agreedToPolicy && <FaCheck className="text-white text-[10px]" />}
+            </button>
+            <p className="text-xs text-white/70 leading-relaxed">
+              I agree to the <button type="button" onClick={() => setShowPolicyModal(true)} className="text-white font-bold underline decoration-white/30 underline-offset-4 hover:decoration-white transition-all">Privacy Policy</button> and consent to my data being used to connect me with the community.
+            </p>
+          </div>
+
+          {/* The Submit Button (Disabled if not checked) */}
+          <button 
+            type="submit" 
+            disabled={isLoading || !agreedToPolicy} 
+            className="w-full py-4 bg-white text-teal-900 rounded-xl font-extrabold uppercase tracking-wider text-sm hover:bg-gray-100 transition-all active:scale-95 shadow-xl disabled:opacity-50 disabled:active:scale-100 disabled:cursor-not-allowed mt-2"
+          >
+            {isLoading ? 'Creating Account...' : 'Create Account'}
+          </button>
+        </form>
+
+        <p className="text-center text-white/60 text-sm mt-8 font-medium">
+          Already a hero? <Link to="/login" className="text-white font-bold hover:underline">Sign In</Link>
         </p>
-      </div>
-    </AuthLayout>
+      </motion.div>
+
+      {/* 👉 NEW: The Privacy Policy Popup Modal */}
+      <AnimatePresence>
+        {showPolicyModal && (
+          <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 sm:p-6">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm" 
+              onClick={() => setShowPolicyModal(false)} 
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} 
+              className="relative w-full max-w-lg bg-white/10 backdrop-blur-2xl border border-white/20 rounded-[2rem] p-6 sm:p-8 shadow-2xl flex flex-col max-h-[85vh]"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-3 text-white">
+                  <div className="w-10 h-10 bg-teal-500/20 rounded-full flex items-center justify-center text-teal-300 border border-teal-500/30">
+                    <FaShieldAlt className="text-lg" />
+                  </div>
+                  <h3 className="text-xl font-bold">Privacy Policy</h3>
+                </div>
+                <button onClick={() => setShowPolicyModal(false)} className="text-white/50 hover:text-white p-2 bg-white/5 rounded-full"><FaTimes /></button>
+              </div>
+              
+              <div className="overflow-y-auto pr-2 no-scrollbar space-y-4 text-sm text-white/80 leading-relaxed mb-6 flex-1">
+                <p>Welcome to HopeLink. By joining our platform, you agree to how we handle your data to keep the community safe.</p>
+                <div>
+                  <h4 className="font-bold text-white mb-1">1. Information Collection</h4>
+                  <p>We collect your name, email, phone number, and optional medical data (blood group) to facilitate community assistance.</p>
+                </div>
+                <div>
+                  <h4 className="font-bold text-white mb-1">2. Location Data</h4>
+                  <p>When you post an SOS or a donation, we use your location to alert nearby users. Your exact pinpoint is generalized to protect your privacy.</p>
+                </div>
+                <div>
+                  <h4 className="font-bold text-white mb-1">3. Data Sharing</h4>
+                  <p>We absolutely do not sell your data. Your profile details are only shared with other verified users when you actively interact with them (e.g., accepting a donation request).</p>
+                </div>
+                <div>
+                  <h4 className="font-bold text-white mb-1">4. Secure Communications</h4>
+                  <p>In-app chats are strictly between you and the other party. We use Firebase to send encrypted lock-screen push notifications to your device.</p>
+                </div>
+              </div>
+
+              <button 
+                onClick={handleAcceptPolicy} 
+                className="w-full py-4 bg-teal-600 hover:bg-teal-500 text-white rounded-xl font-bold uppercase tracking-wider text-sm transition-colors shadow-lg border border-teal-400"
+              >
+                I Accept & Agree
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+    </div>
   );
 };
 

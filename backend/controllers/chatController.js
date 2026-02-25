@@ -1,7 +1,24 @@
 const asyncHandler = require('express-async-handler');
 const Message = require('../models/Message');
 const User = require('../models/User'); 
-const webpush = require('web-push');    
+const admin = require('firebase-admin'); // 👉 NEW: Imported Firebase Admin
+
+// 👉 INITIALIZE FIREBASE USING RENDER ENVIRONMENT VARIABLE
+if (!admin.apps.length) {
+  try {
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+      });
+      console.log('🔥 Firebase Admin Initialized successfully in Chat');
+    } else {
+      console.log('⚠️ FIREBASE_SERVICE_ACCOUNT env var missing. Chat push notifications disabled.');
+    }
+  } catch (error) {
+    console.log('⚠️ Firebase Admin setup failed in Chat:', error.message);
+  }
+}
 
 // @desc    Get user's inbox
 // @route   GET /api/chat/inbox
@@ -53,7 +70,7 @@ const getInbox = asyncHandler(async (req, res) => {
 // @route   GET /api/chat/:donationId
 const getChatHistory = asyncHandler(async (req, res) => {
   const rawId = req.params.donationId;
-  // 👉 THE FIX: Split the string at the '_' and only take the first part (the real Donation ID)
+  // Clean the ID before querying
   const actualDonationId = rawId.includes('_') ? rawId.split('_')[0] : rawId;
   const myId = req.user._id;
 
@@ -74,7 +91,7 @@ const sendMessage = asyncHandler(async (req, res) => {
     res.status(400); throw new Error('Missing required fields');
   }
 
-  // 👉 THE FIX: Clean the ID before saving to database
+  // Clean the ID before saving to database
   const actualDonationId = donationId.includes('_') ? donationId.split('_')[0] : donationId;
 
   // 1. Create and save the message
@@ -91,22 +108,27 @@ const sendMessage = asyncHandler(async (req, res) => {
     io.to(receiverId.toString()).emit("new_message_notification");
   }
 
-  // 3. Fire Native Push Notification (for when the app is closed)
+  // 👉 3. FIREBASE PUSH NOTIFICATION (for when the app is closed)
   try {
     const receiver = await User.findById(receiverId);
     
-    if (receiver && receiver.pushSubscription) {
-      const payload = JSON.stringify({
-        title: `New message from ${req.user.name}`,
-        body: content.startsWith('[AUDIO]') ? '🎤 Voice message' : (content.length > 40 ? content.substring(0, 40) + '...' : content),
-        url: `/chat/inbox` 
-      });
+    // Check if the receiver has an active Firebase token saved
+    if (receiver && receiver.fcmToken) {
+      
+      const pushMessage = {
+        notification: {
+          title: `${req.user.name} sent you a message`,
+          body: content.startsWith('[AUDIO]') ? '🎤 Voice message' : (content.length > 40 ? content.substring(0, 40) + '...' : content),
+        },
+        token: receiver.fcmToken // Sending to this specific user's device
+      };
 
-      await webpush.sendNotification(receiver.pushSubscription, payload);
-      console.log('🚀 Push notification sent successfully!');
+      await admin.messaging().send(pushMessage);
+      console.log(`🔥 Firebase Chat Blast: Sent to ${receiver.name}'s locked phone.`);
     }
   } catch (error) {
-    console.error("Push Notification Error:", error.message);
+    console.error("Firebase Chat Push Error:", error.message);
+    // Don't throw the error so the actual message still saves!
   }
 
   res.status(201).json(message);
@@ -145,10 +167,8 @@ const editMessage = asyncHandler(async (req, res) => {
 // @access  Private
 const markMessagesAsRead = asyncHandler(async (req, res) => {
   const rawId = req.params.donationId;
-  // 👉 THE FIX: Clean the ID before querying
   const actualDonationId = rawId.includes('_') ? rawId.split('_')[0] : rawId;
 
-  // Find all unread messages sent TO me, IN this specific chat, and mark them read
   await Message.updateMany(
     { 
       donationId: actualDonationId, 

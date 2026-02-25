@@ -1,6 +1,24 @@
 const asyncHandler = require('express-async-handler');
 const Donation = require('../models/Donation');
 const User = require('../models/User');
+const admin = require('firebase-admin'); // 👉 NEW: Imported Firebase Admin
+
+// 👉 INITIALIZE FIREBASE USING RENDER ENVIRONMENT VARIABLE
+if (!admin.apps.length) {
+  try {
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+      });
+      console.log('🔥 Firebase Admin Initialized successfully in Donations');
+    } else {
+      console.log('⚠️ FIREBASE_SERVICE_ACCOUNT env var missing. Push notifications disabled.');
+    }
+  } catch (error) {
+    console.log('⚠️ Firebase Admin setup failed:', error.message);
+  }
+}
 
 const createDonation = asyncHandler(async (req, res) => {
   const { listingType, category, title, description, quantity, addressText, condition, foodType, expiryDate, pickupTime, bookAuthor, isEmergency, bloodGroup, lat, lng } = req.body;
@@ -9,9 +27,11 @@ const createDonation = asyncHandler(async (req, res) => {
   let imageUrl = req.file ? req.file.path : ''; 
   const pickupPIN = Math.floor(1000 + Math.random() * 9000).toString();
 
-  // 👉 THE FIX: We securely parse the GPS coordinates from the frontend
+  // 👉 We securely parse the GPS coordinates from the frontend
   const parsedLat = parseFloat(lat) || 0;
   const parsedLng = parseFloat(lng) || 0;
+
+  const isCriticalEmergency = isEmergency === 'true' || isEmergency === true;
 
   const donation = await Donation.create({
     donorId: req.user._id,
@@ -20,11 +40,42 @@ const createDonation = asyncHandler(async (req, res) => {
     condition, foodType, expiryDate, pickupTime, bookAuthor, 
     pickupPIN, 
     image: imageUrl,
-    isEmergency: isEmergency === 'true' || isEmergency === true,
+    isEmergency: isCriticalEmergency,
     bloodGroup,
-    // 👉 THE FIX: Now users actually show up on the map!
+    // 👉 Now users actually show up on the map!
     location: { type: 'Point', coordinates: [parsedLng, parsedLat], addressText }
   });
+
+  // 👉 NEW: FIREBASE PUSH NOTIFICATION FOR SOS BLASTS
+  if (isCriticalEmergency) {
+    try {
+      // Find potential heroes who have active tokens
+      const potentialSaviors = await User.find({
+        activeRole: 'donor',
+        _id: { $ne: req.user._id }, // Don't ping the person asking for help
+        fcmToken: { $exists: true, $ne: null }
+      });
+
+      const tokens = potentialSaviors.map(u => u.fcmToken);
+
+      if (tokens.length > 0) {
+        const message = {
+          notification: {
+            title: `🚨 CRITICAL EMERGENCY: ${bloodGroup || 'Help'} Needed!`,
+            body: `${title} near ${addressText}. Open HopeLink to respond now!`,
+          },
+          tokens: tokens,
+        };
+
+        admin.messaging().sendEachForMulticast(message)
+          .then(response => console.log(`🔥 Firebase SOS Blast: Sent to ${response.successCount} locked phones.`))
+          .catch(error => console.error('Firebase SOS Blast Error:', error));
+      }
+    } catch (pushError) {
+      console.error('Failed to process push notifications:', pushError);
+      // We don't throw an error here so the donation still saves successfully!
+    }
+  }
   
   res.status(201).json(donation);
 });
@@ -113,7 +164,7 @@ const approveRequest = asyncHandler(async (req, res) => {
   res.status(200).json({ message: 'Request approved successfully!', chatRoomId, donation });
 });
 
-// 👉 THE NEW EMERGENCY HANDLER
+// THE NEW EMERGENCY HANDLER
 const acceptSOS = asyncHandler(async (req, res) => {
   const donationId = req.params.id;
   const heroId = req.user._id;
@@ -202,6 +253,6 @@ module.exports = {
   markFulfilled, 
   requestItem,     
   approveRequest, 
-  acceptSOS,       // 👉 EXPORTED THE NEW FUNCTION
+  acceptSOS,       
   getLeaderboard 
 };

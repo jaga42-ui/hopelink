@@ -1,16 +1,47 @@
 const asyncHandler = require('express-async-handler');
 const User = require('../models/User');
 const Donation = require('../models/Donation');
+const moment = require('moment'); // 👉 NEW: Required for the 30-day growth graph
 
-// @desc    Get platform statistics
+// @desc    Get platform statistics (Upgraded for Recharts)
 // @route   GET /api/admin/stats
 const getDashboardStats = asyncHandler(async (req, res) => {
   const totalUsers = await User.countDocuments();
   const totalDonations = await Donation.countDocuments({ listingType: 'donation' });
   const totalRequests = await Donation.countDocuments({ listingType: 'request' });
   const fulfilledItems = await Donation.countDocuments({ status: 'fulfilled' });
+  
+  // 👉 NEW: Count active SOS emergencies
+  const activeSOS = await Donation.countDocuments({ isEmergency: true, status: 'active' });
 
-  res.json({ totalUsers, totalDonations, totalRequests, fulfilledItems });
+  // 👉 NEW: Generate 30-Day Growth Data for the Area Chart
+  const thirtyDaysAgo = moment().subtract(30, 'days').toDate();
+  
+  const dailyUsers = await User.aggregate([
+    { $match: { createdAt: { $gte: thirtyDaysAgo } } },
+    {
+      $group: {
+        _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+        count: { $sum: 1 }
+      }
+    },
+    { $sort: { _id: 1 } }
+  ]);
+
+  // Format data perfectly for Recharts X-Axis
+  const growthData = dailyUsers.map(day => ({
+    date: moment(day._id).format('MMM DD'),
+    Users: day.count
+  }));
+
+  res.json({ 
+    totalUsers, 
+    totalDonations, 
+    totalRequests, 
+    fulfilledItems,
+    activeSOS,     // 👉 Sent to frontend pie chart
+    growthData     // 👉 Sent to frontend area chart
+  });
 });
 
 // @desc    Get all users
@@ -74,7 +105,7 @@ const toggleAdminRole = asyncHandler(async (req, res) => {
   targetUser.isAdmin = !targetUser.isAdmin; // Flip the boolean
   await targetUser.save();
 
-  // 👉 NEW: THE REAL-TIME TRIGGER!
+  // THE REAL-TIME TRIGGER!
   // Grab the io instance and emit directly to this specific user's secure room
   const io = req.app.get('io');
   if (io) {

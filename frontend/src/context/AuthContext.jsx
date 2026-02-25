@@ -5,6 +5,9 @@ import toast from 'react-hot-toast';
 // 👉 IMPORT YOUR HARDWIRED API PIPELINE
 import api from '../utils/api';
 
+// 👉 IMPORT FIREBASE TOKEN FUNCTION
+import { requestFirebaseToken } from '../firebase';
+
 const AuthContext = createContext();
 
 // 👉 HARDWIRED SOCKET URL
@@ -20,7 +23,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (!user) return;
 
-    // 👉 FIXED: Connect to the live server, not localhost!
+    // 👉 Connect to the live server
     const socket = io(BACKEND_URL, {
       transports: ['websocket', 'polling'] // Ensures stable connection on Render
     });
@@ -57,15 +60,13 @@ export const AuthProvider = ({ children }) => {
     };
   }, [user]);
 
-  // --- FIXED FUNCTION: Role Switcher ---
+  // --- Role Switcher ---
   const switchRole = async () => {
     if (!user) return;
     
     try {
-      // 👉 FIXED: Uses your api.js file! No localhost, no manual token headers needed!
       const { data } = await api.put('/auth/role', {});
       
-      // Update local state and storage instantly with the verified backend data
       const updatedUser = { ...user, activeRole: data.activeRole };
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));
@@ -76,9 +77,25 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = (userData) => {
+  // 👉 UPGRADED: Async Login Function with Firebase Trigger
+  const login = async (userData) => {
+    // 1. Instantly log the user into the UI
     setUser(userData);
     localStorage.setItem('user', JSON.stringify(userData));
+
+    // 2. Request Notification Permission & Firebase Token
+    try {
+      const fcmToken = await requestFirebaseToken();
+      if (fcmToken) {
+        // 3. Send the token to the backend so MongoDB knows how to ping this user
+        await api.post('/auth/fcm-token', { fcmToken });
+        console.log("Firebase Lock-Screen Notifications Enabled.");
+      } else {
+        console.log("User denied notifications or token generation failed.");
+      }
+    } catch (error) {
+      console.error("FCM Token process failed:", error);
+    }
   };
 
   const logout = () => {

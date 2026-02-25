@@ -8,7 +8,7 @@ import {
   FaHeartbeat, FaMapMarkerAlt, FaCommentDots, FaSpinner, FaTimes, 
   FaExclamationTriangle, FaTrash, FaBoxOpen, FaLocationArrow, 
   FaEnvelope, FaCheckCircle, FaLeaf, FaCalendarAlt, FaTags, 
-  FaBook, FaSearch, FaLock, FaStar, FaUsers, FaRunning, FaDownload 
+  FaBook, FaSearch, FaLock, FaStar, FaUsers, FaRunning, FaDownload, FaHandsHelping
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -46,14 +46,12 @@ const Dashboard = () => {
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [typingTimeout, setTypingTimeout] = useState(null); 
 
-  // PWA Install Event Listener
   useEffect(() => {
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
       setIsInstallable(true);
     };
-
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
@@ -107,7 +105,6 @@ const Dashboard = () => {
     return () => socket.disconnect();
   }, [user]);
 
-  // Handle Explicit App Download
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
@@ -119,22 +116,9 @@ const Dashboard = () => {
     setDeferredPrompt(null);
   };
 
-  // Handle Explicit Location Permissions
   const handleGetLocation = async () => {
-    if (!navigator.geolocation) {
-      return toast.error('Geolocation is not supported by your browser.');
-    }
-
-    // Explicitly query permissions if supported (safeguard)
-    if (navigator.permissions) {
-      try {
-        const result = await navigator.permissions.query({ name: 'geolocation' });
-        if (result.state === 'denied') {
-          return toast.error("Location access denied. Please enable GPS permissions in your browser settings to continue.");
-        }
-      } catch (e) { /* Catch for browsers that don't support permissions.query */ }
-    }
-
+    if (!navigator.geolocation) return toast.error('Geolocation is not supported by your browser.');
+    
     setIsFetchingLocation(true);
     toast.loading("Locking onto GPS coordinates...", { id: 'gps-toast' });
 
@@ -154,11 +138,7 @@ const Dashboard = () => {
       },
       (error) => {
         setIsFetchingLocation(false);
-        if (error.code === error.PERMISSION_DENIED) {
-          toast.error("Permission Denied. We cannot access your location without authorization.", { id: 'gps-toast' });
-        } else {
-          toast.error("Failed to acquire location signal.", { id: 'gps-toast' });
-        }
+        toast.error("Failed to acquire location signal.", { id: 'gps-toast' });
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
@@ -240,7 +220,7 @@ const Dashboard = () => {
           ? { ...item, requestedBy: [...(item.requestedBy || []), { _id: user._id, name: user.name }] } 
           : item
       ));
-      toast.success("Request sent! The operator will be notified.");
+      toast.success("Response sent! The author has been notified.");
     } catch (error) { toast.error(error.response?.data?.message || "Failed to send request"); }
   };
 
@@ -255,6 +235,31 @@ const Dashboard = () => {
         state: { otherUserId: receiverId, otherUserName: receiverName, itemTitle: requestsModal.donation.title }
       });
     } catch (error) { toast.error("Approval failed"); }
+  };
+
+  // 👉 NEW: Unified Click Handler for the entire card
+  const handleCardClick = (item) => {
+    const isMine = item.donorId?._id === user._id;
+    const alreadyRequested = item.requestedBy?.some(req => req._id === user._id);
+    const isReceiver = item.receiverId === user._id;
+
+    if (isMine) {
+      if (item.status === 'active' && item.requestedBy?.length > 0) {
+        setRequestsModal({ isOpen: true, donation: item });
+      } else if (item.status === 'pending') {
+        setFulfillModal({ isOpen: true, donationId: item._id, pin: '', rating: 5 });
+      }
+    } else {
+      if (item.status === 'active') {
+        if (!alreadyRequested) {
+          handleRequestItem(item._id);
+        } else {
+          toast("You've already responded. Awaiting their approval.");
+        }
+      } else if (item.status === 'pending' && isReceiver) {
+        navigate(`/chat/${item._id}_${user._id}`);
+      }
+    }
   };
 
   const processedFeed = feed
@@ -303,7 +308,6 @@ const Dashboard = () => {
           
           <div className="w-full md:w-auto grid grid-cols-2 md:flex gap-3 md:gap-4 items-center">
             
-            {/* Glassmorphism Role Switcher */}
             {user && !user.isAdmin && (
               <button 
                 onClick={() => {
@@ -315,22 +319,14 @@ const Dashboard = () => {
               >
                 <span className={`text-[10px] md:text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${localRole === 'donor' ? 'text-white' : 'text-white/50'}`}>Donor</span>
                 <div className="w-10 h-5 bg-black/30 rounded-full relative shrink-0 border border-white/10">
-                  <div 
-                    className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform duration-300 ease-in-out ${
-                      localRole === 'donor' ? '' : 'translate-x-[19px]'
-                    }`}
-                  ></div>
+                  <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform duration-300 ease-in-out ${localRole === 'donor' ? '' : 'translate-x-[19px]'}`}></div>
                 </div>
                 <span className={`text-[10px] md:text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${localRole === 'receiver' ? 'text-white' : 'text-white/50'}`}>Receiver</span>
               </button>
             )}
 
-            {/* NEW: App Download Button */}
             {isInstallable && (
-              <button 
-                onClick={handleInstallClick} 
-                className="col-span-2 md:col-span-1 px-4 md:px-6 py-3 md:py-3.5 bg-teal-500 hover:bg-teal-400 text-white rounded-2xl font-bold text-[11px] md:text-sm active:scale-95 transition-all flex items-center justify-center gap-2 shadow-xl border border-teal-400"
-              >
+              <button onClick={handleInstallClick} className="col-span-2 md:col-span-1 px-4 md:px-6 py-3 md:py-3.5 bg-teal-500 hover:bg-teal-400 text-white rounded-2xl font-bold text-[11px] md:text-sm active:scale-95 transition-all flex items-center justify-center gap-2 shadow-xl border border-teal-400">
                 <FaDownload className="text-lg" /> Download App
               </button>
             )}
@@ -349,7 +345,7 @@ const Dashboard = () => {
           </div>
         </header>
 
-        {/* FILTERS & SORT (Glassmorphism) */}
+        {/* FILTERS & SORT */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 md:mb-8 bg-white/10 backdrop-blur-xl p-3 md:p-4 rounded-2xl md:rounded-[2rem] border border-white/20 shadow-lg">
           <div className="flex gap-2 overflow-x-auto w-full md:w-auto no-scrollbar pb-1 md:pb-0 scroll-smooth">
             {['All', 'Blood', 'Food', 'Clothes', 'Book'].map(cat => (
@@ -365,17 +361,14 @@ const Dashboard = () => {
           </div>
           <div className="w-full md:w-auto flex items-center justify-between md:justify-end gap-3 border-t border-white/10 md:border-0 pt-3 md:pt-0">
              <span className="text-[10px] font-bold text-white/70 uppercase tracking-wider">Sort By:</span>
-             <select
-               value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}
-               className="bg-black/40 border border-white/20 rounded-lg md:rounded-xl px-3 py-2 text-white text-[11px] md:text-xs font-bold outline-none cursor-pointer"
-             >
+             <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} className="bg-black/40 border border-white/20 rounded-lg md:rounded-xl px-3 py-2 text-white text-[11px] md:text-xs font-bold outline-none cursor-pointer">
                <option value="urgent" className="text-black">Urgent First</option>
                <option value="newest" className="text-black">Newest First</option>
              </select>
           </div>
         </div>
 
-        {/* FEED GRID */}
+        {/* FEED GRID - NEW CLEAN, CLICKABLE WIDGET CARDS */}
         {loading ? (
           <div className="flex justify-center py-20"><FaSpinner className="animate-spin text-4xl text-white" /></div>
         ) : processedFeed.length === 0 ? (
@@ -385,114 +378,128 @@ const Dashboard = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
             {processedFeed.map((item) => {
+              const isMine = item.donorId?._id === user._id;
               const isEmergency = item.isEmergency;
               const isRequest = item.listingType === 'request' && !isEmergency;
+              const alreadyRequested = item.requestedBy?.some(req => req._id === user._id);
+              const isReceiver = item.receiverId === user._id;
 
-              let cardStyle = 'bg-white/10 backdrop-blur-xl border-white/20'; 
-              let badgeStyle = 'bg-teal-800/50 text-white border border-teal-500/30';
-              let buttonStyle = 'bg-white/20 hover:bg-white/30 text-white border border-white/10';
+              // Action Banner Logic
+              let bannerClass = "bg-white/5 text-white/50";
+              let bannerText = "Broadcasting...";
+              let bannerIcon = <FaSpinner className="animate-spin opacity-50" />;
 
-              if (isEmergency) {
-                cardStyle = 'bg-red-900/40 backdrop-blur-xl border-red-500/50'; 
-                badgeStyle = 'bg-red-600 text-white border border-red-500/50'; 
-                buttonStyle = 'bg-red-600 hover:bg-red-700 text-white border border-red-500';
-              } else if (isRequest) {
-                cardStyle = 'bg-blue-900/40 backdrop-blur-xl border-blue-500/50'; 
-                badgeStyle = 'bg-blue-600 text-white border border-blue-500/50'; 
-                buttonStyle = 'bg-blue-600 hover:bg-blue-700 text-white border border-blue-500';
+              if (isMine) {
+                if (item.status === 'active' && item.requestedBy?.length > 0) {
+                  bannerClass = "bg-teal-500 text-white shadow-[0_0_20px_rgba(20,184,166,0.3)]";
+                  bannerText = `View ${item.requestedBy.length} Responder(s)`;
+                  bannerIcon = <FaUsers />;
+                } else if (item.status === 'pending') {
+                  bannerClass = "bg-yellow-500 text-black shadow-[0_0_20px_rgba(234,179,8,0.3)]";
+                  bannerText = "Complete Handshake";
+                  bannerIcon = <FaCheckCircle />;
+                }
+              } else {
+                if (item.status === 'active') {
+                  if (alreadyRequested) {
+                    bannerClass = "bg-white/10 text-white/50";
+                    bannerText = "Response Pending...";
+                    bannerIcon = <FaSpinner className="animate-spin opacity-50" />;
+                  } else {
+                    bannerClass = isEmergency 
+                      ? "bg-red-600 text-white shadow-[0_0_20px_rgba(220,38,38,0.4)]" 
+                      : "bg-white text-teal-900 shadow-[0_0_20px_rgba(255,255,255,0.3)]";
+                    bannerText = isRequest ? "Offer Help" : "Respond to Listing";
+                    bannerIcon = <FaHandsHelping />;
+                  }
+                } else if (item.status === 'pending') {
+                  if (isReceiver) {
+                    bannerClass = "bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)]";
+                    bannerText = `Open Secure Chat • PIN: ${item.pickupPIN}`;
+                    bannerIcon = <FaCommentDots />;
+                  } else {
+                    bannerClass = "bg-black/40 text-white/30";
+                    bannerText = "Resolved";
+                    bannerIcon = <FaLock />;
+                  }
+                }
               }
 
+              let cardStyle = 'bg-white/5 backdrop-blur-xl border-white/10 hover:border-white/30'; 
+              if (isEmergency) cardStyle = 'bg-red-900/30 backdrop-blur-xl border-red-500/30 hover:border-red-500'; 
+              else if (isRequest) cardStyle = 'bg-blue-900/30 backdrop-blur-xl border-blue-500/30 hover:border-blue-400'; 
+
               return (
-                <div key={item._id} className={`rounded-3xl md:rounded-[2rem] p-5 md:p-6 flex flex-col relative overflow-hidden transition-all hover:-translate-y-1 shadow-2xl border ${cardStyle}`}>
+                <motion.div 
+                  key={item._id} 
+                  whileHover={{ y: -4 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleCardClick(item)}
+                  className={`rounded-[2rem] flex flex-col relative overflow-hidden transition-all duration-300 shadow-2xl border cursor-pointer group ${cardStyle}`}
+                >
                   
-                  {isEmergency && <div className="absolute top-0 left-0 w-full bg-red-600 text-white text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-center py-1.5 z-10"><FaExclamationTriangle className="inline mr-1" /> Critical Emergency</div>}
-                  {isRequest && <div className="absolute top-0 left-0 w-full bg-blue-600 text-white text-[8px] md:text-[9px] font-bold uppercase tracking-wider text-center py-1 z-10"><FaSearch className="inline mr-1" /> Community Request</div>}
+                  {/* Subtle Delete Button (Owner Only) */}
+                  {isMine && (
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleDeletePost(item._id); }}
+                      className="absolute top-3 right-3 w-8 h-8 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center text-white/40 hover:text-red-400 hover:bg-black/80 z-20 transition-all border border-white/10"
+                    >
+                      <FaTrash className="text-xs" />
+                    </button>
+                  )}
+
+                  {isEmergency && <div className="w-full bg-red-600 text-white text-[10px] font-bold uppercase tracking-widest text-center py-1.5 z-10"><FaExclamationTriangle className="inline mr-1" /> Critical Emergency</div>}
+                  {isRequest && <div className="w-full bg-blue-600 text-white text-[9px] font-bold uppercase tracking-wider text-center py-1.5 z-10"><FaSearch className="inline mr-1" /> Community Request</div>}
                   
-                  <div className={`${isEmergency || isRequest ? 'mt-5' : 'mt-0'} flex justify-between items-start mb-4`}>
-                    <div className="flex items-center gap-3">
+                  <div className="p-5 md:p-6 flex-1 flex flex-col">
+                    
+                    {/* User Info Header */}
+                    <div className="flex items-center gap-3 mb-5">
                       {item.donorId?.profilePic ? (
-                        <img src={item.donorId.profilePic} className="w-10 h-10 rounded-full object-cover border border-white/30" referrerPolicy="no-referrer" />
+                        <img src={item.donorId.profilePic} className="w-10 h-10 rounded-full object-cover border border-white/20 shadow-sm" referrerPolicy="no-referrer" />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold text-white uppercase">{item.donorId?.name?.charAt(0) || '?'}</div>
+                        <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold text-white uppercase shadow-sm border border-white/10">{item.donorId?.name?.charAt(0) || '?'}</div>
                       )}
                       <div>
-                        <p className="text-white font-bold text-sm">{item.donorId?.name || 'Unknown User'}</p>
-                        <p className="text-white/60 text-[10px] font-bold uppercase tracking-wider">{item.category}</p>
+                        <p className="text-white font-bold text-sm leading-tight">{item.donorId?.name || 'Unknown User'}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-white/50 text-[9px] font-bold uppercase tracking-wider">{item.category}</p>
+                          {item.bloodGroup && <span className="text-[9px] font-bold bg-white/10 px-1.5 py-0.5 rounded text-white">{item.bloodGroup}</span>}
+                        </div>
                       </div>
                     </div>
-                    {item.bloodGroup && <div className={`px-2.5 py-1 rounded-full text-[10px] md:text-xs font-bold z-10 ${badgeStyle}`}>{item.bloodGroup}</div>}
-                  </div>
 
-                  {item.image ? (
-                    <div className="w-full h-40 md:h-48 mb-4 rounded-2xl overflow-hidden border border-white/10 relative flex-shrink-0">
-                      <img src={item.image.startsWith('http') ? item.image : `${BACKEND_URL}${item.image}`} className="w-full h-full object-cover" />
-                    </div>
-                  ) : item.category === 'blood' ? (
-                    <div className="w-full h-40 md:h-48 mb-4 rounded-2xl overflow-hidden border border-red-500/30 bg-red-900/30 flex flex-col items-center justify-center flex-shrink-0">
-                      <FaHeartbeat className="text-5xl md:text-6xl text-red-400 mb-2 md:mb-3 drop-shadow-lg" />
-                      <span className="text-3xl md:text-4xl font-black text-white tracking-tight drop-shadow-md">{item.bloodGroup || 'BLOOD'}</span>
-                    </div>
-                  ) : null}
+                    {/* Image or Icon Container */}
+                    {item.image ? (
+                      <div className="w-full h-44 mb-4 rounded-2xl overflow-hidden relative flex-shrink-0 border border-white/10">
+                        <img src={item.image.startsWith('http') ? item.image : `${BACKEND_URL}${item.image}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      </div>
+                    ) : item.category === 'blood' ? (
+                      <div className="w-full h-32 mb-4 rounded-2xl overflow-hidden border border-red-500/20 bg-red-900/20 flex flex-col items-center justify-center flex-shrink-0">
+                        <FaHeartbeat className="text-4xl text-red-400 mb-2 drop-shadow-md" />
+                        <span className="text-2xl font-black text-white tracking-tight drop-shadow-sm">{item.bloodGroup || 'BLOOD'}</span>
+                      </div>
+                    ) : null}
 
-                  <h3 className="text-lg font-bold text-white mb-1.5 leading-snug drop-shadow-sm">{item.title}</h3>
-                  {item.quantity && <p className="text-white/80 font-medium text-[11px] md:text-xs mb-3">Quantity: <span className="text-white font-bold">{item.quantity}</span></p>}
-                  
-                  <div className="flex flex-wrap gap-1.5 md:gap-2 mb-3">
-                    {item.foodType && <span className="flex items-center gap-1 bg-black/30 border border-white/10 px-2 py-1 rounded text-[10px] font-semibold text-white"><FaLeaf className={item.foodType==='Veg'?'text-green-400':'text-orange-400'}/> {item.foodType}</span>}
-                    {item.expiryDate && <span className="flex items-center gap-1 bg-black/30 border border-white/10 px-2 py-1 rounded text-[10px] font-semibold text-white"><FaCalendarAlt className="text-red-400"/> Exp: {new Date(item.expiryDate).toLocaleDateString()}</span>}
-                    {item.bookAuthor && <span className="flex items-center gap-1 bg-black/30 border border-white/10 px-2 py-1 rounded text-[10px] font-semibold text-white"><FaBook className="text-blue-400"/> {item.bookAuthor}</span>}
-                    {item.condition && <span className="flex items-center gap-1 bg-black/30 border border-white/10 px-2 py-1 rounded text-[10px] font-semibold text-white"><FaTags className="text-purple-400"/> {item.condition}</span>}
-                  </div>
-
-                  <p className="text-white/80 text-sm mb-5 flex-1 line-clamp-2 md:line-clamp-3">{item.description}</p>
-                  
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-4 border-t border-white/10 mt-auto">
-                    <div className="flex items-center gap-1.5 text-white/70 text-[11px] md:text-xs font-medium w-full sm:max-w-[45%]">
+                    {/* Title & Desc */}
+                    <h3 className="text-lg font-bold text-white mb-1.5 leading-snug drop-shadow-sm">{item.title}</h3>
+                    {item.quantity && <p className="text-white/60 font-medium text-[11px] mb-3">Qty: <span className="text-white">{item.quantity}</span></p>}
+                    
+                    <p className="text-white/70 text-sm mb-5 flex-1 line-clamp-2">{item.description}</p>
+                    
+                    {/* Location Footer */}
+                    <div className="flex items-center gap-1.5 text-white/50 text-[11px] font-medium mt-auto">
                       <FaMapMarkerAlt className="flex-shrink-0" />
                       <span className="truncate">{item.location?.addressText || item.donorId?.addressText || 'Location Unknown'}</span>
                     </div>
-                    
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                      {item.donorId?._id === user._id ? (
-                        <>
-                          {item.status === 'active' && item.requestedBy?.length > 0 && (
-                            <button onClick={() => setRequestsModal({ isOpen: true, donation: item })} className="flex-1 sm:flex-none px-3 py-2 rounded-xl text-xs font-bold bg-white text-teal-800 active:bg-gray-200 transition-colors flex items-center justify-center gap-1.5">
-                              <FaUsers /> <span className="bg-teal-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px]">{item.requestedBy.length}</span>
-                            </button>
-                          )}
-                          {item.status === 'pending' && (
-                            <button onClick={() => navigate(`/chat/${item._id}_${item.receiverId}`)} className="flex-1 sm:flex-none px-3 py-2 rounded-xl text-xs font-bold bg-white text-teal-800 active:bg-gray-200 transition-colors flex items-center justify-center gap-1.5">
-                              <FaCommentDots /> Chat
-                            </button>
-                          )}
-                          <button onClick={() => setFulfillModal({ isOpen: true, donationId: item._id, pin: '', rating: 5 })} className="p-2 rounded-xl bg-white/20 text-white hover:bg-white/30 border border-white/10 transition-colors"><FaCheckCircle className="text-lg" /></button>
-                          <button onClick={() => handleDeletePost(item._id)} className="p-2 rounded-xl bg-red-500/20 text-red-300 hover:bg-red-500/40 border border-red-500/20 transition-colors"><FaTrash className="text-lg" /></button>
-                        </>
-                      ) : (
-                        <>
-                          {item.status === 'active' ? (
-                            item.requestedBy?.some(req => req._id === user._id) ? (
-                              <button disabled className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold bg-black/40 text-white/50 border border-white/10">Pending</button>
-                            ) : (
-                              <button onClick={() => handleRequestItem(item._id)} className={`w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold transition-all flex justify-center items-center gap-1.5 ${buttonStyle}`}>
-                                <FaCommentDots /> {isRequest ? 'Offer Help' : 'Request'}
-                              </button>
-                            )
-                          ) : item.receiverId === user._id ? (
-                            <div className="flex w-full sm:w-auto justify-between items-center gap-2">
-                              <span className="text-[11px] font-bold text-teal-900 bg-white px-2.5 py-1 rounded-lg shrink-0 border border-white/20">PIN: {item.pickupPIN}</span>
-                              <button onClick={() => navigate(`/chat/${item._id}_${user._id}`)} className="flex-1 px-4 py-2 rounded-xl text-xs font-bold bg-white text-teal-800 hover:bg-gray-200 transition-colors flex justify-center items-center gap-1.5 border border-white/20">
-                                <FaCommentDots /> Chat
-                              </button>
-                            </div>
-                          ) : (
-                            <button disabled className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold bg-black/40 text-yellow-500/70 border border-white/10">Reserved</button>
-                          )}
-                        </>
-                      )}
-                    </div>
                   </div>
-                </div>
+
+                  {/* THE FULL WIDTH ACTION BANNER */}
+                  <div className={`w-full py-4 flex items-center justify-center gap-2 font-black uppercase tracking-[0.15em] text-[10px] md:text-[11px] transition-all duration-300 ${bannerClass}`}>
+                    {bannerIcon} {bannerText}
+                  </div>
+
+                </motion.div>
               );
             })}
           </div>
@@ -510,12 +517,11 @@ const Dashboard = () => {
           </div>
         </button>
 
-        {/* 1. SOS MODAL (Glassmorphism) */}
+        {/* SOS MODAL */}
         <AnimatePresence>
           {showSOS && (
             <div className="fixed inset-0 z-[3000] flex items-end sm:items-center justify-center p-0 sm:p-4">
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowSOS(false)} />
-              
               <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="relative w-full max-w-md bg-white/10 backdrop-blur-2xl border-t sm:border border-white/20 rounded-t-[2rem] sm:rounded-[2rem] p-6 sm:p-8 shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar text-white">
                 <div className="w-12 h-1.5 bg-white/30 rounded-full mx-auto mb-6 sm:hidden" />
                 <button type="button" onClick={() => setShowSOS(false)} className="hidden sm:block absolute top-6 right-6 text-white/50 hover:text-white"><FaTimes className="text-xl" /></button>
@@ -574,18 +580,14 @@ const Dashboard = () => {
           )}
         </AnimatePresence>
 
-        {/* 2. SECURE OTP MODAL (Glassmorphism) */}
+        {/* SECURE OTP MODAL */}
         <AnimatePresence>
           {fulfillModal.isOpen && (
             <div className="fixed inset-0 z-[3000] flex items-end sm:items-center justify-center p-0 sm:p-4">
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setFulfillModal({ isOpen: false, donationId: null, pin: '', rating: 5 })} />
-              
               <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="relative w-full max-w-sm bg-white/10 backdrop-blur-2xl border-t sm:border border-white/20 rounded-t-[2rem] sm:rounded-[2rem] p-6 sm:p-8 text-center shadow-2xl text-white">
                 <div className="w-12 h-1.5 bg-white/30 rounded-full mx-auto mb-6 sm:hidden" />
-                
-                <div className="w-14 h-14 bg-white/20 text-white rounded-full flex items-center justify-center text-2xl mx-auto mb-4 border border-white/20 shadow-inner">
-                  <FaLock />
-                </div>
+                <div className="w-14 h-14 bg-white/20 text-white rounded-full flex items-center justify-center text-2xl mx-auto mb-4 border border-white/20 shadow-inner"><FaLock /></div>
                 <h2 className="text-xl sm:text-2xl font-bold mb-1">Secure Exchange</h2>
                 <p className="text-white/70 text-xs font-medium leading-relaxed mb-6">Enter the 4-digit PIN provided by the receiver.</p>
 
@@ -610,17 +612,15 @@ const Dashboard = () => {
           )}
         </AnimatePresence>
 
-        {/* 3. REQUESTS MODAL (Glassmorphism) */}
+        {/* REQUESTS MODAL */}
         <AnimatePresence>
           {requestsModal.isOpen && requestsModal.donation && (
             <div className="fixed inset-0 z-[3000] flex items-end sm:items-center justify-center p-0 sm:p-4">
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setRequestsModal({ isOpen: false, donation: null })} />
-              
               <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="relative w-full max-w-md bg-white/10 backdrop-blur-2xl border-t sm:border border-white/20 rounded-t-[2rem] sm:rounded-[2rem] p-6 sm:p-8 shadow-2xl text-white">
                 <div className="w-12 h-1.5 bg-white/30 rounded-full mx-auto mb-6 sm:hidden" />
-                
                 <h2 className="text-xl sm:text-2xl font-bold mb-1">Community Requests</h2>
-                <p className="text-white/70 text-xs font-medium leading-relaxed mb-6">Choose a neighbor to connect with for <span className="text-white font-bold">"{requestsModal.donation.title}"</span>.</p>
+                <p className="text-white/70 text-xs font-medium leading-relaxed mb-6">Choose someone to connect with for <span className="text-white font-bold">"{requestsModal.donation.title}"</span>.</p>
 
                 <div className="space-y-3 max-h-[50vh] overflow-y-auto no-scrollbar pb-4">
                   {requestsModal.donation.requestedBy.map((requester) => (

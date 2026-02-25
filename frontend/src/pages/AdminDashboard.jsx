@@ -2,7 +2,8 @@ import { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import Layout from '../components/Layout';
-import { FaShieldAlt, FaChartPie, FaUsers, FaBoxOpen, FaTrash, FaSpinner, FaBan, FaUserShield, FaUserTimes, FaEnvelope } from 'react-icons/fa';
+import { FaShieldAlt, FaChartPie, FaUsers, FaBoxOpen, FaTrash, FaSpinner, FaBan, FaUserShield, FaUserTimes, FaEnvelope, FaExclamationTriangle } from 'react-icons/fa';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell, Legend } from 'recharts';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
 
@@ -78,6 +79,14 @@ const Admin = () => {
 
   if (!user || !user.isAdmin) return null;
 
+  // Pie Chart Colors
+  const COLORS = ['#14b8a6', '#3b82f6', '#ef4444'];
+  const pieData = stats ? [
+    { name: 'Donations', value: stats.totalDonations },
+    { name: 'Requests', value: stats.totalRequests },
+    { name: 'Active SOS', value: stats.activeSOS || 0 },
+  ] : [];
+
   return (
     <Layout>
       <div className="max-w-6xl mx-auto px-4 pb-32 min-h-screen text-white relative"> 
@@ -117,20 +126,78 @@ const Admin = () => {
         ) : (
           <div className="space-y-6">
             
-            {/* OVERVIEW TAB: Glassmorphism Cards */}
+            {/* OVERVIEW TAB */}
             {activeTab === 'overview' && stats && (
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                {[
-                  { title: "Total Users", value: stats.totalUsers, color: "text-blue-400" },
-                  { title: "Donations", value: stats.totalDonations, color: "text-teal-400" },
-                  { title: "Requests", value: stats.totalRequests, color: "text-yellow-400" },
-                  { title: "Fulfilled", value: stats.fulfilledItems, color: "text-green-400" },
-                ].map((stat, i) => (
-                  <div key={i} className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl md:rounded-[2rem] p-5 md:p-8 relative overflow-hidden group shadow-xl">
-                    <h3 className={`text-3xl md:text-6xl font-black ${stat.color} mb-1 md:mb-2 drop-shadow-md`}>{stat.value}</h3>
-                    <p className="text-white/70 text-[8px] md:text-[10px] uppercase font-black tracking-widest">{stat.title}</p>
+              <div className="space-y-6">
+                
+                {/* Top Metrics Row */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                  {[
+                    { title: "Total Users", value: stats.totalUsers, color: "text-blue-400" },
+                    { title: "Active SOS", value: stats.activeSOS || 0, color: "text-red-500", icon: <FaExclamationTriangle className="animate-pulse" /> },
+                    { title: "Missions Fulfilled", value: stats.fulfilledItems, color: "text-green-400" },
+                    { title: "Total Hub Content", value: stats.totalDonations + stats.totalRequests, color: "text-white" },
+                  ].map((stat, i) => (
+                    <div key={i} className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl md:rounded-[2rem] p-5 md:p-8 relative overflow-hidden group shadow-xl flex flex-col justify-between">
+                      <div className="flex items-center gap-2 mb-2">
+                        {stat.icon && <span className={stat.color}>{stat.icon}</span>}
+                        <p className="text-white/70 text-[8px] md:text-[10px] uppercase font-black tracking-widest">{stat.title}</p>
+                      </div>
+                      <h3 className={`text-4xl md:text-6xl font-black ${stat.color} drop-shadow-md`}>{stat.value}</h3>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Charts Row */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+                  
+                  {/* Growth Graph (Spans 2 columns) */}
+                  <div className="lg:col-span-2 bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-6 shadow-xl h-[400px] flex flex-col">
+                    <h3 className="text-sm font-black uppercase tracking-widest text-white/80 mb-6 drop-shadow-sm">30-Day Community Growth</h3>
+                    <div className="flex-1 w-full h-full">
+                      {stats.growthData && stats.growthData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={stats.growthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.4}/>
+                                <stop offset="95%" stopColor="#14b8a6" stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <XAxis dataKey="date" stroke="rgba(255,255,255,0.3)" tick={{fontSize: 10, fill: 'rgba(255,255,255,0.6)'}} tickLine={false} axisLine={false} />
+                            <YAxis stroke="rgba(255,255,255,0.3)" tick={{fontSize: 10, fill: 'rgba(255,255,255,0.6)'}} tickLine={false} axisLine={false} />
+                            <Tooltip 
+                              contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', color: '#fff' }}
+                              itemStyle={{ color: '#14b8a6', fontWeight: 'bold' }}
+                            />
+                            <Area type="monotone" dataKey="Users" stroke="#14b8a6" strokeWidth={3} fillOpacity={1} fill="url(#colorUsers)" />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-white/30 text-xs font-bold uppercase tracking-widest">Awaiting Intel...</div>
+                      )}
+                    </div>
                   </div>
-                ))}
+
+                  {/* Activity Distribution Pie Chart */}
+                  <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-6 shadow-xl h-[400px] flex flex-col">
+                    <h3 className="text-sm font-black uppercase tracking-widest text-white/80 mb-2 drop-shadow-sm">Activity Distribution</h3>
+                    <div className="flex-1 w-full h-full flex items-center justify-center">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={pieData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={5} dataKey="value" stroke="none">
+                            {pieData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', color: '#fff' }} itemStyle={{ fontWeight: 'bold' }}/>
+                          <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 'bold', color: 'rgba(255,255,255,0.8)' }}/>
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                </div>
               </div>
             )}
 
@@ -241,7 +308,11 @@ const Admin = () => {
                       {listings.map(l => (
                         <tr key={l._id} className="hover:bg-white/5 transition-colors">
                           <td className="px-6 py-4">
-                            <span className={`text-[9px] font-black uppercase px-2 py-1 rounded border ${l.listingType === 'request' ? 'bg-blue-900/40 text-blue-300 border-blue-500/30' : 'bg-teal-900/40 text-teal-300 border-teal-500/30'}`}>{l.listingType}</span>
+                            {l.isEmergency ? (
+                               <span className="text-[9px] font-black uppercase px-2 py-1 rounded border bg-red-900/40 text-red-400 border-red-500/30">SOS</span>
+                            ) : (
+                               <span className={`text-[9px] font-black uppercase px-2 py-1 rounded border ${l.listingType === 'request' ? 'bg-blue-900/40 text-blue-300 border-blue-500/30' : 'bg-teal-900/40 text-teal-300 border-teal-500/30'}`}>{l.listingType}</span>
+                            )}
                           </td>
                           <td className="px-6 py-4 font-bold text-white max-w-[200px] truncate">{l.title}</td>
                           <td className="px-6 py-4 text-white/80">{l.donorId?.name || 'Deleted User'}</td>
@@ -264,7 +335,11 @@ const Admin = () => {
                   {listings.map(l => (
                     <div key={l._id} className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-4 space-y-3 shadow-lg">
                        <div className="flex justify-between items-center">
-                         <span className={`text-[9px] font-black uppercase px-2 py-1 rounded border ${l.listingType === 'request' ? 'bg-blue-900/40 text-blue-300 border-blue-500/30' : 'bg-teal-900/40 text-teal-300 border-teal-500/30'}`}>{l.listingType}</span>
+                          {l.isEmergency ? (
+                             <span className="text-[9px] font-black uppercase px-2 py-1 rounded border bg-red-900/40 text-red-400 border-red-500/30">SOS</span>
+                          ) : (
+                             <span className={`text-[9px] font-black uppercase px-2 py-1 rounded border ${l.listingType === 'request' ? 'bg-blue-900/40 text-blue-300 border-blue-500/30' : 'bg-teal-900/40 text-teal-300 border-teal-500/30'}`}>{l.listingType}</span>
+                          )}
                          <span className={`text-[9px] font-black uppercase ${l.status === 'fulfilled' ? 'text-green-400' : 'text-yellow-400'}`}>{l.status}</span>
                        </div>
                        <h4 className="text-white font-bold leading-snug drop-shadow-sm">{l.title}</h4>

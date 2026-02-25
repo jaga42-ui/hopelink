@@ -2,15 +2,32 @@ const jwt = require('jsonwebtoken');
 const asyncHandler = require('express-async-handler');
 const User = require('../models/User');
 const Blast = require('../models/Blast'); 
-const webpush = require('web-push');      
 const { OAuth2Client } = require('google-auth-library');
-const nodemailer = require('nodemailer'); // 👉 NEW: Imported Nodemailer
+const nodemailer = require('nodemailer'); 
+const admin = require('firebase-admin'); // 👉 NEW: Imported Firebase Admin
 
 // 👉 Initialize the Google OAuth Client
 const client = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET
 );
+
+// 👉 INITIALIZE FIREBASE USING RENDER ENVIRONMENT VARIABLE
+if (!admin.apps.length) {
+  try {
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+      });
+      console.log('🔥 Firebase Admin Initialized successfully');
+    } else {
+      console.log('⚠️ FIREBASE_SERVICE_ACCOUNT env var missing. Push notifications disabled.');
+    }
+  } catch (error) {
+    console.log('⚠️ Firebase Admin setup failed:', error.message);
+  }
+}
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
@@ -162,16 +179,16 @@ const updateProfile = asyncHandler(async (req, res) => {
   } else { res.status(404); throw new Error('User not found'); }
 });
 
-// @desc    Save User's Web Push Subscription
-// @route   POST /api/auth/subscribe
+// 👉 NEW: Save User's Firebase Web Push Token
+// @route   POST /api/auth/fcm-token
 // @access  Private
-const savePushSubscription = asyncHandler(async (req, res) => {
+const saveFCMToken = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
   if (!user) { res.status(404); throw new Error('User not found'); }
 
-  user.pushSubscription = req.body; 
+  user.fcmToken = req.body.fcmToken; 
   await user.save();
-  res.status(200).json({ message: 'Push subscription saved successfully!' });
+  res.status(200).json({ message: 'Device securely registered for lock-screen alerts.' });
 });
 
 // @desc    Get current user profile
@@ -216,7 +233,7 @@ const getNearbyDonors = asyncHandler(async (req, res) => {
   res.json(donors);
 });
 
-// Send Emergency Blast to nearby donors
+// 👉 UPGRADED: Send Emergency Blast to nearby donors using Firebase
 // @route   POST /api/auth/emergency-blast
 const sendEmergencyBlast = asyncHandler(async (req, res) => {
   const { lat, lng, message, bloodGroup } = req.body;
@@ -230,6 +247,7 @@ const sendEmergencyBlast = asyncHandler(async (req, res) => {
     location: { type: 'Point', coordinates: [Number(lng), Number(lat)] }
   });
 
+  // Find users acting as donors within 20km who have an FCM Token
   const nearbyDonors = await User.find({
     location: {
       $near: {
@@ -237,21 +255,27 @@ const sendEmergencyBlast = asyncHandler(async (req, res) => {
         $maxDistance: 20000, 
       },
     },
-    activeRole: 'donor', _id: { $ne: req.user._id }, pushSubscription: { $ne: null } 
+    activeRole: 'donor', 
+    _id: { $ne: req.user._id }, 
+    fcmToken: { $exists: true, $ne: null } 
   });
 
-  const payload = JSON.stringify({
-    title: `🚨 URGENT: ${bloodGroup || 'Blood'} Needed Nearby`,
-    body: message, url: `/radar?blastId=${blast._id}` 
-  });
+  const tokens = nearbyDonors.map(donor => donor.fcmToken);
 
-  const notifications = nearbyDonors.map(donor => 
-    webpush.sendNotification(donor.pushSubscription, payload).catch(err => {
-      console.error(`Failed to send to ${donor.name}:`, err.message);
-    })
-  );
+  // If we found nearby users with registered phones, hit Firebase!
+  if (tokens.length > 0) {
+    const pushMessage = {
+      notification: {
+        title: `🚨 URGENT: ${bloodGroup || 'Help'} Needed Nearby`,
+        body: message,
+      },
+      tokens: tokens,
+    };
 
-  await Promise.all(notifications);
+    admin.messaging().sendEachForMulticast(pushMessage)
+      .then((response) => console.log(`🔥 Firebase Blast: Sent to ${response.successCount} devices.`))
+      .catch((error) => console.error('Firebase Blast Failed:', error));
+  }
 
   res.status(200).json({ success: true, blastId: blast._id, recipients: nearbyDonors.length });
 });
@@ -278,7 +302,7 @@ const respondToBlast = asyncHandler(async (req, res) => {
   res.json({ message: "Hero status confirmed! The requester has been notified." });
 });
 
-// 👉 NEW: Forgot Password (Send Email)
+// Forgot Password (Send Email)
 // @route   POST /api/auth/forgotpassword
 // @access  Public
 const forgotPassword = asyncHandler(async (req, res) => {
@@ -319,7 +343,7 @@ const forgotPassword = asyncHandler(async (req, res) => {
   res.json({ message: 'Password reset link sent to your email.' });
 });
 
-// 👉 NEW: Reset Password (Save new password)
+// Reset Password (Save new password)
 // @route   POST /api/auth/resetpassword/:id/:token
 // @access  Public
 const resetPassword = asyncHandler(async (req, res) => {
@@ -352,12 +376,12 @@ module.exports = {
   toggleRole, 
   updateProfile, 
   googleLogin, 
-  savePushSubscription, 
+  saveFCMToken, // <-- Swapped out the old one
   getMe,
   updateLocation, 
   getNearbyDonors,
   sendEmergencyBlast, 
   respondToBlast,
-  forgotPassword,  // <-- Added
-  resetPassword    // <-- Added
+  forgotPassword,  
+  resetPassword    
 };

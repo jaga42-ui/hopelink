@@ -6,14 +6,14 @@ const {
   toggleRole, 
   googleLogin, 
   updateProfile, 
-  savePushSubscription, 
   getMe,
   updateLocation,       
   getNearbyDonors,      
   sendEmergencyBlast,
   respondToBlast,
-  forgotPassword, // 👉 NEWLY IMPORTED
-  resetPassword   // 👉 NEWLY IMPORTED
+  forgotPassword, 
+  resetPassword,
+  saveFCMToken // 👉 NEW: Catches the Firebase token from the phone
 } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -23,14 +23,14 @@ router.post('/login', loginUser);
 router.post('/google', googleLogin);
 
 // Password Reset Routes (Public)
-router.post('/forgotpassword', forgotPassword); // 👉 Endpoint for sending email
-router.post('/resetpassword/:id/:token', resetPassword); // 👉 Endpoint for saving new password
+router.post('/forgotpassword', forgotPassword); 
+router.post('/resetpassword/:id/:token', resetPassword); 
 
-// Profile & Role Management
+// Profile, Role & Notifications
 router.put('/role', protect, toggleRole);
 router.put('/profile', protect, updateProfile);
 router.get('/profile', protect, getMe);
-router.post('/subscribe', protect, savePushSubscription);
+router.post('/fcm-token', protect, saveFCMToken); // 👉 NEW: Firebase Token Route
 
 // Map & Radar Routes
 router.put('/location', protect, updateLocation);
