@@ -26,7 +26,7 @@ import {
   FaClock,
   FaEdit,
   FaKey,
-  FaBell, // 👉 ADDED BELL ICON
+  FaBell,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -546,7 +546,7 @@ const Dashboard = () => {
   return (
     <Layout>
       <div className="max-w-6xl mx-auto px-4 pb-32 md:pb-24 relative min-h-screen text-white">
-        {/* 👉 REDESIGNED: Sleek Responder HUD Popups */}
+        {/* RESPONDER HUD */}
         <div className="fixed top-20 right-4 md:top-24 md:right-8 z-[100] w-56 md:w-64 space-y-3 pointer-events-none">
           <AnimatePresence>
             {responders.map((res, i) => (
@@ -576,7 +576,6 @@ const Dashboard = () => {
         {/* MOBILE HUD: HEADER */}
         <header className="pt-6 pb-4 flex flex-col gap-4">
           <div className="flex justify-between items-end">
-            {/* 👉 REDESIGNED: Removed double logo, added clean Overview text */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -589,20 +588,28 @@ const Dashboard = () => {
               </p>
             </motion.div>
 
+            {/* 👉 THE FIX: Mathematically perfect Flexbox Layout Toggle */}
             {!user.isAdmin && (
               <div
                 onClick={handleRoleToggle}
-                className="relative w-28 h-9 bg-slate-900 rounded-full border border-slate-700 flex items-center cursor-pointer p-1 overflow-hidden shrink-0 shadow-inner"
+                className={`relative w-28 h-9 bg-slate-950 rounded-full border border-slate-800 flex items-center cursor-pointer p-1 shrink-0 shadow-inner transition-colors ${
+                  isDonor ? "justify-start" : "justify-end"
+                }`}
               >
                 <motion.div
-                  animate={{ x: isDonor ? 0 : 64 }}
-                  className={`absolute w-12 h-7 rounded-full bg-gradient-to-r ${roleTheme.primary} shadow-md`}
+                  layout
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  className={`w-1/2 h-full rounded-full bg-gradient-to-r ${roleTheme.primary} shadow-md`}
                 />
-                <div className="z-10 w-full flex justify-around text-[9px] font-black uppercase tracking-widest text-white">
-                  <span className={isDonor ? "text-white" : "text-slate-400"}>
+                <div className="absolute inset-0 z-10 flex justify-between items-center px-2 text-[9px] font-black uppercase tracking-widest pointer-events-none">
+                  <span
+                    className={`w-1/2 text-center transition-colors duration-300 ${isDonor ? "text-white" : "text-slate-500"}`}
+                  >
                     Give
                   </span>
-                  <span className={!isDonor ? "text-white" : "text-slate-400"}>
+                  <span
+                    className={`w-1/2 text-center transition-colors duration-300 ${!isDonor ? "text-white" : "text-slate-500"}`}
+                  >
                     Take
                   </span>
                 </div>
@@ -610,9 +617,7 @@ const Dashboard = () => {
             )}
           </div>
 
-          {/* 👉 REDESIGNED: Sleeker, smaller action buttons and Bell Icon */}
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 items-center">
-            {/* The new Notification Bell Button */}
             {Notification.permission !== "granted" && (
               <button
                 onClick={handleRequestNotifications}
@@ -629,14 +634,25 @@ const Dashboard = () => {
             >
               <FaHeartbeat className="animate-pulse text-sm" /> Emergency SOS
             </button>
-            {isDonor && viewMode === "p2p" && (
+
+            {/* 👉 THE FIX: Dynamic Post Button (Shows for both Donor & Receiver!) */}
+            {viewMode === "p2p" && (
               <button
                 onClick={() => navigate("/donations")}
-                className="flex-shrink-0 px-4 py-2.5 sm:px-5 sm:py-2.5 bg-teal-600 hover:bg-teal-500 rounded-xl flex items-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest text-white shadow-lg border border-teal-500 transition-colors"
+                className={`flex-shrink-0 px-4 py-2.5 sm:px-5 sm:py-2.5 ${roleTheme.button} rounded-xl flex items-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-lg border ${roleTheme.border} transition-colors`}
               >
-                <FaBoxOpen className="text-sm" /> Create Post
+                {isDonor ? (
+                  <>
+                    <FaBoxOpen className="text-sm" /> Create Post
+                  </>
+                ) : (
+                  <>
+                    <FaHandsHelping className="text-sm" /> Request Item
+                  </>
+                )}
               </button>
             )}
+
             {user?.isAdmin && viewMode === "events" && (
               <button
                 onClick={() => {
@@ -756,12 +772,26 @@ const Dashboard = () => {
                                 <p className="text-sm font-black text-white leading-none">
                                   {item.donorId?.name}
                                 </p>
-                                <p
-                                  className={`text-[9px] font-black uppercase tracking-widest mt-1 text-slate-400`}
-                                >
-                                  {item.category}{" "}
-                                  {item.bloodGroup && `• ${item.bloodGroup}`}
-                                </p>
+                                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                                  {/* 👉 THE FIX: Dynamic Visual Badges */}
+                                  {item.isEmergency ? (
+                                    <span className="px-1.5 py-0.5 bg-red-950 text-red-500 border border-red-900 rounded-[4px] text-[8px] font-black uppercase tracking-widest">
+                                      SOS Alert
+                                    </span>
+                                  ) : item.listingType === "request" ? (
+                                    <span className="px-1.5 py-0.5 bg-blue-950 text-blue-400 border border-blue-900 rounded-[4px] text-[8px] font-black uppercase tracking-widest">
+                                      Requesting
+                                    </span>
+                                  ) : (
+                                    <span className="px-1.5 py-0.5 bg-teal-950 text-teal-400 border border-teal-900 rounded-[4px] text-[8px] font-black uppercase tracking-widest">
+                                      Offering
+                                    </span>
+                                  )}
+                                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                                    • {item.category}{" "}
+                                    {item.bloodGroup && `• ${item.bloodGroup}`}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                             {isMine && (
@@ -832,7 +862,6 @@ const Dashboard = () => {
                             )}
                         </div>
 
-                        {/* 👉 REDESIGNED ACTION BAR: Smaller py-3 spacing for mobile */}
                         <div
                           className={`p-4 mt-2 ${roleTheme.inputBg} border-t ${roleTheme.borderColor}`}
                         >
@@ -911,7 +940,11 @@ const Dashboard = () => {
                               onClick={() => handleRequestItem(item._id)}
                               className={`w-full py-3 rounded-xl flex items-center justify-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest transition-all ${isEmergency ? "bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/50" : roleTheme.button}`}
                             >
-                              <FaHandsHelping /> Send Signal
+                              <FaHandsHelping className="text-sm" />
+                              {/* 👉 THE FIX: Contextual Button Text */}
+                              {item.listingType === "request"
+                                ? "Offer Help"
+                                : "Request Item"}
                             </button>
                           )}
                         </div>
