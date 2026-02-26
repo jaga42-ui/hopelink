@@ -21,6 +21,7 @@ const Donations = () => {
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   
+  // 👉 THE FIX: Added lat and lng to state so map pins drop accurately
   const [formData, setFormData] = useState({
     listingType: user?.activeRole === 'donor' ? 'donation' : 'request',
     category: 'food',
@@ -28,6 +29,8 @@ const Donations = () => {
     description: '',
     quantity: '',
     addressText: user?.addressText || '',
+    lat: null,
+    lng: null,
     pickupTime: '',
     condition: 'New', 
     foodType: 'Veg',  
@@ -36,6 +39,10 @@ const Donations = () => {
     image: null
   });
 
+  // 👉 THE FIX: Added missing state for Location Autocomplete
+  const [suggestions, setSuggestions] = useState([]);
+  const typingTimeoutRef = useRef(null);
+
   // 👉 SOLID DARK THEME VARIABLES
   const isRequest = formData.listingType === 'request';
   const themeAccent = isRequest ? 'text-blue-400' : 'text-teal-400';
@@ -43,6 +50,43 @@ const Donations = () => {
   const themeHover = isRequest ? 'hover:bg-blue-500' : 'hover:bg-teal-500';
   const themeFocusBorder = isRequest ? 'focus:border-blue-500' : 'focus:border-teal-500';
   const themeContainerBorder = isRequest ? 'border-blue-900/50' : 'border-teal-900/50';
+
+  // 👉 THE FIX: Added missing Location Type function
+  const handleLocationType = (e) => {
+    const val = e.target.value;
+    
+    // Clear lat/lng as soon as they type to enforce accurate coordinate selection
+    setFormData((prev) => ({ ...prev, addressText: val, lat: null, lng: null }));
+
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    
+    if (val.length > 2) {
+      typingTimeoutRef.current = setTimeout(async () => {
+        try {
+          const { data } = await axios.get(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=4&email=hopelink.dev@example.com`
+          );
+          setSuggestions(data);
+        } catch (error) {
+          console.error("Autocomplete failed");
+        }
+      }, 600);
+    } else {
+      setSuggestions([]);
+    }
+  };
+
+  // 👉 THE FIX: Added missing Suggestion Click handler
+  const handleSelectSuggestion = (locationObj) => {
+    const cleanName = locationObj.display_name.split(",")[0];
+    setFormData((prev) => ({ 
+      ...prev, 
+      addressText: cleanName, 
+      lat: locationObj.lat, 
+      lng: locationObj.lon 
+    }));
+    setSuggestions([]);
+  };
 
   const handleGetLocation = () => {
     if (!navigator.geolocation) return toast.error('GPS not supported');
@@ -55,7 +99,7 @@ const Donations = () => {
           const { data } = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&email=hopelink.dev@example.com`);
           const cityString = data.address.city || data.address.town || data.address.village || data.address.state || 'Unknown Location';
           
-          setFormData(prev => ({ ...prev, addressText: cityString }));
+          setFormData(prev => ({ ...prev, addressText: cityString, lat: latitude, lng: longitude }));
           toast.success(`Location locked: ${cityString} 📍`);
         } catch (error) { toast.error("Could not resolve location"); } 
         finally { setIsFetchingLocation(false); }
@@ -80,6 +124,10 @@ const Donations = () => {
     e.preventDefault();
     if (!formData.title || !formData.description || !formData.addressText) {
       return toast.error("Please fill in all required fields.");
+    }
+
+    if (!formData.lat || !formData.lng) {
+      return toast.error("Please select a valid location from the dropdown or use GPS.");
     }
 
     setIsSubmitting(true);
@@ -244,7 +292,7 @@ const Donations = () => {
                 {suggestions.length > 0 && (
                   <div className="absolute z-[100] w-full mt-2 bg-slate-800 border border-slate-700 rounded-xl overflow-y-auto max-h-48 shadow-2xl">
                     {suggestions.map((s, index) => (
-                      <div key={index} onClick={() => handleSelectSuggestion(s.display_name)} className="px-5 py-3 text-sm text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer border-b border-slate-700 last:border-0 truncate">
+                      <div key={index} onClick={() => handleSelectSuggestion(s)} className="px-5 py-3 text-sm text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer border-b border-slate-700 last:border-0 truncate">
                         {s.display_name}
                       </div>
                     ))}
