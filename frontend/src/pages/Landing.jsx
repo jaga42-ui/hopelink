@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import { useEffect, useContext } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   FaHeartbeat,
@@ -12,8 +13,19 @@ import {
 } from "react-icons/fa";
 
 import logo from "../assets/logo.png";
+import AuthContext from "../context/AuthContext";
 
 const Landing = () => {
+  const { user } = useContext(AuthContext);
+  const navigate = useNavigate();
+
+  // 👉 THE FIX: Instantly bounce logged-in users to the Dashboard
+  useEffect(() => {
+    if (user && user.token) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, navigate]);
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: { opacity: 1, transition: { staggerChildren: 0.15 } },
@@ -35,7 +47,7 @@ const Landing = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white font-sans overflow-x-hidden relative selection:bg-teal-500 selection:text-white flex flex-col">
-      {/* Deep, Subtle Background Glows (No more washed-out glass) */}
+      {/* Deep, Subtle Background Glows */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-teal-900/20 blur-[120px] rounded-full pointer-events-none"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-900/10 blur-[120px] rounded-full pointer-events-none"></div>
 
@@ -52,7 +64,6 @@ const Landing = () => {
           </span>
         </Link>
 
-        {/* 👉 THE FIX: Removed 'hidden sm:flex' and tightened padding for mobile */}
         <div className="flex items-center gap-2 sm:gap-4">
           <Link
             to="/login"
