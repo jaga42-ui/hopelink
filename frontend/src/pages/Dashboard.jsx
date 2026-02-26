@@ -16,7 +16,6 @@ import {
   FaLocationArrow,
   FaCheckCircle,
   FaCheck,
-  FaCalendarAlt,
   FaLock,
   FaUsers,
   FaRunning,
@@ -27,6 +26,7 @@ import {
   FaClock,
   FaEdit,
   FaKey,
+  FaBell, // 👉 ADDED BELL ICON
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -172,7 +172,11 @@ const Dashboard = () => {
       setResponders((prev) => [...prev, data]);
       toast.success(`${data.donorName} is en route to help! 🦸‍♂️`, {
         duration: 8000,
-        style: { background: "#ef4444", color: "#fff", fontWeight: "bold" },
+        style: {
+          background: "#1e293b",
+          color: "#fff",
+          border: "1px solid #334155",
+        },
       });
     });
 
@@ -511,13 +515,9 @@ const Dashboard = () => {
     }
   };
 
-  // Push Notification Request Button Function
   const handleRequestNotifications = async () => {
     toast.loading("Requesting permission...", { id: "notify" });
     try {
-      // Re-trigger the Firebase function from AuthContext logic manually if needed,
-      // or instruct the user. Usually, logging out and logging back in works best
-      // if site data was cleared.
       toast.success(
         "Please log out and log back in to reactivate notifications.",
         { id: "notify" },
@@ -546,8 +546,8 @@ const Dashboard = () => {
   return (
     <Layout>
       <div className="max-w-6xl mx-auto px-4 pb-32 md:pb-24 relative min-h-screen text-white">
-        {/* RESPONDER HUD */}
-        <div className="fixed top-20 right-4 md:top-24 md:right-8 z-[100] w-56 md:w-72 space-y-3 pointer-events-none">
+        {/* 👉 REDESIGNED: Sleek Responder HUD Popups */}
+        <div className="fixed top-20 right-4 md:top-24 md:right-8 z-[100] w-56 md:w-64 space-y-3 pointer-events-none">
           <AnimatePresence>
             {responders.map((res, i) => (
               <motion.div
@@ -555,14 +555,14 @@ const Dashboard = () => {
                 initial={{ x: 100, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                className="bg-red-600 border border-red-500 p-3 md:p-4 rounded-xl shadow-2xl flex items-center gap-3 pointer-events-auto"
+                className="bg-slate-900 border-l-4 border-l-red-500 border-y border-r border-slate-800 p-3 md:p-4 rounded-xl shadow-[0_5px_20px_rgba(220,38,38,0.15)] flex items-center gap-3 pointer-events-auto"
               >
-                <div className="w-8 h-8 md:w-10 md:h-10 bg-white/20 rounded-full flex items-center justify-center text-white shrink-0">
-                  <FaRunning className="text-lg md:text-xl" />
+                <div className="w-8 h-8 md:w-10 md:h-10 bg-red-500/10 rounded-full flex items-center justify-center text-red-500 shrink-0">
+                  <FaRunning className="text-sm md:text-base" />
                 </div>
                 <div className="flex-1 overflow-hidden">
-                  <p className="text-[8px] md:text-[10px] text-white/70 font-black uppercase tracking-widest">
-                    En Route
+                  <p className="text-[8px] md:text-[10px] text-red-400 font-black uppercase tracking-widest">
+                    Hero En Route
                   </p>
                   <p className="text-xs md:text-sm font-bold text-white truncate">
                     {res.donorName}
@@ -575,25 +575,30 @@ const Dashboard = () => {
 
         {/* MOBILE HUD: HEADER */}
         <header className="pt-6 pb-4 flex flex-col gap-4">
-          <div className="flex justify-between items-center">
-            <motion.h1
+          <div className="flex justify-between items-end">
+            {/* 👉 REDESIGNED: Removed double logo, added clean Overview text */}
+            <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="text-3xl font-black text-white tracking-tight"
             >
-              HOPE<span className={roleTheme.text}>LINK.</span>
-            </motion.h1>
+              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-none">
+                Dashboard
+              </h1>
+              <p className="text-slate-400 text-[10px] sm:text-xs font-bold tracking-widest uppercase mt-1">
+                Welcome back, {user?.name?.split(" ")[0]}
+              </p>
+            </motion.div>
 
             {!user.isAdmin && (
               <div
                 onClick={handleRoleToggle}
-                className="relative w-32 h-10 bg-slate-900 rounded-full border border-slate-700 flex items-center cursor-pointer p-1 overflow-hidden shrink-0 shadow-inner"
+                className="relative w-28 h-9 bg-slate-900 rounded-full border border-slate-700 flex items-center cursor-pointer p-1 overflow-hidden shrink-0 shadow-inner"
               >
                 <motion.div
-                  animate={{ x: isDonor ? 0 : 76 }}
-                  className={`absolute w-14 h-8 rounded-full bg-gradient-to-r ${roleTheme.primary} shadow-md`}
+                  animate={{ x: isDonor ? 0 : 64 }}
+                  className={`absolute w-12 h-7 rounded-full bg-gradient-to-r ${roleTheme.primary} shadow-md`}
                 />
-                <div className="z-10 w-full flex justify-around text-[10px] font-black uppercase tracking-widest text-white">
+                <div className="z-10 w-full flex justify-around text-[9px] font-black uppercase tracking-widest text-white">
                   <span className={isDonor ? "text-white" : "text-slate-400"}>
                     Give
                   </span>
@@ -605,19 +610,31 @@ const Dashboard = () => {
             )}
           </div>
 
-          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+          {/* 👉 REDESIGNED: Sleeker, smaller action buttons and Bell Icon */}
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 items-center">
+            {/* The new Notification Bell Button */}
+            {Notification.permission !== "granted" && (
+              <button
+                onClick={handleRequestNotifications}
+                title="Enable Push Alerts"
+                className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 bg-slate-900 hover:bg-slate-800 border border-orange-500/50 text-orange-500 hover:text-orange-400 rounded-xl flex items-center justify-center transition-all shadow-[0_0_15px_rgba(249,115,22,0.15)] active:scale-90"
+              >
+                <FaBell className="text-sm sm:text-base animate-pulse" />
+              </button>
+            )}
+
             <button
               onClick={() => setShowSOS(true)}
-              className="flex-shrink-0 px-5 py-3 bg-red-600 hover:bg-red-500 rounded-2xl flex items-center gap-2 font-black text-xs uppercase tracking-widest text-white shadow-lg border border-red-500 transition-colors"
+              className="flex-shrink-0 px-4 py-2.5 sm:px-5 sm:py-2.5 bg-red-600 hover:bg-red-500 rounded-xl flex items-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest text-white shadow-lg border border-red-500 transition-colors"
             >
-              <FaHeartbeat className="animate-pulse" /> Emergency SOS
+              <FaHeartbeat className="animate-pulse text-sm" /> Emergency SOS
             </button>
             {isDonor && viewMode === "p2p" && (
               <button
                 onClick={() => navigate("/donations")}
-                className="flex-shrink-0 px-5 py-3 bg-teal-600 hover:bg-teal-500 rounded-2xl flex items-center gap-2 font-black text-xs uppercase tracking-widest text-white shadow-lg border border-teal-500 transition-colors"
+                className="flex-shrink-0 px-4 py-2.5 sm:px-5 sm:py-2.5 bg-teal-600 hover:bg-teal-500 rounded-xl flex items-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest text-white shadow-lg border border-teal-500 transition-colors"
               >
-                <FaBoxOpen /> Create Post
+                <FaBoxOpen className="text-sm" /> Create Post
               </button>
             )}
             {user?.isAdmin && viewMode === "events" && (
@@ -626,42 +643,33 @@ const Dashboard = () => {
                   setEditingEventId(null);
                   setShowEventModal(true);
                 }}
-                className="flex-shrink-0 px-5 py-3 bg-purple-600 hover:bg-purple-500 rounded-2xl flex items-center gap-2 font-black text-xs uppercase tracking-widest text-white shadow-lg border border-purple-500 transition-colors"
+                className="flex-shrink-0 px-4 py-2.5 sm:px-5 sm:py-2.5 bg-purple-600 hover:bg-purple-500 rounded-xl flex items-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest text-white shadow-lg border border-purple-500 transition-colors"
               >
-                <FaCalendarPlus /> Post Drive
+                <FaCalendarPlus className="text-sm" /> Post Drive
               </button>
             )}
             {isInstallable && (
               <button
                 onClick={handleInstallClick}
-                className="flex-shrink-0 px-5 py-3 bg-slate-700 hover:bg-slate-600 rounded-2xl flex items-center gap-2 font-black text-xs uppercase tracking-widest text-white shadow-lg border border-slate-600 transition-colors"
+                className="flex-shrink-0 px-4 py-2.5 sm:px-5 sm:py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl flex items-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest text-white shadow-lg border border-slate-700 transition-colors"
               >
-                <FaDownload /> App
-              </button>
-            )}
-            {/* If notifications are disabled, show a button to fix it */}
-            {Notification.permission !== "granted" && (
-              <button
-                onClick={handleRequestNotifications}
-                className="flex-shrink-0 px-5 py-3 bg-orange-600 hover:bg-orange-500 rounded-2xl flex items-center gap-2 font-black text-xs uppercase tracking-widest text-white shadow-lg border border-orange-500 transition-colors"
-              >
-                <FaBullhorn /> Enable Alerts
+                <FaDownload className="text-sm" /> App
               </button>
             )}
           </div>
         </header>
 
         {/* FEED TOGGLE */}
-        <div className="flex bg-slate-900 p-1 rounded-2xl border border-slate-800 mb-6 shadow-inner">
+        <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 mb-6 shadow-inner">
           <button
             onClick={() => setViewMode("p2p")}
-            className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${viewMode === "p2p" ? "bg-teal-600 text-white shadow-md" : "text-slate-400 hover:text-white"}`}
+            className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-[0.2em] transition-all ${viewMode === "p2p" ? "bg-teal-600 text-white shadow-md" : "text-slate-400 hover:text-white"}`}
           >
             Community
           </button>
           <button
             onClick={() => setViewMode("events")}
-            className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${viewMode === "events" ? "bg-teal-600 text-white shadow-md" : "text-slate-400 hover:text-white"}`}
+            className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-[0.2em] transition-all ${viewMode === "events" ? "bg-teal-600 text-white shadow-md" : "text-slate-400 hover:text-white"}`}
           >
             Events
           </button>
@@ -680,7 +688,7 @@ const Dashboard = () => {
                   <button
                     key={cat}
                     onClick={() => setFilterCategory(cat)}
-                    className={`px-5 py-2.5 rounded-xl font-extrabold text-[11px] whitespace-nowrap transition-colors ${filterCategory === cat ? "bg-teal-600 text-white" : "bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700"}`}
+                    className={`px-5 py-2 rounded-xl font-extrabold text-[10px] sm:text-[11px] whitespace-nowrap transition-colors ${filterCategory === cat ? "bg-teal-600 text-white" : "bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700"}`}
                   >
                     {cat}
                   </button>
@@ -689,7 +697,7 @@ const Dashboard = () => {
               <select
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value)}
-                className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-[11px] font-bold outline-none cursor-pointer focus:border-teal-500"
+                className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-[10px] sm:text-[11px] font-bold outline-none cursor-pointer focus:border-teal-500"
               >
                 <option value="urgent" className="text-white">
                   Urgent First
@@ -727,7 +735,7 @@ const Dashboard = () => {
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.9 }}
-                        className={`relative overflow-hidden flex flex-col rounded-[2.5rem] border ${roleTheme.cardBg} transition-all shadow-lg ${isEmergency ? "border-red-900 ring-1 ring-red-900/50 shadow-red-900/10" : roleTheme.borderColor}`}
+                        className={`relative overflow-hidden flex flex-col rounded-[2rem] border ${roleTheme.cardBg} transition-all shadow-lg ${isEmergency ? "border-red-900 ring-1 ring-red-900/50 shadow-red-900/10" : roleTheme.borderColor}`}
                       >
                         <div className="p-5 flex-1 flex flex-col">
                           <div className="flex justify-between items-start mb-4">
@@ -749,7 +757,7 @@ const Dashboard = () => {
                                   {item.donorId?.name}
                                 </p>
                                 <p
-                                  className={`text-[10px] font-black uppercase tracking-widest mt-1 text-slate-400`}
+                                  className={`text-[9px] font-black uppercase tracking-widest mt-1 text-slate-400`}
                                 >
                                   {item.category}{" "}
                                   {item.bloodGroup && `• ${item.bloodGroup}`}
@@ -759,22 +767,22 @@ const Dashboard = () => {
                             {isMine && (
                               <button
                                 onClick={() => handleDeletePost(item._id)}
-                                className="w-10 h-10 rounded-2xl bg-slate-800 border border-slate-700 text-slate-400 hover:text-red-400 hover:bg-red-900/20 flex items-center justify-center active:scale-90 transition-all shrink-0"
+                                className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 text-slate-400 hover:text-red-400 hover:bg-red-900/20 flex items-center justify-center active:scale-90 transition-all shrink-0"
                               >
-                                <FaTrash size={14} />
+                                <FaTrash size={12} />
                               </button>
                             )}
                           </div>
 
                           {item.image ? (
-                            <div className="w-full h-44 rounded-[2rem] overflow-hidden mb-4 relative shrink-0 border border-slate-800">
+                            <div className="w-full h-40 rounded-2xl overflow-hidden mb-4 relative shrink-0 border border-slate-800">
                               <img
                                 src={optimizeImageUrl(item.image)}
                                 className="w-full h-full object-cover"
                                 alt="intel"
                               />
                               {isEmergency && (
-                                <div className="absolute top-3 left-3 px-3 py-1 bg-red-600 rounded-full text-[8px] font-black uppercase text-white shadow-xl">
+                                <div className="absolute top-3 left-3 px-3 py-1 bg-red-600 rounded-lg text-[8px] font-black uppercase text-white shadow-xl">
                                   SOS
                                 </div>
                               )}
@@ -790,7 +798,7 @@ const Dashboard = () => {
                             )
                           )}
 
-                          <h3 className="text-xl font-black text-white leading-tight mb-2 line-clamp-1">
+                          <h3 className="text-lg font-black text-white leading-tight mb-2 line-clamp-1">
                             {item.title}
                           </h3>
                           <p className="text-slate-300 text-xs leading-relaxed line-clamp-2 mb-4 flex-1">
@@ -806,25 +814,25 @@ const Dashboard = () => {
                             </span>
                           </div>
 
-                          {/* 👉 THE REAL FIX: DISPLAY PIN TO THE APPROVED RECEIVER ONLY */}
+                          {/* DISPLAY PIN TO APPROVED RECEIVER ONLY */}
                           {isApprovedReceiver &&
                             item.pickupPIN &&
                             item.status === "pending" && (
-                              <div className="mt-4 bg-slate-950 border border-slate-800 rounded-2xl p-3 flex items-center justify-between shadow-inner">
+                              <div className="mt-4 bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-center justify-between shadow-inner">
                                 <div className="flex items-center gap-2 text-slate-400">
                                   <FaKey className="text-teal-500 animate-pulse" />
-                                  <span className="text-[10px] font-black uppercase tracking-widest">
-                                    Give this PIN to Donor:
+                                  <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest">
+                                    Give PIN to Donor:
                                   </span>
                                 </div>
-                                <span className="text-xl font-black tracking-[0.2em] text-white bg-slate-800 border border-slate-700 px-4 py-1.5 rounded-xl shadow-md">
+                                <span className="text-lg font-black tracking-[0.2em] text-white bg-slate-800 border border-slate-700 px-3 py-1 rounded-lg shadow-md">
                                   {item.pickupPIN}
                                 </span>
                               </div>
                             )}
                         </div>
 
-                        {/* ACTION BAR */}
+                        {/* 👉 REDESIGNED ACTION BAR: Smaller py-3 spacing for mobile */}
                         <div
                           className={`p-4 mt-2 ${roleTheme.inputBg} border-t ${roleTheme.borderColor}`}
                         >
@@ -832,7 +840,7 @@ const Dashboard = () => {
                             item.status === "fulfilled" ? (
                               <button
                                 disabled
-                                className="w-full py-4 rounded-3xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest transition-all bg-slate-900 text-green-500 border border-slate-800"
+                                className="w-full py-3 rounded-xl flex items-center justify-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest transition-all bg-slate-900 text-green-500 border border-slate-800"
                               >
                                 <FaCheckCircle /> Mission Accomplished
                               </button>
@@ -845,7 +853,8 @@ const Dashboard = () => {
                                       donation: item,
                                     })
                                   }
-                                  className={`flex-1 py-4 rounded-3xl flex items-center justify-center gap-2 font-black text-xs uppercase tracking-widest transition-all ${item.requestedBy?.length > 0 ? "bg-slate-800 text-white hover:bg-slate-700 border border-slate-700 shadow-md" : "bg-slate-900 text-slate-600 border border-slate-800 cursor-not-allowed"}`}
+                                  disabled={!item.requestedBy?.length}
+                                  className={`flex-1 py-3 rounded-xl flex items-center justify-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest transition-all ${item.requestedBy?.length > 0 ? "bg-slate-800 text-white hover:bg-slate-700 border border-slate-700 shadow-md" : "bg-slate-900 text-slate-600 border border-slate-800 cursor-not-allowed"}`}
                                 >
                                   <FaUsers /> {item.requestedBy?.length || 0}
                                 </button>
@@ -860,7 +869,7 @@ const Dashboard = () => {
                                         rating: 5,
                                       })
                                     }
-                                    className="flex-[2] py-4 rounded-3xl flex items-center justify-center gap-2 font-black text-xs uppercase tracking-widest transition-all bg-yellow-600 hover:bg-yellow-500 text-white shadow-lg shadow-yellow-900/50"
+                                    className="flex-[2] py-3 rounded-xl flex items-center justify-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest transition-all bg-yellow-600 hover:bg-yellow-500 text-white shadow-lg shadow-yellow-900/50"
                                   >
                                     <FaCheckCircle /> Verify PIN
                                   </button>
@@ -870,7 +879,7 @@ const Dashboard = () => {
                           ) : item.status === "fulfilled" ? (
                             <button
                               disabled
-                              className="w-full py-4 rounded-3xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest bg-slate-900 text-slate-600 border border-slate-800 cursor-not-allowed"
+                              className="w-full py-3 rounded-xl flex items-center justify-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest bg-slate-900 text-slate-600 border border-slate-800 cursor-not-allowed"
                             >
                               <FaLock /> Fulfilled
                             </button>
@@ -885,7 +894,7 @@ const Dashboard = () => {
                                   },
                                 })
                               }
-                              className="w-full py-4 rounded-3xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest transition-all bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/50"
+                              className="w-full py-3 rounded-xl flex items-center justify-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest transition-all bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/50"
                             >
                               <FaCommentDots className="text-lg" /> Open Secure
                               Chat
@@ -893,14 +902,14 @@ const Dashboard = () => {
                           ) : alreadyReq ? (
                             <button
                               disabled
-                              className="w-full py-4 rounded-3xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest bg-slate-800 text-teal-500 border border-teal-900 cursor-default"
+                              className="w-full py-3 rounded-xl flex items-center justify-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest bg-slate-800 text-teal-500 border border-teal-900 cursor-default"
                             >
                               <FaCheck /> Awaiting Approval
                             </button>
                           ) : (
                             <button
                               onClick={() => handleRequestItem(item._id)}
-                              className={`w-full py-4 rounded-3xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest transition-all ${isEmergency ? "bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/50" : roleTheme.button}`}
+                              className={`w-full py-3 rounded-xl flex items-center justify-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest transition-all ${isEmergency ? "bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/50" : roleTheme.button}`}
                             >
                               <FaHandsHelping /> Send Signal
                             </button>
@@ -917,7 +926,7 @@ const Dashboard = () => {
                 <button
                   onClick={loadMoreListings}
                   disabled={loadingMore}
-                  className="px-10 py-4 bg-slate-900 border border-slate-800 rounded-3xl text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 hover:text-white hover:bg-slate-800 transition-all flex items-center gap-3 shadow-md"
+                  className="px-8 py-3 bg-slate-900 border border-slate-800 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 hover:text-white hover:bg-slate-800 transition-all flex items-center gap-3 shadow-md"
                 >
                   {loadingMore ? (
                     <FaSpinner className="animate-spin" />
@@ -963,11 +972,10 @@ const Dashboard = () => {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 20 }}
-                        className="group relative overflow-hidden rounded-[2.5rem] border border-slate-800 bg-slate-900 flex flex-col shadow-lg"
+                        className="group relative overflow-hidden rounded-[2rem] border border-slate-800 bg-slate-900 flex flex-col shadow-lg"
                       >
-                        {/* Event UI Render... */}
                         {event.image ? (
-                          <div className="h-56 w-full relative overflow-hidden shrink-0 border-b border-slate-800">
+                          <div className="h-48 w-full relative overflow-hidden shrink-0 border-b border-slate-800">
                             <img
                               src={optimizeImageUrl(event.image)}
                               className="w-full h-full object-cover grayscale-[20%] group-hover:grayscale-0 transition-all duration-700"
@@ -979,15 +987,15 @@ const Dashboard = () => {
                                 <>
                                   <button
                                     onClick={() => openEditEventModal(event)}
-                                    className="w-10 h-10 rounded-2xl bg-slate-900/80 backdrop-blur-md border border-slate-700 text-white flex items-center justify-center hover:bg-slate-800 active:scale-90"
+                                    className="w-8 h-8 rounded-xl bg-slate-900/80 backdrop-blur-md border border-slate-700 text-white flex items-center justify-center hover:bg-slate-800 active:scale-90"
                                   >
-                                    <FaEdit size={14} />
+                                    <FaEdit size={12} />
                                   </button>
                                   <button
                                     onClick={() => handleDeleteEvent(event._id)}
-                                    className="w-10 h-10 rounded-2xl bg-red-900/80 backdrop-blur-md border border-red-800 text-red-300 flex items-center justify-center hover:bg-red-800 hover:text-white active:scale-90"
+                                    className="w-8 h-8 rounded-xl bg-red-900/80 backdrop-blur-md border border-red-800 text-red-300 flex items-center justify-center hover:bg-red-800 hover:text-white active:scale-90"
                                   >
-                                    <FaTrash size={14} />
+                                    <FaTrash size={12} />
                                   </button>
                                 </>
                               )}
@@ -1002,13 +1010,13 @@ const Dashboard = () => {
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => openEditEventModal(event)}
-                                  className="w-8 h-8 rounded-full bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 flex items-center justify-center active:scale-90"
+                                  className="w-8 h-8 rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 flex items-center justify-center active:scale-90"
                                 >
                                   <FaEdit size={12} />
                                 </button>
                                 <button
                                   onClick={() => handleDeleteEvent(event._id)}
-                                  className="w-8 h-8 rounded-full bg-red-900/30 text-red-400 hover:bg-red-900 hover:text-white flex items-center justify-center active:scale-90"
+                                  className="w-8 h-8 rounded-lg bg-red-900/30 text-red-400 hover:bg-red-900 hover:text-white flex items-center justify-center active:scale-90"
                                 >
                                   <FaTrash size={12} />
                                 </button>
@@ -1018,7 +1026,7 @@ const Dashboard = () => {
                         )}
                         <div className="p-6 flex-1 flex flex-col">
                           <div className="flex gap-4 items-start mb-6">
-                            <div className="bg-slate-800 border border-slate-700 rounded-2xl p-3 flex flex-col items-center justify-center w-16 shadow-md shrink-0">
+                            <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col items-center justify-center w-16 shadow-md shrink-0">
                               <span className="text-[9px] font-black uppercase text-purple-400">
                                 {new Date(event.eventDate).toLocaleDateString(
                                   "en-US",
@@ -1030,7 +1038,7 @@ const Dashboard = () => {
                               </span>
                             </div>
                             <div>
-                              <h3 className="font-black text-xl text-white leading-tight mb-2">
+                              <h3 className="font-black text-lg text-white leading-tight mb-2">
                                 {event.title}
                               </h3>
                               <div className="flex flex-col gap-1 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
@@ -1062,7 +1070,7 @@ const Dashboard = () => {
                                   event.organizationId?.name?.charAt(0)
                                 )}
                               </div>
-                              <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                              <span className="text-[10px] sm:text-[11px] font-bold text-slate-300 uppercase tracking-wider">
                                 {event.organizationId?.name}
                               </span>
                             </div>

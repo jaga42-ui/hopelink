@@ -3,8 +3,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 
-// 👉 IMPORT THE NEW MASTER LOADER
+// 👉 IMPORT THE NEW MASTER LOADER & ERROR BOUNDARY
 import Loader from './components/Loader';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // 👉 LAZY LOADED PAGES: These only download when the user clicks them!
 const CreateDonation = lazy(() => import('./pages/CreateDonation'));
@@ -22,6 +23,8 @@ const BloodBank = lazy(() => import('./pages/BloodBank'));
 const Inbox = lazy(() => import('./pages/Inbox')); 
 const Leaderboard = lazy(() => import('./pages/Leaderboard'));
 const BloodRadar = lazy(() => import('./pages/BloodRadar'));
+// 👉 NEW: Lazy load the 404 Page
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 function App() {
   return (
@@ -29,35 +32,41 @@ function App() {
       <Router>
         <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
         
-        {/* 👉 SUSPENSE WRAPPER: Shows the glowing loader during page transitions */}
-        <Suspense fallback={<Loader fullScreen={true} text="Connecting to Network..." />}>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<Landing />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/forgotpassword" element={<ForgotPassword />} />
-            <Route path="/resetpassword/:resettoken" element={<ResetPassword />} />
-            
-            {/* Main App Routes */}
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/leaderboard" element={<Leaderboard />} />
-            <Route path="/radar" element={<BloodRadar />} />
-            <Route path="/profile" element={<Profile />} />
-            
-            {/* Form / Posting Routes */}
-            <Route path="/donate" element={<CreateDonation />} /> {/* Older form */}
-            <Route path="/donations" element={<Donations />} />    {/* 👉 New Glassmorphism Form */}
-            <Route path="/blood-bank" element={<BloodBank />} />
-            
-            {/* Chat Routes */}
-            <Route path="/chat/inbox" element={<Inbox />} />
-            <Route path="/chat/:donationId" element={<Chat />} />
-            
-            {/* Admin Command Center */}
-            <Route path="/admin" element={<AdminDashboard />} />
-          </Routes>
-        </Suspense>
+        {/* 👉 GLOBAL ERROR BOUNDARY: Catches crashes so the app doesn't white-screen */}
+        <ErrorBoundary>
+          {/* 👉 SUSPENSE WRAPPER: Shows the glowing loader during page transitions */}
+          <Suspense fallback={<Loader fullScreen={true} text="Connecting to Network..." />}>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<Landing />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/forgotpassword" element={<ForgotPassword />} />
+              <Route path="/resetpassword/:resettoken" element={<ResetPassword />} />
+              
+              {/* Main App Routes */}
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/leaderboard" element={<Leaderboard />} />
+              <Route path="/radar" element={<BloodRadar />} />
+              <Route path="/profile" element={<Profile />} />
+              
+              {/* Form / Posting Routes */}
+              <Route path="/donate" element={<CreateDonation />} /> {/* Older form */}
+              <Route path="/donations" element={<Donations />} />    {/* 👉 New Glassmorphism Form */}
+              <Route path="/blood-bank" element={<BloodBank />} />
+              
+              {/* Chat Routes */}
+              <Route path="/chat/inbox" element={<Inbox />} />
+              <Route path="/chat/:donationId" element={<Chat />} />
+              
+              {/* Admin Command Center */}
+              <Route path="/admin" element={<AdminDashboard />} />
+
+              {/* 👉 404 CATCH-ALL ROUTE: Must be at the very bottom! */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
         
       </Router>
     </AuthProvider>

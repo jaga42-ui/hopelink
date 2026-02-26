@@ -18,13 +18,24 @@ export const requestFirebaseToken = async () => {
   try {
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
-      // 👉 INJECTED YOUR VAPID KEY HERE
-      const currentToken = await getToken(messaging, { 
-        vapidKey: 'BDCZCEH2kk3zEgnxGe9KGUjFuleKJMCmLyDP-zqBxJPGyn5hoCRdGoYWbL8qgiWQ3YV6wh1v94UVus5jFjVTlgU' 
+      
+      // 👉 THE FIX: Force the browser to register your background worker manually
+      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+        scope: '/'
       });
+
+      // 👉 Hand the registered worker directly to Firebase
+      const currentToken = await getToken(messaging, { 
+        vapidKey: 'BDCZCEH2kk3zEgnxGe9KGUjFuleKJMCmLyDP-zqBxJPGyn5hoCRdGoYWbL8qgiWQ3YV6wh1v94UVus5jFjVTlgU',
+        serviceWorkerRegistration: registration 
+      });
+
       if (currentToken) {
+        console.log("🔥 Token Generated Successfully linked to Background Worker");
         return currentToken;
       }
+    } else {
+      console.log("Notification permission not granted.");
     }
     return null;
   } catch (error) {

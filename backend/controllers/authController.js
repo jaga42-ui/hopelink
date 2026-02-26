@@ -4,7 +4,7 @@ const User = require('../models/User');
 const Blast = require('../models/Blast'); 
 const { OAuth2Client } = require('google-auth-library');
 const nodemailer = require('nodemailer'); 
-const admin = require('firebase-admin'); // 👉 NEW: Imported Firebase Admin
+const admin = require('firebase-admin');
 
 // 👉 Initialize the Google OAuth Client
 const client = new OAuth2Client(
@@ -36,7 +36,7 @@ const generateToken = (id) => {
 // @desc    Register new user
 // @route   POST /api/auth/register
 const registerUser = asyncHandler(async (req, res) => {
-  const { name, email, password, phone, activeRole } = req.body;
+  const { name, email, password, phone, activeRole, bloodGroup } = req.body;
 
   if (!name || !email || !password || !phone) {
     res.status(400); throw new Error('Please add all required fields');
@@ -47,10 +47,21 @@ const registerUser = asyncHandler(async (req, res) => {
     res.status(400); throw new Error('Email already registered');
   }
 
+  // 👉 THE FIX: Provide a default geographic Point so Mongoose doesn't crash on the 2dsphere index!
   const user = await User.create({
-    name, email, password, phone,
+    name, 
+    email, 
+    password, 
+    phone,
+    bloodGroup: bloodGroup || undefined, // Allow optional blood group
     activeRole: activeRole || 'donor',
-    isAdmin: false, profilePic: '', addressText: '' 
+    isAdmin: false, 
+    profilePic: '', 
+    addressText: '',
+    location: {
+      type: "Point",
+      coordinates: [0, 0] // Default [lng, lat] to 0,0 until they turn on GPS
+    }
   });
 
   if (user) {
@@ -135,6 +146,10 @@ const googleLogin = asyncHandler(async (req, res) => {
         phone: 'Not Provided',
         activeRole: 'donor',
         points: 10, 
+        location: {
+          type: "Point",
+          coordinates: [0, 0] // Default [lng, lat]
+        }
       });
     } else {
       if (!user.profilePic && picture) {
@@ -369,14 +384,13 @@ const resetPassword = asyncHandler(async (req, res) => {
   }
 });
 
-// 👉 Export EVERYTHING
 module.exports = { 
   registerUser, 
   loginUser, 
   toggleRole, 
   updateProfile, 
   googleLogin, 
-  saveFCMToken, // <-- Swapped out the old one
+  saveFCMToken,
   getMe,
   updateLocation, 
   getNearbyDonors,

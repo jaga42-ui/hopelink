@@ -26,12 +26,18 @@ const Register = () => {
 
     setIsLoading(true);
     try {
-      const { data } = await api.post('/auth/register', { ...formData, activeRole });
+      // 👉 THE FIX: Clean the payload. If bloodGroup is empty, remove it so the backend doesn't crash validating ""
+      const payload = { ...formData, activeRole };
+      if (!payload.bloodGroup) {
+        delete payload.bloodGroup;
+      }
+
+      const { data } = await api.post('/auth/register', payload);
       login(data);
       toast.success('Welcome to the HopeLink Community!');
       navigate('/dashboard');
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Registration failed');
+      toast.error(error.response?.data?.message || 'Registration failed. Please check your inputs.');
     } finally {
       setIsLoading(false);
     }
@@ -43,7 +49,6 @@ const Register = () => {
   };
 
   return (
-    // 👉 SOLID DARK THEME: Replaced bg-brand-gradient with bg-slate-950
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative selection:bg-teal-500 selection:text-white overflow-hidden">
       
       {/* Background Glows (Subtle, non-distracting) */}
@@ -52,7 +57,6 @@ const Register = () => {
 
       <motion.div 
         initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} 
-        // 👉 SOLID DARK CARD: Replaced glass with bg-slate-900
         className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 sm:p-10 shadow-2xl relative z-10"
       >
         <div className="text-center mb-8">
@@ -114,7 +118,7 @@ const Register = () => {
             </p>
           </div>
 
-          {/* The Submit Button (Disabled if not checked) */}
+          {/* The Submit Button */}
           <button 
             type="submit" 
             disabled={isLoading || !agreedToPolicy} 
