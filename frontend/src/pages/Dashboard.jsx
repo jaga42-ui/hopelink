@@ -43,7 +43,7 @@ const optimizeImageUrl = (url) => {
 };
 
 const Dashboard = () => {
-  const { user, switchRole } = useContext(AuthContext);
+  const { user, switchRole, enableNotifications } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const [viewMode, setViewMode] = useState("p2p");
@@ -515,18 +515,6 @@ const Dashboard = () => {
     }
   };
 
-  const handleRequestNotifications = async () => {
-    toast.loading("Requesting permission...", { id: "notify" });
-    try {
-      toast.success(
-        "Please log out and log back in to reactivate notifications.",
-        { id: "notify" },
-      );
-    } catch (e) {
-      toast.error("Failed to request permission", { id: "notify" });
-    }
-  };
-
   const processedFeed = feed
     .filter((item) =>
       filterCategory === "All"
@@ -620,7 +608,7 @@ const Dashboard = () => {
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 items-center">
             {Notification.permission !== "granted" && (
               <button
-                onClick={handleRequestNotifications}
+                onClick={enableNotifications}
                 title="Enable Push Alerts"
                 className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 bg-slate-900 hover:bg-slate-800 border border-orange-500/50 text-orange-500 hover:text-orange-400 rounded-xl flex items-center justify-center transition-all shadow-[0_0_15px_rgba(249,115,22,0.15)] active:scale-90"
               >
