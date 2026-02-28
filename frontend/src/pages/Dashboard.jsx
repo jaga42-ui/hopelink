@@ -27,6 +27,7 @@ import {
   FaEdit,
   FaKey,
   FaBell,
+  FaShareAlt, // 👉 ADDED SHARE ICON
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -515,6 +516,31 @@ const Dashboard = () => {
     }
   };
 
+  // 👉 THE FIX: Viral WhatsApp / Native Share Function
+  const handleShare = async (item) => {
+    const shareText = item.isEmergency
+      ? `🚨 URGENT: ${item.bloodGroup} Blood needed at ${item.addressText?.split(",")[0] || "nearby"}. Can you help?`
+      : `🙏 HopeLink: ${item.title} available near ${item.addressText?.split(",")[0] || "you"}.`;
+
+    const shareData = {
+      title: item.title,
+      text: shareText,
+      url: window.location.origin,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        console.log("Share cancelled");
+      }
+    } else {
+      window.open(
+        `https://wa.me/?text=${encodeURIComponent(shareData.text + " -> " + shareData.url)}`,
+      );
+    }
+  };
+
   const processedFeed = feed
     .filter((item) =>
       filterCategory === "All"
@@ -576,7 +602,7 @@ const Dashboard = () => {
               </p>
             </motion.div>
 
-            {/* 👉 THE FIX: Mathematically perfect Flexbox Layout Toggle */}
+            {/* Mathematically perfect Flexbox Layout Toggle */}
             {!user.isAdmin && (
               <div
                 onClick={handleRoleToggle}
@@ -623,7 +649,6 @@ const Dashboard = () => {
               <FaHeartbeat className="animate-pulse text-sm" /> Emergency SOS
             </button>
 
-            {/* 👉 THE FIX: Dynamic Post Button (Shows for both Donor & Receiver!) */}
             {viewMode === "p2p" && (
               <button
                 onClick={() => navigate("/donations")}
@@ -761,7 +786,6 @@ const Dashboard = () => {
                                   {item.donorId?.name}
                                 </p>
                                 <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                                  {/* 👉 THE FIX: Dynamic Visual Badges */}
                                   {item.isEmergency ? (
                                     <span className="px-1.5 py-0.5 bg-red-950 text-red-500 border border-red-900 rounded-[4px] text-[8px] font-black uppercase tracking-widest">
                                       SOS Alert
@@ -823,13 +847,40 @@ const Dashboard = () => {
                             {item.description}
                           </p>
 
-                          <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold mt-auto">
-                            <FaMapMarkerAlt className={roleTheme.text} />{" "}
-                            <span className="truncate">
-                              {item.location?.addressText ||
-                                item.donorId?.addressText ||
-                                "Nearby"}
-                            </span>
+                          {/* 👉 THE FIX: Clickable Get Directions Link & Viral Share Button */}
+                          <div className="flex items-center justify-between mt-auto">
+                            <a
+                              href={
+                                item.location?.coordinates
+                                  ? `https://www.google.com/maps?q=${item.location.coordinates[1]},${item.location.coordinates[0]}`
+                                  : "#"
+                              }
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 text-slate-400 text-[10px] font-bold hover:text-teal-400 transition-colors cursor-pointer flex-1 min-w-0 pr-2"
+                              onClick={(e) => {
+                                if (!item.location?.coordinates)
+                                  e.preventDefault();
+                              }}
+                            >
+                              <FaMapMarkerAlt className={roleTheme.text} />
+                              <span className="truncate underline decoration-dashed underline-offset-4 decoration-slate-600 hover:decoration-teal-400">
+                                {item.addressText ||
+                                  item.location?.addressText ||
+                                  item.donorId?.addressText ||
+                                  "Nearby (Tap to Navigate)"}
+                              </span>
+                            </a>
+
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleShare(item);
+                              }}
+                              className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center shrink-0 transition-all active:scale-90"
+                            >
+                              <FaShareAlt size={12} />
+                            </button>
                           </div>
 
                           {/* DISPLAY PIN TO APPROVED RECEIVER ONLY */}
@@ -929,7 +980,6 @@ const Dashboard = () => {
                               className={`w-full py-3 rounded-xl flex items-center justify-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest transition-all ${isEmergency ? "bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/50" : roleTheme.button}`}
                             >
                               <FaHandsHelping className="text-sm" />
-                              {/* 👉 THE FIX: Contextual Button Text */}
                               {item.listingType === "request"
                                 ? "Offer Help"
                                 : "Request Item"}

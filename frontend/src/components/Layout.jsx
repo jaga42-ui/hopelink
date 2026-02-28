@@ -1,4 +1,4 @@
-import { useState, useContext } from "react";
+import { useState, useEffect, useContext } from "react";
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import AuthContext from "../context/AuthContext";
@@ -12,6 +12,7 @@ import {
   FaBoxOpen,
   FaEnvelope,
   FaMapMarkerAlt,
+  FaWifi // 👉 ADDED WIFI ICON
 } from "react-icons/fa";
 
 import logo from '../assets/logo.png';
@@ -20,6 +21,22 @@ const Layout = ({ children }) => {
   const { user, logout, switchRole } = useContext(AuthContext);
   const location = useLocation();
   const navigate = useNavigate();
+
+  // 👉 THE FIX: Real-time Offline Detection State
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -41,9 +58,28 @@ const Layout = ({ children }) => {
   ];
 
   return (
-    // 👉 APPLIED SOLID DARK BASE (No more gradient)
     <div className="h-screen bg-slate-950 flex flex-col md:flex-row font-sans selection:bg-teal-500 selection:text-white overflow-hidden">
       
+      {/* 👉 THE FIX: Global Offline Banner */}
+      <AnimatePresence>
+        {isOffline && (
+          <motion.div 
+            initial={{ y: -50, opacity: 0 }} 
+            animate={{ y: 0, opacity: 1 }} 
+            exit={{ y: -50, opacity: 0 }}
+            className="fixed top-0 left-0 w-full bg-red-600 z-[9999] px-4 py-3 shadow-2xl flex items-center justify-center gap-3"
+          >
+            <div className="w-8 h-8 bg-black/20 rounded-full flex items-center justify-center shrink-0">
+              <FaWifi className="text-white text-sm animate-pulse" />
+            </div>
+            <div>
+              <p className="text-white font-black text-xs uppercase tracking-widest leading-tight">Signal Lost</p>
+              <p className="text-red-200 text-[10px] font-bold">Waiting for network to refresh local emergencies...</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ---------------- MOBILE TOP BAR (Solid Dark) ---------------- */}
       <div className="md:hidden bg-slate-900 border-b border-slate-800 px-4 py-3 flex justify-between items-center z-50 shrink-0 shadow-md">
         <Link to="/dashboard" className="flex items-center gap-2">
