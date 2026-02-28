@@ -2,6 +2,9 @@ import { useState, useEffect, useContext } from "react";
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import AuthContext from "../context/AuthContext";
+// 👉 ADDED THE MISSING TOAST AND SOCKET IMPORTS
+import toast from "react-hot-toast";
+import { io } from "socket.io-client";
 import {
   FaHome,
   FaUser,
@@ -12,7 +15,9 @@ import {
   FaBoxOpen,
   FaEnvelope,
   FaMapMarkerAlt,
-  FaWifi // 👉 ADDED WIFI ICON
+  FaWifi,
+  FaExclamationTriangle, // 👉 ADDED FOR BROADCAST
+  FaTimes               // 👉 ADDED FOR BROADCAST
 } from "react-icons/fa";
 
 import logo from '../assets/logo.png';
@@ -22,7 +27,7 @@ const Layout = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // 👉 THE FIX: Real-time Offline Detection State
+  // 👉 Real-time Offline Detection State
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   useEffect(() => {
@@ -36,6 +41,42 @@ const Layout = ({ children }) => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
+  }, []);
+
+  // 👉 THE FIX: Global Admin Broadcast Receiver (Mission Control)
+  useEffect(() => {
+    const socket = io("https://hopelink-api.onrender.com", { transports: ["websocket", "polling"] });
+    
+    socket.on("global_alert", (data) => {
+      toast.custom(
+        (t) => (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className={`w-full max-w-sm border-l-4 p-4 rounded-xl shadow-2xl flex items-start gap-3 ${
+              data.level === 'critical' ? 'bg-red-950 border-red-500 text-red-200' : 'bg-blue-950 border-blue-500 text-blue-200'
+            }`}
+          >
+            <div className={`mt-1 ${data.level === 'critical' ? 'text-red-500 animate-pulse' : 'text-blue-500'}`}>
+              <FaExclamationTriangle className="text-xl" />
+            </div>
+            <div className="flex-1">
+              <h3 className={`font-black uppercase tracking-widest text-[10px] mb-1 ${data.level === 'critical' ? 'text-red-400' : 'text-blue-400'}`}>
+                System Broadcast
+              </h3>
+              <p className="text-sm font-medium leading-relaxed">{data.message}</p>
+            </div>
+            <button onClick={() => toast.dismiss(t.id)} className="text-slate-400 hover:text-white transition-colors">
+              <FaTimes />
+            </button>
+          </motion.div>
+        ),
+        { duration: data.level === 'critical' ? 20000 : 8000, position: "top-center" }
+      );
+    });
+
+    return () => socket.disconnect();
   }, []);
 
   const handleLogout = () => {
@@ -60,7 +101,7 @@ const Layout = ({ children }) => {
   return (
     <div className="h-screen bg-slate-950 flex flex-col md:flex-row font-sans selection:bg-teal-500 selection:text-white overflow-hidden">
       
-      {/* 👉 THE FIX: Global Offline Banner */}
+      {/* Global Offline Banner */}
       <AnimatePresence>
         {isOffline && (
           <motion.div 

@@ -15,13 +15,13 @@ import {
   FaEnvelope,
   FaExclamationTriangle,
   FaCalendarAlt,
+  FaBullhorn,
+  FaFlag,
+  FaCheck
 } from "react-icons/fa";
 import {
-  LineChart,
-  Line,
   XAxis,
   YAxis,
-  CartesianGrid,
   Tooltip,
   ResponsiveContainer,
   AreaChart,
@@ -31,6 +31,7 @@ import {
   Cell,
   Legend,
 } from "recharts";
+import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import api from "../utils/api";
 
@@ -44,6 +45,11 @@ const Admin = () => {
   const [listings, setListings] = useState([]);
   const [eventsList, setEventsList] = useState([]); 
   const [loading, setLoading] = useState(true);
+
+  // 👉 MISSION CONTROL STATES
+  const [broadcastMsg, setBroadcastMsg] = useState("");
+  const [broadcastLevel, setBroadcastLevel] = useState("info");
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
 
   // Security Check
   useEffect(() => {
@@ -76,6 +82,44 @@ const Admin = () => {
     };
     fetchAdminData();
   }, [user]);
+
+  // 👉 THE RED BUTTON: Global Broadcast
+  const handleBroadcast = async (e) => {
+    e.preventDefault();
+    if (!broadcastMsg.trim()) return;
+    setIsBroadcasting(true);
+    try {
+      await api.post("/admin/broadcast", { message: broadcastMsg, level: broadcastLevel });
+      toast.success("Broadcast deployed globally!");
+      setBroadcastMsg("");
+    } catch (error) {
+      toast.error("Broadcast failed.");
+    } finally {
+      setIsBroadcasting(false);
+    }
+  };
+
+  // 👉 MODERATION QUEUE: Whitelist or Purge
+  const handleReportAction = async (id, action) => {
+    try {
+      await api.patch(`/admin/resolve-report/${id}`, { action });
+      toast.success(action === 'delete' ? "Hostile post purged." : "Post whitelisted.");
+      
+      // Instantly remove it from the local moderation queue UI
+      setStats(prev => ({
+        ...prev,
+        reportedPosts: prev.reportedPosts.filter(p => p._id !== id)
+      }));
+      
+      // Also remove it from the master listings tab if we deleted it
+      if (action === 'delete') {
+        setListings(prev => prev.filter(l => l._id !== id));
+      }
+
+    } catch (error) {
+      toast.error("Moderation action failed.");
+    }
+  };
 
   const handleDeleteUser = async (id, name) => {
     if (
@@ -176,6 +220,7 @@ const Admin = () => {
                 { id: "users", label: "Users", icon: <FaUsers /> },
                 { id: "listings", label: "Content", icon: <FaBoxOpen /> },
                 { id: "events", label: "Events", icon: <FaCalendarAlt /> },
+                { id: "moderation", label: "Moderation", icon: <FaFlag /> }, // 👉 NEW MODERATION TAB
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -184,7 +229,7 @@ const Admin = () => {
                     activeTab === tab.id 
                       ? "bg-red-600 text-white shadow-md" 
                       : "text-slate-400 hover:text-white hover:bg-slate-800"
-                  }`}
+                  } ${tab.id === 'moderation' && stats?.reportedPosts?.length > 0 ? "text-orange-400 animate-pulse" : ""}`}
                 >
                   {tab.icon} <span>{tab.label}</span>
                 </button>
@@ -230,107 +275,206 @@ const Admin = () => {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-                  <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-[2rem] p-6 shadow-lg h-[400px] flex flex-col">
-                    <h3 className="text-sm font-black uppercase tracking-widest text-slate-300 mb-6 drop-shadow-sm">
-                      30-Day Community Growth
-                    </h3>
-                    <div className="flex-1 w-full h-full">
-                      {stats.growthData && stats.growthData.length > 0 ? (
+                  {/* Left: Graphs */}
+                  <div className="lg:col-span-2 space-y-6">
+                    <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-6 shadow-lg h-[350px] flex flex-col">
+                      <h3 className="text-sm font-black uppercase tracking-widest text-slate-300 mb-6 drop-shadow-sm">
+                        30-Day Community Growth
+                      </h3>
+                      <div className="flex-1 w-full h-full">
+                        {stats.growthData && stats.growthData.length > 0 ? (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart
+                              data={stats.growthData}
+                              margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                            >
+                              <defs>
+                                <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.4} />
+                                  <stop offset="95%" stopColor="#14b8a6" stopOpacity={0} />
+                                </linearGradient>
+                              </defs>
+                              <XAxis
+                                dataKey="date"
+                                stroke="#475569"
+                                tick={{ fontSize: 10, fill: "#94a3b8" }}
+                                tickLine={false}
+                                axisLine={false}
+                              />
+                              <YAxis
+                                stroke="#475569"
+                                tick={{ fontSize: 10, fill: "#94a3b8" }}
+                                tickLine={false}
+                                axisLine={false}
+                              />
+                              <Tooltip
+                                contentStyle={{
+                                  backgroundColor: "#0f172a",
+                                  border: "1px solid #1e293b",
+                                  borderRadius: "12px",
+                                  color: "#f8fafc",
+                                }}
+                                itemStyle={{ color: "#14b8a6", fontWeight: "bold" }}
+                              />
+                              <Area
+                                type="monotone"
+                                dataKey="Users"
+                                stroke="#14b8a6"
+                                strokeWidth={3}
+                                fillOpacity={1}
+                                fill="url(#colorUsers)"
+                              />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs font-bold uppercase tracking-widest">
+                            Awaiting Intel...
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right: The Red Button & Pie Chart */}
+                  <div className="space-y-6">
+                    {/* The Red Button */}
+                    <div className="bg-slate-900 border border-red-900/50 rounded-[2rem] p-6 shadow-[0_10px_40px_rgba(220,38,38,0.1)] relative overflow-hidden">
+                      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-600 to-orange-500" />
+                      <h2 className="text-sm font-black uppercase tracking-widest text-red-400 mb-6 flex items-center gap-2">
+                        <FaBullhorn /> Global Override
+                      </h2>
+                      <form onSubmit={handleBroadcast} className="space-y-4">
+                        <select 
+                          value={broadcastLevel} 
+                          onChange={(e) => setBroadcastLevel(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 text-slate-300 text-xs font-bold uppercase tracking-wider rounded-xl p-3 outline-none focus:border-red-500"
+                        >
+                          <option value="info">Standard Info Update</option>
+                          <option value="critical">CRITICAL EMERGENCY</option>
+                        </select>
+                        <textarea
+                          required
+                          rows="2"
+                          placeholder="Type message to blast to all screens..."
+                          value={broadcastMsg}
+                          onChange={(e) => setBroadcastMsg(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-white resize-none outline-none focus:border-red-500"
+                        />
+                        <button 
+                          disabled={isBroadcasting}
+                          className="w-full py-3 bg-red-600 hover:bg-red-500 text-white font-black uppercase tracking-widest text-[10px] rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50"
+                        >
+                          {isBroadcasting ? "Transmitting..." : "Initiate Broadcast"}
+                        </button>
+                      </form>
+                    </div>
+
+                    <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-6 shadow-lg h-[250px] flex flex-col">
+                      <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-300 mb-2 drop-shadow-sm text-center">
+                        Activity Distribution
+                      </h3>
+                      <div className="flex-1 w-full h-full flex items-center justify-center">
                         <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart
-                            data={stats.growthData}
-                            margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                          >
-                            <defs>
-                              <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.4} />
-                                <stop offset="95%" stopColor="#14b8a6" stopOpacity={0} />
-                              </linearGradient>
-                            </defs>
-                            <XAxis
-                              dataKey="date"
-                              stroke="#475569"
-                              tick={{ fontSize: 10, fill: "#94a3b8" }}
-                              tickLine={false}
-                              axisLine={false}
-                            />
-                            <YAxis
-                              stroke="#475569"
-                              tick={{ fontSize: 10, fill: "#94a3b8" }}
-                              tickLine={false}
-                              axisLine={false}
-                            />
+                          <PieChart>
+                            <Pie
+                              data={pieData}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={40}
+                              outerRadius={60}
+                              paddingAngle={5}
+                              dataKey="value"
+                              stroke="none"
+                            >
+                              {pieData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
                             <Tooltip
                               contentStyle={{
                                 backgroundColor: "#0f172a",
                                 border: "1px solid #1e293b",
-                                borderRadius: "12px",
+                                borderRadius: "8px",
                                 color: "#f8fafc",
                               }}
-                              itemStyle={{ color: "#14b8a6", fontWeight: "bold" }}
+                              itemStyle={{ fontWeight: "bold" }}
                             />
-                            <Area
-                              type="monotone"
-                              dataKey="Users"
-                              stroke="#14b8a6"
-                              strokeWidth={3}
-                              fillOpacity={1}
-                              fill="url(#colorUsers)"
+                            <Legend
+                              verticalAlign="bottom"
+                              height={20}
+                              iconType="circle"
+                              wrapperStyle={{
+                                fontSize: "10px",
+                                fontWeight: "bold",
+                                color: "#cbd5e1",
+                              }}
                             />
-                          </AreaChart>
+                          </PieChart>
                         </ResponsiveContainer>
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs font-bold uppercase tracking-widest">
-                          Awaiting Intel...
-                        </div>
-                      )}
+                      </div>
                     </div>
                   </div>
+                </div>
+              </div>
+            )}
 
-                  <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-6 shadow-lg h-[400px] flex flex-col">
-                    <h3 className="text-sm font-black uppercase tracking-widest text-slate-300 mb-2 drop-shadow-sm">
-                      Activity Distribution
-                    </h3>
-                    <div className="flex-1 w-full h-full flex items-center justify-center">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={pieData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={70}
-                            outerRadius={100}
-                            paddingAngle={5}
-                            dataKey="value"
-                            stroke="none"
-                          >
-                            {pieData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: "#0f172a",
-                              border: "1px solid #1e293b",
-                              borderRadius: "8px",
-                              color: "#f8fafc",
-                            }}
-                            itemStyle={{ fontWeight: "bold" }}
-                          />
-                          <Legend
-                            verticalAlign="bottom"
-                            height={36}
-                            iconType="circle"
-                            wrapperStyle={{
-                              fontSize: "12px",
-                              fontWeight: "bold",
-                              color: "#cbd5e1",
-                            }}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
+            {/* MODERATION QUEUE TAB */}
+            {activeTab === "moderation" && (
+              <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-6 md:p-8 shadow-xl min-h-[60vh]">
+                <div className="flex items-center justify-between mb-8 border-b border-slate-800 pb-4">
+                  <h2 className="text-sm font-black uppercase tracking-widest text-orange-400 flex items-center gap-2">
+                    <FaFlag /> Community Reports
+                  </h2>
+                  <span className="bg-orange-500/20 text-orange-400 px-3 py-1 rounded-lg text-xs font-bold">
+                    {stats?.reportedPosts?.length || 0} Flags
+                  </span>
+                </div>
+                
+                <div className="space-y-4">
+                  {!stats?.reportedPosts || stats.reportedPosts.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-20 text-slate-500 opacity-60">
+                      <FaCheckCircle className="text-6xl mb-4 text-green-900" />
+                      <p className="font-bold tracking-widest uppercase text-xs">Grid is Secure. No active reports.</p>
                     </div>
-                  </div>
+                  ) : (
+                    <AnimatePresence>
+                      {stats.reportedPosts.map((post) => (
+                        <motion.div 
+                          key={post._id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          className="bg-slate-950 border border-slate-800 p-5 rounded-2xl flex flex-col md:flex-row gap-4 items-start md:items-center justify-between shadow-md"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="px-2 py-0.5 bg-red-950 text-red-500 border border-red-900 rounded-[4px] text-[8px] font-black uppercase tracking-widest animate-pulse">
+                                {post.reports.length} Reports
+                              </span>
+                              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Author: {post.donorId?.name || "Unknown"}</span>
+                            </div>
+                            <h3 className="font-bold text-white text-base mb-1">{post.title}</h3>
+                            <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">{post.description}</p>
+                          </div>
+                          
+                          <div className="flex w-full md:w-auto gap-3 shrink-0 mt-2 md:mt-0">
+                            <button 
+                              onClick={() => handleReportAction(post._id, 'whitelist')}
+                              className="flex-1 md:flex-none px-6 py-3 bg-slate-800 hover:bg-slate-700 text-teal-400 font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm"
+                            >
+                              <FaCheck /> Whitelist
+                            </button>
+                            <button 
+                              onClick={() => handleReportAction(post._id, 'delete')}
+                              className="flex-1 md:flex-none px-6 py-3 bg-red-900/40 hover:bg-red-600 text-red-400 hover:text-white font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 border border-red-900/50 shadow-sm"
+                            >
+                              <FaTrash /> Purge
+                            </button>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  )}
                 </div>
               </div>
             )}
@@ -483,7 +627,7 @@ const Admin = () => {
                           <td className="px-6 py-4 font-bold text-white max-w-[200px] truncate">{l.title}</td>
                           <td className="px-6 py-4 text-slate-300">{l.donorId?.name || "Deleted User"}</td>
                           <td className="px-6 py-4">
-                            <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-md border ${l.status === "fulfilled" ? "bg-green-900/30 text-green-400 border-green-500/30" : "bg-yellow-900/30 text-yellow-400 border-yellow-500/30"}`}>
+                            <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-md border ${l.status === "fulfilled" ? "bg-green-900/30 text-green-400 border-green-500/30" : l.status === "hidden" ? "bg-orange-900/30 text-orange-400 border-orange-500/30" : "bg-yellow-900/30 text-yellow-400 border-yellow-500/30"}`}>
                               {l.status}
                             </span>
                           </td>
@@ -513,7 +657,7 @@ const Admin = () => {
                             {l.listingType}
                           </span>
                         )}
-                        <span className={`text-[9px] font-black uppercase ${l.status === "fulfilled" ? "text-green-400" : "text-yellow-400"}`}>
+                        <span className={`text-[9px] font-black uppercase ${l.status === "fulfilled" ? "text-green-400" : l.status === "hidden" ? "text-orange-400" : "text-yellow-400"}`}>
                           {l.status}
                         </span>
                       </div>

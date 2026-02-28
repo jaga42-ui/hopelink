@@ -17,6 +17,7 @@ import {
   FaTrash,
   FaShieldAlt,
 } from "react-icons/fa";
+import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import api from "../utils/api";
 
@@ -47,18 +48,25 @@ const Chat = () => {
   const localRole = user?.activeRole || "donor";
   const isDonor = localRole === "donor";
   const roleTheme = {
-    primary: isDonor ? "bg-teal-600" : "bg-blue-600",
+    primaryGradient: isDonor
+      ? "from-teal-500 to-teal-700"
+      : "from-blue-500 to-blue-700",
+    buttonBg: isDonor
+      ? "bg-teal-600 hover:bg-teal-500"
+      : "bg-blue-600 hover:bg-blue-500",
     text: isDonor ? "text-teal-400" : "text-blue-400",
-    border: isDonor ? "border-teal-700" : "border-blue-700",
-    shadow: isDonor ? "shadow-teal-900/50" : "shadow-blue-900/50",
-    focusRing: isDonor ? "focus:border-teal-500" : "focus:border-blue-500",
+    border: isDonor ? "border-teal-700/50" : "border-blue-700/50",
+    shadow: isDonor ? "shadow-teal-900/40" : "shadow-blue-900/40",
     avatarBg: isDonor
-      ? "bg-teal-900/50 text-teal-400"
-      : "bg-blue-900/50 text-blue-400",
+      ? "bg-teal-950 text-teal-400"
+      : "bg-blue-950 text-blue-400",
   };
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Slight timeout ensures DOM has updated before scrolling
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 50);
   };
 
   useEffect(() => {
@@ -81,6 +89,7 @@ const Chat = () => {
 
         await api.put(`/chat/${donationId}/read`);
         socket.emit("mark_as_read", { donationId, readerId: user._id });
+        scrollToBottom();
       } catch (error) {
         setMessages([]);
         setLoading(false);
@@ -90,10 +99,16 @@ const Chat = () => {
     fetchHistoryAndMarkRead();
 
     socket.on("receive_message", (message) => {
-      setMessages((prev) => [...(Array.isArray(prev) ? prev : []), message]);
+      setMessages((prev) => {
+        // Prevent duplicate renders
+        if (Array.isArray(prev) && prev.some((m) => m._id === message._id))
+          return prev;
+        return [...(Array.isArray(prev) ? prev : []), message];
+      });
       if (message.sender !== user._id) {
         socket.emit("mark_as_read", { donationId, readerId: user._id });
       }
+      scrollToBottom();
     });
 
     socket.on("messages_read", ({ readerId }) => {
@@ -119,41 +134,83 @@ const Chat = () => {
     return () => socket.disconnect();
   }, [user, donationId, otherUserId, navigate]);
 
-  useEffect(() => scrollToBottom(), [messages]);
-
   const onEmojiClick = (emojiObject) => {
     setNewMessage((prevInput) => prevInput + emojiObject.emoji);
   };
 
+  // 👉 THE FIX: OPTIMISTIC UI ENGINE
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
 
-    try {
-      if (editingMessage) {
+    const messageContent = newMessage.trim();
+    setNewMessage(""); // Instantly clear the input
+    setShowEmojis(false);
+
+    if (editingMessage) {
+      // Optimistic Edit
+      const tempEditedMsg = { ...editingMessage, content: messageContent };
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === editingMessage._id ? tempEditedMsg : msg,
+        ),
+      );
+      setEditingMessage(null);
+
+      try {
         const { data } = await api.put(`/chat/${editingMessage._id}`, {
-          content: newMessage,
+          content: messageContent,
         });
         socket.emit("edit_message", data);
         setMessages((prev) =>
           prev.map((msg) => (msg._id === data._id ? data : msg)),
         );
-        setEditingMessage(null);
-      } else {
+      } catch (error) {
+        toast.error("Failed to edit message");
+      }
+    } else {
+      // 👉 OPTIMISTIC SEND
+      const tempId = `temp_${Date.now()}`;
+      const tempMsg = {
+        _id: tempId,
+        content: messageContent,
+        sender: user._id,
+        receiver: otherUserId,
+        createdAt: new Date().toISOString(),
+        read: false,
+        isSending: true, // Custom flag to style it slightly faded
+      };
+
+      // 1. Slap it on the UI instantly & Scroll
+      setMessages((prev) => [...(Array.isArray(prev) ? prev : []), tempMsg]);
+      scrollToBottom();
+
+      try {
+        // 2. Send to Backend
         const messageData = {
           receiverId: otherUserId,
           donationId,
-          content: newMessage,
+          content: messageContent,
         };
         const { data } = await api.post("/chat", messageData);
-        socket.emit("send_message", data);
-        setMessages((prev) => [...(Array.isArray(prev) ? prev : []), data]);
-      }
 
-      setNewMessage("");
-      setShowEmojis(false);
-    } catch (error) {
-      toast.error("Failed to transmit message");
+        // 3. Fire WebSocket with `senderName` to trigger receiver's toast!
+        socket.emit("send_message", {
+          ...data,
+          donationId,
+          receiver: otherUserId,
+          senderName: user.name,
+        });
+
+        // 4. Swap temp message with real database message silently
+        setMessages((prev) =>
+          prev.map((msg) => (msg._id === tempId ? data : msg)),
+        );
+      } catch (error) {
+        toast.error("Network unstable. Message failed to send.");
+        // Remove the fake message if the backend rejected it
+        setMessages((prev) => prev.filter((msg) => msg._id !== tempId));
+      }
     }
   };
 
@@ -189,25 +246,22 @@ const Chat = () => {
 
   return (
     <Layout>
-      {/* 👉 THE FIX: We use h-full to fit within Layout's constraints.
-        flex-col ensures the header, messages, and input stack perfectly.
-      */}
-      <div className="w-full h-full md:h-[85vh] md:max-w-4xl md:mx-auto md:my-4 flex flex-col bg-slate-900 md:border md:border-slate-800 md:rounded-[2.5rem] overflow-hidden md:shadow-xl relative">
+      <div className="w-full h-[calc(100dvh-80px)] md:h-[85vh] md:max-w-4xl md:mx-auto md:my-4 flex flex-col bg-slate-950 md:border md:border-slate-800 md:rounded-[2.5rem] overflow-hidden md:shadow-2xl relative">
         {/* CHAT HEADER */}
-        <header className="bg-slate-950 p-3 md:p-5 flex items-center justify-between z-10 shadow-sm border-b border-slate-800 shrink-0">
+        <header className="bg-slate-900 p-3 md:p-5 flex items-center justify-between z-20 shadow-md border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-3 md:gap-5">
             <button
               onClick={() => navigate("/chat/inbox")}
-              className="text-slate-400 hover:text-white transition-colors p-2 active:scale-90 bg-slate-800 hover:bg-slate-700 rounded-full"
+              className="text-slate-400 hover:text-white transition-colors p-2.5 active:scale-90 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-full shadow-inner"
             >
-              <FaArrowLeft className="text-lg md:text-xl" />
+              <FaArrowLeft className="text-sm md:text-base" />
             </button>
             <div
               className="flex items-center gap-3 cursor-pointer group"
               onClick={() => navigate(`/profile/${otherUserId}`)}
             >
               <div
-                className={`w-11 h-11 md:w-12 md:h-12 rounded-2xl flex items-center justify-center font-black text-lg md:text-xl uppercase shadow-sm border ${roleTheme.border} ${roleTheme.avatarBg} group-hover:scale-105 transition-transform`}
+                className={`w-11 h-11 md:w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg md:text-xl uppercase shadow-md border ${roleTheme.border} ${roleTheme.avatarBg} group-hover:scale-105 transition-transform`}
               >
                 {otherUserName.charAt(0)}
               </div>
@@ -216,7 +270,7 @@ const Chat = () => {
                   {otherUserName}
                 </h2>
                 <p
-                  className={`text-[10px] md:text-[11px] font-bold uppercase tracking-widest flex items-center gap-1 mt-0.5 ${roleTheme.text} truncate max-w-[150px] sm:max-w-xs`}
+                  className={`text-[9px] md:text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 mt-0.5 ${roleTheme.text} truncate max-w-[150px] sm:max-w-xs opacity-80`}
                 >
                   <FaShieldAlt className="text-[8px]" /> {itemTitle}
                 </p>
@@ -227,7 +281,7 @@ const Chat = () => {
 
         {/* MESSAGES AREA */}
         <div
-          className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 z-10 no-scrollbar relative"
+          className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 z-10 no-scrollbar relative bg-slate-950"
           onClick={() => {
             setDropdownOpen(null);
             setShowEmojis(false);
@@ -240,171 +294,202 @@ const Chat = () => {
               />
             </div>
           ) : activeConversation.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-slate-500 space-y-2">
-              <FaShieldAlt className="text-5xl mb-2 opacity-50" />
-              <p className="font-black text-xs uppercase tracking-[0.2em]">
-                End-to-End Encrypted
+            <div className="flex flex-col items-center justify-center h-full text-slate-500 space-y-3">
+              <div className="w-20 h-20 bg-slate-900 border border-slate-800 rounded-full flex items-center justify-center mb-2 shadow-inner">
+                <FaShieldAlt
+                  className={`text-4xl ${roleTheme.text} animate-pulse opacity-50`}
+                />
+              </div>
+              <p className="font-black text-xs uppercase tracking-[0.3em] text-slate-400">
+                Secure Channel Open
               </p>
-              <p className="text-[10px] text-center max-w-[250px] font-medium">
-                Messages are securely routed through the HopeLink grid.
+              <p className="text-[10px] text-center max-w-[250px] font-medium text-slate-500 leading-relaxed">
+                Messages are end-to-end encrypted and routed directly through
+                the HopeLink grid.
               </p>
             </div>
           ) : (
-            activeConversation.map((msg, index) => {
-              const isMe = msg.sender === user._id;
+            <AnimatePresence initial={false}>
+              {activeConversation.map((msg, index) => {
+                const isMe = msg.sender === user._id;
 
-              return (
-                <div
-                  key={index}
-                  className={`flex ${isMe ? "justify-end" : "justify-start"} w-full`}
-                >
-                  <div
-                    className={`relative max-w-[85%] md:max-w-[70%] px-4 py-3 shadow-md flex flex-col group ${
-                      isMe
-                        ? `${roleTheme.primary} text-white rounded-3xl rounded-tr-sm`
-                        : "bg-slate-800 border border-slate-700 text-slate-200 rounded-3xl rounded-tl-sm"
-                    }`}
+                return (
+                  <motion.div
+                    key={msg._id || index}
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ duration: 0.2 }}
+                    className={`flex ${isMe ? "justify-end" : "justify-start"} w-full`}
                   >
-                    {/* Touch-Friendly Dropdown Toggle */}
-                    {isMe && (
-                      <div className="absolute top-1 right-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDropdownOpen(
-                              dropdownOpen === msg._id ? null : msg._id,
-                            );
-                          }}
-                          className="text-white/70 hover:text-white p-2 md:p-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity active:bg-slate-700 rounded-full"
-                        >
-                          <FaChevronDown className="text-[10px] md:text-[12px]" />
-                        </button>
-
-                        {/* Dropdown Menu */}
-                        {dropdownOpen === msg._id && (
-                          <div className="absolute right-0 top-8 bg-slate-800 border border-slate-700 rounded-2xl shadow-xl z-50 flex flex-col overflow-hidden w-32">
-                            <button
-                              onClick={() => {
-                                setEditingMessage(msg);
-                                setNewMessage(msg.content);
-                                setDropdownOpen(null);
-                              }}
-                              className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-300 active:bg-slate-700 md:hover:bg-slate-700 text-left flex items-center gap-2"
-                            >
-                              <FaEdit /> Edit
-                            </button>
-                            <button
-                              onClick={() => {
-                                handleDeleteMessage(msg._id);
-                                setDropdownOpen(null);
-                              }}
-                              className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-red-400 active:bg-slate-700 md:hover:bg-slate-700 text-left flex items-center gap-2 border-t border-slate-700"
-                            >
-                              <FaTrash /> Delete
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    <p
-                      className={`text-[14px] md:text-[15px] leading-relaxed whitespace-pre-wrap break-words ${isMe ? "pr-6 md:pr-4" : ""}`}
+                    <div
+                      className={`relative max-w-[85%] md:max-w-[70%] px-5 py-3.5 shadow-lg flex flex-col group transition-all duration-300 ${
+                        isMe
+                          ? `bg-gradient-to-br ${roleTheme.primaryGradient} text-white rounded-[2rem] rounded-tr-md ${roleTheme.shadow}`
+                          : "bg-slate-900 border border-slate-800 text-slate-200 rounded-[2rem] rounded-tl-md shadow-inner"
+                      } ${msg.isSending ? "opacity-60" : "opacity-100"}`} // 👉 Visual cue for sending
                     >
-                      {msg.content}
-                    </p>
+                      {/* Touch-Friendly Dropdown Toggle */}
+                      {isMe && !msg.isSending && (
+                        <div className="absolute top-1 right-1 z-20">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDropdownOpen(
+                                dropdownOpen === msg._id ? null : msg._id,
+                              );
+                            }}
+                            className="text-white/60 hover:text-white p-2 md:p-1.5 md:opacity-0 md:group-hover:opacity-100 transition-all active:bg-black/20 rounded-full"
+                          >
+                            <FaChevronDown className="text-[10px]" />
+                          </button>
 
-                    <div className="flex justify-end items-center gap-1 mt-1.5 opacity-70">
-                      <span className="text-[9px] md:text-[10px] font-bold">
-                        {formatTime(msg.createdAt)}
-                      </span>
-                      {isMe &&
-                        (msg.read ? (
-                          <FaCheckDouble className="text-white text-[10px] md:text-[12px]" />
-                        ) : (
-                          <FaCheck className="text-white/60 text-[10px] md:text-[12px]" />
-                        ))}
+                          {/* Dropdown Menu */}
+                          {dropdownOpen === msg._id && (
+                            <div className="absolute right-0 top-8 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden w-36 py-1">
+                              <button
+                                onClick={() => {
+                                  setEditingMessage(msg);
+                                  setNewMessage(msg.content);
+                                  setDropdownOpen(null);
+                                }}
+                                className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:bg-slate-700 hover:text-white text-left flex items-center gap-3 transition-colors"
+                              >
+                                <FaEdit className="text-sm" /> Edit
+                              </button>
+                              <button
+                                onClick={() => {
+                                  handleDeleteMessage(msg._id);
+                                  setDropdownOpen(null);
+                                }}
+                                className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-red-400 hover:bg-red-500 hover:text-white text-left flex items-center gap-3 border-t border-slate-700/50 transition-colors"
+                              >
+                                <FaTrash className="text-sm" /> Purge
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <p
+                        className={`text-[14px] md:text-[15px] leading-relaxed whitespace-pre-wrap break-words font-medium ${isMe ? "pr-5" : ""}`}
+                      >
+                        {msg.content}
+                      </p>
+
+                      <div
+                        className={`flex justify-end items-center gap-1.5 mt-2 ${isMe ? "opacity-90" : "opacity-50"}`}
+                      >
+                        <span className="text-[9px] font-bold tracking-wider">
+                          {formatTime(msg.createdAt)}
+                        </span>
+                        {isMe &&
+                          (msg.isSending ? (
+                            <FaSpinner className="text-white/60 text-[8px] animate-spin" />
+                          ) : msg.read ? (
+                            <FaCheckDouble className="text-white text-[10px]" />
+                          ) : (
+                            <FaCheck className="text-white/60 text-[10px]" />
+                          ))}
+                      </div>
                     </div>
-                  </div>
-                </div>
-              );
-            })
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
           )}
-          <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} className="h-4" />
         </div>
 
         {/* EMOJI PICKER */}
-        {showEmojis && (
-          <div className="absolute bottom-[130px] md:bottom-24 left-0 right-0 md:left-4 md:right-auto z-50 shadow-2xl flex justify-center md:block">
-            <div className="w-full md:w-[320px] rounded-3xl overflow-hidden border border-slate-700 bg-slate-900">
-              <EmojiPicker
-                onEmojiClick={onEmojiClick}
-                theme="dark"
-                width="100%"
-                height={350}
-              />
-            </div>
-          </div>
-        )}
+        <AnimatePresence>
+          {showEmojis && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="absolute bottom-[90px] left-2 right-2 md:left-4 md:right-auto z-50 shadow-2xl flex justify-center md:block"
+            >
+              <div className="w-full md:w-[320px] rounded-3xl overflow-hidden border border-slate-800 bg-slate-900 shadow-[0_10px_40px_rgba(0,0,0,0.5)]">
+                <EmojiPicker
+                  onEmojiClick={onEmojiClick}
+                  theme="dark"
+                  width="100%"
+                  height={350}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* EDIT BANNER */}
-        {editingMessage && (
-          <div className="bg-slate-800 px-5 py-3 flex justify-between items-center border-t border-slate-700 z-10 shadow-md shrink-0">
-            <span
-              className={`${roleTheme.text} text-xs font-black uppercase tracking-widest flex items-center gap-2`}
+        <AnimatePresence>
+          {editingMessage && (
+            <motion.div
+              initial={{ height: 0 }}
+              animate={{ height: "auto" }}
+              exit={{ height: 0 }}
+              className="bg-slate-900 px-5 py-3 flex justify-between items-center border-t border-slate-800 z-20 shadow-inner overflow-hidden"
             >
-              <FaEdit /> Editing Transmission...
-            </span>
-            <button
-              onClick={() => {
-                setEditingMessage(null);
-                setNewMessage("");
-              }}
-              className="text-slate-400 active:text-white hover:text-white p-2 bg-slate-700 rounded-full transition-colors"
-            >
-              <FaTimes className="text-xs" />
-            </button>
-          </div>
-        )}
+              <span
+                className={`${roleTheme.text} text-[10px] font-black uppercase tracking-widest flex items-center gap-2`}
+              >
+                <FaEdit /> Modifying Transmission...
+              </span>
+              <button
+                onClick={() => {
+                  setEditingMessage(null);
+                  setNewMessage("");
+                }}
+                className="text-slate-500 hover:text-white p-2 bg-slate-950 rounded-full transition-colors border border-slate-800"
+              >
+                <FaTimes className="text-xs" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        {/* 👉 THE FIX: INPUT AREA 
-          pb-24 (96px) ensures this sits comfortably ABOVE the mobile navigation bar!
-        */}
-        <div className="bg-slate-950 px-3 pt-3 pb-24 md:pb-6 md:p-4 flex items-center gap-2 md:gap-3 z-10 border-t border-slate-800 shrink-0">
-          <button
-            type="button"
-            onClick={() => setShowEmojis(!showEmojis)}
-            className={`p-3 rounded-full active:bg-slate-800 transition-colors ${showEmojis ? roleTheme.text + " bg-slate-800" : "text-slate-500 hover:text-white"}`}
-          >
-            <FaSmile className="text-xl md:text-2xl" />
-          </button>
-
+        {/* INPUT AREA */}
+        <div className="bg-slate-950 px-3 py-3 md:p-4 z-20 border-t border-slate-800 shrink-0 pb-6 md:pb-4">
           <form
             onSubmit={handleSendMessage}
-            className="flex-1 flex gap-2 md:gap-3"
+            className="max-w-3xl mx-auto flex items-end gap-2 bg-slate-900 border border-slate-800 rounded-3xl p-1.5 shadow-inner transition-all focus-within:border-slate-600 focus-within:ring-1 focus-within:ring-slate-800"
           >
-            <input
-              type="text"
+            <button
+              type="button"
+              onClick={() => setShowEmojis(!showEmojis)}
+              className={`p-3 rounded-full transition-colors flex shrink-0 items-center justify-center self-end mb-0.5 ${showEmojis ? roleTheme.text + " bg-slate-950 shadow-sm" : "text-slate-500 hover:text-white"}`}
+            >
+              <FaSmile className="text-xl" />
+            </button>
+
+            <textarea
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               onFocus={() => setShowEmojis(false)}
-              placeholder="Transmit message..."
-              className={`flex-1 bg-slate-900 border border-slate-800 rounded-full px-5 py-3.5 text-white text-base md:text-[15px] outline-none placeholder-slate-500 ${roleTheme.focusRing} transition-all shadow-inner`}
-              autoComplete="off"
+              placeholder="Type a message..."
+              rows={1}
+              className="flex-1 bg-transparent py-3.5 px-2 text-white text-[15px] outline-none placeholder-slate-500 resize-none max-h-32 overflow-y-auto"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage(e);
+                }
+              }}
             />
 
             <button
               type="submit"
               disabled={!newMessage.trim()}
-              className={`w-12 h-12 rounded-full flex items-center justify-center text-white transition-all shadow-lg active:scale-95 ${
+              className={`w-11 h-11 rounded-full flex shrink-0 items-center justify-center text-white transition-all shadow-md self-end mb-1 mr-1 ${
                 editingMessage
-                  ? "bg-orange-600 shadow-orange-900/50"
-                  : `${roleTheme.primary} ${roleTheme.shadow}`
-              } disabled:opacity-30 disabled:active:scale-100 shrink-0`}
+                  ? "bg-orange-600 shadow-orange-900/50 hover:bg-orange-500"
+                  : `${roleTheme.buttonBg} ${roleTheme.shadow}`
+              } disabled:opacity-30 disabled:scale-100 active:scale-95`}
             >
               {editingMessage ? (
-                <FaCheckDouble className="text-[16px]" />
+                <FaCheckDouble className="text-[14px]" />
               ) : (
-                <FaPaperPlane className="text-[15px] -ml-1 mt-0.5" />
+                <FaPaperPlane className="text-[13px] -ml-1 mt-0.5" />
               )}
             </button>
           </form>

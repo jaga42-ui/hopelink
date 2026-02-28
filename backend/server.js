@@ -6,7 +6,8 @@ const http = require("http");
 const { Server } = require("socket.io");
 const path = require("path");
 const webpush = require("web-push");
-const rateLimit = require("express-rate-limit"); // 👉 ADDED RATE LIMITER
+const rateLimit = require("express-rate-limit");
+const compression = require("compression"); // 👉 ADDED COMPRESSION ENGINE
 
 // 👉 CRON & MODEL IMPORTS FOR AUTO-CLEANUP
 const cron = require("node-cron");
@@ -69,6 +70,9 @@ app.use((req, res, next) => {
 // Apply CORS to Express
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
+
+// 👉 THE FIX: Shrink all server JSON responses by ~70% for lightning-fast loading!
+app.use(compression());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -148,14 +152,16 @@ cron.schedule("0 0 * * *", async () => {
     const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
 
     // 1. Mark SOS Emergency Posts older than 24 hours as "expired"
+    // 👉 CRITICAL FIX: Changed from 'available' to 'active' to match schema!
     const sosResult = await Donation.updateMany(
-      { isEmergency: true, createdAt: { $lt: oneDayAgo }, status: "available" },
+      { isEmergency: true, createdAt: { $lt: oneDayAgo }, status: "active" },
       { $set: { status: "expired" } },
     );
 
     // 2. Mark Food Posts older than 48 hours as "expired" (Hygiene control)
+    // 👉 CRITICAL FIX: Changed from 'available' to 'active' to match schema!
     const foodResult = await Donation.updateMany(
-      { category: "food", createdAt: { $lt: twoDaysAgo }, status: "available" },
+      { category: "food", createdAt: { $lt: twoDaysAgo }, status: "active" },
       { $set: { status: "expired" } },
     );
 

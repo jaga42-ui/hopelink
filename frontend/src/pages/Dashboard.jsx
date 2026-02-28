@@ -29,7 +29,7 @@ import {
   FaBell,
   FaShareAlt,
   FaMedal,
-  FaFlag, // 👉 ADDED FLAG ICON FOR REPORTING
+  FaFlag,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -89,6 +89,9 @@ const Dashboard = () => {
   const [editingEventId, setEditingEventId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // 👉 THE FIX: Track which specific user is being approved so we can show a spinner
+  const [approvingId, setApprovingId] = useState(null);
+
   const isDonor = localRole === "donor";
   const roleTheme = {
     primary: isDonor
@@ -144,7 +147,11 @@ const Dashboard = () => {
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [typingTimeout, setTypingTimeout] = useState(null);
 
+  // Request Notification Permissions on load so we can ping their phone
   useEffect(() => {
+    if (Notification.permission === "default") {
+      Notification.requestPermission();
+    }
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -224,12 +231,58 @@ const Dashboard = () => {
     socket.on("new_event", (newEvent) => {
       setEventsFeed((prev) => [newEvent, ...prev]);
     });
+
     socket.on("event_deleted", (deletedId) => {
       setEventsFeed((prev) => prev.filter((ev) => ev._id !== deletedId));
     });
 
+    // 👉 THE FIX: Interactive Inbox Notification
+    socket.on("new_message_notification", (data) => {
+      toast(
+        (t) => (
+          <div className="flex flex-col gap-2 w-full">
+            <p className="text-sm font-bold text-white flex items-center gap-2">
+              <FaCommentDots className="text-teal-400" /> New Message
+            </p>
+            <p className="text-xs text-slate-300">
+              <span className="font-bold text-white">{data.senderName}:</span>{" "}
+              {data.text.length > 30
+                ? data.text.substring(0, 30) + "..."
+                : data.text}
+            </p>
+            <button
+              onClick={() => {
+                toast.dismiss(t.id);
+                navigate("/chat/inbox"); // Teleport directly to inbox!
+              }}
+              className="mt-1 w-full bg-teal-600 hover:bg-teal-500 text-white text-[10px] font-black uppercase tracking-widest py-2 rounded-lg transition-colors shadow-md"
+            >
+              Open Inbox
+            </button>
+          </div>
+        ),
+        {
+          duration: 8000,
+          position: "top-center",
+          style: {
+            background: "#0f172a",
+            border: "1px solid #334155",
+            minWidth: "250px",
+          },
+        },
+      );
+
+      // Trigger actual Phone OS Notification if granted
+      if (Notification.permission === "granted") {
+        new Notification(`HopeLink: ${data.senderName}`, {
+          body: data.text,
+          icon: "/logo.png",
+        });
+      }
+    });
+
     return () => socket.disconnect();
-  }, [user]);
+  }, [user, navigate]);
 
   const handleRoleToggle = () => {
     const newRole = isDonor ? "receiver" : "donor";
@@ -496,26 +549,35 @@ const Dashboard = () => {
     }
   };
 
+  // 👉 THE FIX: Smooth Approval (No Forced Redirect & Loading States)
   const handleApproveRequest = async (donationId, receiverId) => {
+    setApprovingId(receiverId); // Start loading spinner on button
+
     try {
       const { data } = await api.patch(`/donations/${donationId}/approve`, {
         receiverId,
       });
-      const receiverName =
-        requestsModal.donation.requestedBy.find((r) => r._id === receiverId)
-          ?.name || "Receiver";
-      setRequestsModal({ isOpen: false, donation: null });
-      toast.success("Approved! Secure comms channel established.");
 
-      navigate(`/chat/${donationId}_${receiverId}`, {
-        state: {
-          otherUserId: receiverId,
-          otherUserName: receiverName,
-          itemTitle: requestsModal.donation?.title,
-        },
-      });
+      // Close the modal immediately
+      setRequestsModal({ isOpen: false, donation: null });
+
+      // Optimistically update the feed so the button changes to "Verify PIN" instantly
+      setFeed((prevFeed) =>
+        prevFeed.map((item) =>
+          item._id === donationId
+            ? { ...item, status: "pending", receiverId: receiverId }
+            : item,
+        ),
+      );
+
+      toast.success("Request Approved! Check the post to verify PIN.");
+
+      // WE REMOVED THE FORCED REDIRECT.
+      // The user stays on the Dashboard and can open chat on their own time!
     } catch (error) {
       toast.error("Approval failed");
+    } finally {
+      setApprovingId(null); // Stop loading spinner
     }
   };
 
@@ -560,7 +622,6 @@ const Dashboard = () => {
     }
   };
 
-  // 👉 THE FIX: Trust & Safety Report Engine
   const handleReport = async (id) => {
     if (window.confirm("Report this post for spam or inappropriate content?")) {
       try {
@@ -811,6 +872,8 @@ const Dashboard = () => {
                                   }
                                   className="w-full h-full object-cover"
                                   alt="User"
+                                  loading="lazy"
+                                  decoding="async"
                                 />
                               </div>
                               <div>
@@ -860,6 +923,8 @@ const Dashboard = () => {
                                 src={optimizeImageUrl(item.image)}
                                 className="w-full h-full object-cover"
                                 alt="intel"
+                                loading="lazy"
+                                decoding="async"
                               />
                               {isEmergency && (
                                 <div className="absolute top-3 left-3 px-3 py-1 bg-red-600 rounded-lg text-[8px] font-black uppercase text-white shadow-xl">
@@ -910,7 +975,6 @@ const Dashboard = () => {
                             </a>
 
                             <div className="flex items-center gap-2">
-                              {/* 👉 THE FIX: Report Button */}
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -1100,6 +1164,8 @@ const Dashboard = () => {
                               src={optimizeImageUrl(event.image)}
                               className="w-full h-full object-cover grayscale-[20%] group-hover:grayscale-0 transition-all duration-700"
                               alt="event"
+                              loading="lazy"
+                              decoding="async"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent" />
                             <div className="absolute top-4 right-4 flex gap-2">
@@ -1185,6 +1251,9 @@ const Dashboard = () => {
                                   <img
                                     src={event.organizationId.profilePic}
                                     className="w-full h-full object-cover"
+                                    alt="org"
+                                    loading="lazy"
+                                    decoding="async"
                                   />
                                 ) : (
                                   event.organizationId?.name?.charAt(0)
@@ -1690,6 +1759,8 @@ const Dashboard = () => {
                           {requester.name}
                         </span>
                       </div>
+
+                      {/* 👉 THE FIX: Replaced instant redirect with a clean loading spinner */}
                       <button
                         onClick={() =>
                           handleApproveRequest(
@@ -1697,9 +1768,14 @@ const Dashboard = () => {
                             requester._id,
                           )
                         }
-                        className="px-5 py-3 bg-teal-600 hover:bg-teal-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-md"
+                        disabled={approvingId === requester._id}
+                        className={`px-5 py-3 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-md flex items-center justify-center transition-all w-28 ${approvingId === requester._id ? "bg-slate-800" : "bg-teal-600 hover:bg-teal-500"}`}
                       >
-                        Approve
+                        {approvingId === requester._id ? (
+                          <FaSpinner className="animate-spin text-teal-400 text-lg" />
+                        ) : (
+                          "Approve"
+                        )}
                       </button>
                     </div>
                   ))}

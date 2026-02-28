@@ -54,8 +54,6 @@ const donationSchema = new mongoose.Schema(
       addressText: { type: String },
     },
 
-    // 👉 THE ENUM FIX: Added 'hidden' (for auto-mod) and 'expired' (for the cron job).
-    // Kept 'available' just in case older documents in your DB still use it!
     status: {
       type: String,
       enum: [
@@ -72,6 +70,14 @@ const donationSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+// 👉 GEOSPATIAL INDEX: For Radar map and nearby searches
 donationSchema.index({ location: "2dsphere" });
+
+// 👉 THE FIX: PERFORMANCE INDEXES
+// 1. Speeds up the main feed (fetching active posts sorted by newest)
+donationSchema.index({ status: 1, createdAt: -1 });
+
+// 2. Speeds up category filtering (e.g., when a user clicks the "Food" button)
+donationSchema.index({ category: 1, status: 1 });
 
 module.exports = mongoose.model("Donation", donationSchema);

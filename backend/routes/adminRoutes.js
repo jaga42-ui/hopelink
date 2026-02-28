@@ -7,7 +7,9 @@ const {
   getAllListings, 
   deleteUser, 
   deleteListing,
-  toggleAdminRole // 👉 NEW IMPORT
+  toggleAdminRole,
+  sendBroadcast, // 👉 NEW IMPORT
+  resolveReport  // 👉 NEW IMPORT
 } = require('../controllers/adminController');
 
 const adminGuard = (req, res, next) => {
@@ -18,6 +20,7 @@ const adminGuard = (req, res, next) => {
   }
 };
 
+// 🛡️ Apply protection to ALL routes below
 router.use(protect, adminGuard);
 
 router.get('/stats', getDashboardStats);
@@ -25,8 +28,10 @@ router.get('/users', getAllUsers);
 router.get('/listings', getAllListings);
 router.delete('/users/:id', deleteUser);
 router.delete('/listings/:id', deleteListing);
-
-// 👉 NEW ROUTE
 router.patch('/users/:id/role', toggleAdminRole); 
+
+// 👉 THE NEW MISSION CONTROL ROUTES
+router.post('/broadcast', sendBroadcast);
+router.patch('/resolve-report/:id', resolveReport);
 
 module.exports = router;

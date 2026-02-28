@@ -1,9 +1,9 @@
 const asyncHandler = require('express-async-handler');
 const User = require('../models/User');
 const Donation = require('../models/Donation');
-const moment = require('moment'); // 👉 NEW: Required for the 30-day growth graph
+const moment = require('moment'); // Required for the 30-day growth graph
 
-// @desc    Get platform statistics (Upgraded for Recharts)
+// @desc    Get platform statistics (Upgraded for Recharts & Moderation)
 // @route   GET /api/admin/stats
 const getDashboardStats = asyncHandler(async (req, res) => {
   const totalUsers = await User.countDocuments();
@@ -11,10 +11,10 @@ const getDashboardStats = asyncHandler(async (req, res) => {
   const totalRequests = await Donation.countDocuments({ listingType: 'request' });
   const fulfilledItems = await Donation.countDocuments({ status: 'fulfilled' });
   
-  // 👉 NEW: Count active SOS emergencies
+  // Count active SOS emergencies
   const activeSOS = await Donation.countDocuments({ isEmergency: true, status: 'active' });
 
-  // 👉 NEW: Generate 30-Day Growth Data for the Area Chart
+  // Generate 30-Day Growth Data for the Area Chart
   const thirtyDaysAgo = moment().subtract(30, 'days').toDate();
   
   const dailyUsers = await User.aggregate([
@@ -34,13 +34,19 @@ const getDashboardStats = asyncHandler(async (req, res) => {
     Users: day.count
   }));
 
+  // 👉 NEW: Fetch any posts that have been flagged by the community for the Moderation Queue
+  const reportedPosts = await Donation.find({ 'reports.0': { $exists: true } })
+    .populate("donorId", "name email")
+    .sort({ createdAt: -1 });
+
   res.json({ 
     totalUsers, 
     totalDonations, 
     totalRequests, 
     fulfilledItems,
-    activeSOS,     // 👉 Sent to frontend pie chart
-    growthData     // 👉 Sent to frontend area chart
+    activeSOS,     // Sent to frontend pie chart
+    growthData,    // Sent to frontend area chart
+    reportedPosts  // 👉 Sent to frontend Moderation Queue
   });
 });
 
@@ -121,11 +127,54 @@ const toggleAdminRole = asyncHandler(async (req, res) => {
   });
 });
 
+// 👉 THE RED BUTTON (Global WebSocket Broadcast)
+// @route   POST /api/admin/broadcast
+const sendBroadcast = asyncHandler(async (req, res) => {
+  const { message, level } = req.body; 
+  
+  const io = req.app.get("io");
+  if (io) {
+    io.emit("global_alert", { message, level, timestamp: new Date() });
+  }
+
+  res.json({ success: true, message: "Broadcast transmitted to all active users." });
+});
+
+// 👉 RESOLVE COMMUNITY REPORTS
+// @route   PATCH /api/admin/resolve-report/:id
+const resolveReport = asyncHandler(async (req, res) => {
+  const { action } = req.body; // 'whitelist' or 'delete'
+  const donation = await Donation.findById(req.params.id);
+
+  if (!donation) {
+    res.status(404);
+    throw new Error("Post not found");
+  }
+
+  if (action === 'delete') {
+    await donation.deleteOne();
+    
+    // Instantly wipe it from all active screens globally
+    const io = req.app.get("io");
+    if (io) io.emit("listing_deleted", req.params.id);
+    
+    res.json({ message: "Hostile transmission purged from network." });
+  } else {
+    // Whitelist it
+    donation.reports = [];
+    donation.status = 'active'; // Restore it to the feed
+    await donation.save();
+    res.json({ message: "Post whitelisted and reports cleared." });
+  }
+});
+
 module.exports = { 
   getDashboardStats, 
   getAllUsers, 
   getAllListings, 
   deleteUser, 
   deleteListing, 
-  toggleAdminRole
+  toggleAdminRole,
+  sendBroadcast, // 👉 Exported
+  resolveReport  // 👉 Exported
 };
