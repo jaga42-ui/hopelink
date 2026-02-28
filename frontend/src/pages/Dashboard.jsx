@@ -89,7 +89,6 @@ const Dashboard = () => {
   const [editingEventId, setEditingEventId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 👉 THE FIX: Track which specific user is being approved so we can show a spinner
   const [approvingId, setApprovingId] = useState(null);
 
   const isDonor = localRole === "donor";
@@ -147,7 +146,6 @@ const Dashboard = () => {
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [typingTimeout, setTypingTimeout] = useState(null);
 
-  // Request Notification Permissions on load so we can ping their phone
   useEffect(() => {
     if (Notification.permission === "default") {
       Notification.requestPermission();
@@ -236,8 +234,17 @@ const Dashboard = () => {
       setEventsFeed((prev) => prev.filter((ev) => ev._id !== deletedId));
     });
 
-    // 👉 THE FIX: Interactive Inbox Notification
+    // 👉 THE FIX: Bulletproof Inbox Notification (No Double Popups!)
     socket.on("new_message_notification", (data) => {
+      // 1. Defend against empty ghost pings
+      if (!data) return;
+
+      // 2. Safely extract values
+      const senderName = data.senderName || "A Community Member";
+      const messageText = data.text || data.content || "Sent you a message.";
+      const messageId = data._id || `msg_${Date.now()}`; // Guarantee a unique ID
+
+      // 3. Fire the toast with the specific ID to PREVENT DUPLICATES
       toast(
         (t) => (
           <div className="flex flex-col gap-2 w-full">
@@ -245,10 +252,10 @@ const Dashboard = () => {
               <FaCommentDots className="text-teal-400" /> New Message
             </p>
             <p className="text-xs text-slate-300">
-              <span className="font-bold text-white">{data.senderName}:</span>{" "}
-              {data.text.length > 30
-                ? data.text.substring(0, 30) + "..."
-                : data.text}
+              <span className="font-bold text-white">{senderName}:</span>{" "}
+              {messageText.length > 30
+                ? messageText.substring(0, 30) + "..."
+                : messageText}
             </p>
             <button
               onClick={() => {
@@ -262,6 +269,7 @@ const Dashboard = () => {
           </div>
         ),
         {
+          id: messageId, // 👉 THIS SINGLE LINE KILLS THE DOUBLE POPUP BUG
           duration: 8000,
           position: "top-center",
           style: {
@@ -274,8 +282,8 @@ const Dashboard = () => {
 
       // Trigger actual Phone OS Notification if granted
       if (Notification.permission === "granted") {
-        new Notification(`HopeLink: ${data.senderName}`, {
-          body: data.text,
+        new Notification(`HopeLink: ${senderName}`, {
+          body: messageText,
           icon: "/logo.png",
         });
       }
@@ -549,7 +557,6 @@ const Dashboard = () => {
     }
   };
 
-  // 👉 THE FIX: Smooth Approval (No Forced Redirect & Loading States)
   const handleApproveRequest = async (donationId, receiverId) => {
     setApprovingId(receiverId); // Start loading spinner on button
 
@@ -571,9 +578,6 @@ const Dashboard = () => {
       );
 
       toast.success("Request Approved! Check the post to verify PIN.");
-
-      // WE REMOVED THE FORCED REDIRECT.
-      // The user stays on the Dashboard and can open chat on their own time!
     } catch (error) {
       toast.error("Approval failed");
     } finally {

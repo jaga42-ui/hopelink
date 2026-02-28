@@ -10,15 +10,15 @@ import { AuthProvider } from "./context/AuthContext";
 
 // 👉 IMPORT THE NEW SEO & ANALYTICS ENGINES
 import { HelmetProvider } from "react-helmet-async";
-import posthog from "posthog-js";
+// import posthog from "posthog-js"; // 🛑 Temporarily disabled to silence console errors
 
 // 👉 IMPORT THE NEW MASTER LOADER & ERROR BOUNDARY
 import Loader from "./components/Loader";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 // 👉 INITIALIZE POSTHOG (Heatmaps & Analytics)
-// Note: Replace the string below with your actual free PostHog key later!
-posthog.init("YOUR_POSTHOG_API_KEY", { api_host: "https://app.posthog.com" });
+// 🛑 Temporarily disabled until you get a real API key!
+// posthog.init("YOUR_POSTHOG_API_KEY", { api_host: "https://app.posthog.com" });
 
 // 👉 LAZY LOADED PAGES: These only download when the user clicks them!
 const CreateDonation = lazy(() => import("./pages/CreateDonation"));
