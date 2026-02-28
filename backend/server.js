@@ -95,10 +95,20 @@ const postLimiter = rateLimit({
   },
 });
 
-// Apply limiters
+// 👉 THE 429 FIX: Apply limiters smartly
 app.use("/api/", apiLimiter);
-app.use("/api/donations", postLimiter);
-app.use("/api/events", postLimiter); // Protect events too!
+
+// Only apply the strict postLimiter to POST requests (creating new items)
+// GET requests (scrolling the feed) flow freely!
+app.use("/api/donations", (req, res, next) => {
+  if (req.method === "POST") return postLimiter(req, res, next);
+  next();
+});
+
+app.use("/api/events", (req, res, next) => {
+  if (req.method === "POST") return postLimiter(req, res, next);
+  next();
+});
 
 // Static folder for uploaded images
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
