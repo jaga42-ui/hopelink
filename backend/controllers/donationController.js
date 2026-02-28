@@ -126,7 +126,8 @@ const getDonations = asyncHandler(async (req, res) => {
   const limit = Number(req.query.limit) || 12;
   const skip = (page - 1) * limit;
 
-  let query = { status: { $ne: "fulfilled" } };
+  // 👉 Notice we also hide 'hidden' posts from the map
+  let query = { status: { $nin: ["fulfilled", "hidden"] } };
 
   if (lat && lng) {
     query.location = {
@@ -155,7 +156,10 @@ const getNearbyFeed = asyncHandler(async (req, res) => {
   const limit = Number(req.query.limit) || 12;
   const skip = (page - 1) * limit;
 
-  const donations = await Donation.find({ status: { $ne: "fulfilled" } })
+  // 👉 Hide fulfilled and reported/hidden posts from the main feed
+  const donations = await Donation.find({
+    status: { $nin: ["fulfilled", "hidden"] },
+  })
     .populate(
       "donorId",
       "name profilePic addressText points rank rating totalRatings phone",
@@ -165,7 +169,9 @@ const getNearbyFeed = asyncHandler(async (req, res) => {
     .skip(skip)
     .limit(limit);
 
-  const total = await Donation.countDocuments({ status: { $ne: "fulfilled" } });
+  const total = await Donation.countDocuments({
+    status: { $nin: ["fulfilled", "hidden"] },
+  });
   const hasMore = total > skip + donations.length;
 
   res.json({ donations, hasMore });
@@ -179,7 +185,6 @@ const requestItem = asyncHandler(async (req, res) => {
     throw new Error("Item not found");
   }
 
-  // 👉 THE OPEN GRID FIX: Check for fulfilled, not active
   if (donation.status === "fulfilled") {
     res.status(400);
     throw new Error("This mission has already been completed.");
@@ -197,21 +202,18 @@ const requestItem = asyncHandler(async (req, res) => {
   donation.requestedBy.push(req.user._id);
   await donation.save();
 
-  // Refetch the donation to get populated fields for the UI
   const updatedDonation = await Donation.findById(donation._id)
     .populate("donorId", "name profilePic addressText phone")
     .populate("requestedBy", "name profilePic");
 
   const io = req.app.get("io");
   if (io) {
-    // Notify the specific donor
     io.to(donation.donorId.toString()).emit("new_request_notification", {
       donationId: donation._id,
       title: donation.title,
       requesterName: req.user.name,
     });
 
-    // 👉 2. REAL-TIME: Update the UI for everyone
     io.emit("listing_updated", updatedDonation);
   }
 
@@ -234,7 +236,6 @@ const approveRequest = asyncHandler(async (req, res) => {
     throw new Error("Only the donor can approve requests");
   }
 
-  // 👉 THE OPEN GRID FIX: Check for fulfilled
   if (donation.status === "fulfilled") {
     res.status(400);
     throw new Error("This mission has already been completed.");
@@ -249,7 +250,6 @@ const approveRequest = asyncHandler(async (req, res) => {
   donation.status = "pending";
   await donation.save();
 
-  // Refetch the donation to get populated fields
   const updatedDonation = await Donation.findById(donation._id)
     .populate("donorId", "name profilePic addressText phone")
     .populate("requestedBy", "name profilePic");
@@ -258,7 +258,6 @@ const approveRequest = asyncHandler(async (req, res) => {
 
   const io = req.app.get("io");
   if (io) {
-    // Notify the receiver privately
     io.to(receiverId.toString()).emit("request_approved", {
       donationId: donation._id,
       title: donation.title,
@@ -266,7 +265,6 @@ const approveRequest = asyncHandler(async (req, res) => {
       chatRoomId: chatRoomId,
     });
 
-    // 👉 3. REAL-TIME: Update the UI globally
     io.emit("listing_updated", updatedDonation);
   }
 
@@ -295,9 +293,6 @@ const acceptSOS = asyncHandler(async (req, res) => {
     throw new Error("This is not an emergency listing.");
   }
 
-  // 👉 THE OPEN GRID FIX FOR SOS:
-  // We ONLY block if the emergency is already fulfilled/completed.
-  // We DO NOT block if it's 'active' or 'pending', allowing multiple heroes to respond!
   if (sosRequest.status === "fulfilled") {
     res.status(400);
     throw new Error("This emergency has already been resolved!");
@@ -308,7 +303,6 @@ const acceptSOS = asyncHandler(async (req, res) => {
     throw new Error("You cannot respond to your own SOS");
   }
 
-  // Add the hero to the requestedBy array if they aren't already in it
   if (!sosRequest.requestedBy.includes(heroId)) {
     sosRequest.requestedBy.push(heroId);
   }
@@ -323,7 +317,6 @@ const acceptSOS = asyncHandler(async (req, res) => {
 
   const io = req.app.get("io");
   if (io) {
-    // 👉 REAL-TIME: Update the UI instantly
     io.emit("listing_updated", updatedDonation);
   }
 
@@ -368,7 +361,6 @@ const markFulfilled = asyncHandler(async (req, res) => {
 
   const io = req.app.get("io");
   if (io) {
-    // 👉 REAL-TIME: Completely remove fulfilled items from the feed
     io.emit("listing_deleted", donation._id);
   }
 
@@ -398,13 +390,49 @@ const deleteDonation = asyncHandler(async (req, res) => {
   }
   await donation.deleteOne();
 
-  // 👉 4. REAL-TIME: Instantly wipe deleted posts off the screen
   const io = req.app.get("io");
   if (io) {
     io.emit("listing_deleted", req.params.id);
   }
 
   res.json({ id: req.params.id });
+});
+
+// 👉 THE TRUST & SAFETY ENGINE (Auto-Moderation)
+const reportDonation = asyncHandler(async (req, res) => {
+  const donation = await Donation.findById(req.params.id);
+
+  if (!donation) {
+    res.status(404);
+    throw new Error("Post not found");
+  }
+
+  // Check if user already reported this specific post
+  if (donation.reports && donation.reports.includes(req.user._id)) {
+    return res.status(400).json({ message: "You already reported this post." });
+  }
+
+  // Initialize array if it doesn't exist, then add the user
+  if (!donation.reports) donation.reports = [];
+  donation.reports.push(req.user._id);
+
+  // AUTO-MODERATION: If 3 different people report it, hide it immediately
+  if (donation.reports.length >= 3) {
+    donation.status = "hidden";
+  }
+
+  await donation.save();
+
+  // If it was auto-hidden, tell the frontend to instantly remove it from everyone's screen globally
+  if (donation.status === "hidden") {
+    const io = req.app.get("io");
+    if (io) io.emit("listing_deleted", donation._id);
+  }
+
+  res.json({
+    message:
+      "Post flagged for review. Thank you for keeping the community safe.",
+  });
 });
 
 module.exports = {
@@ -418,4 +446,5 @@ module.exports = {
   approveRequest,
   acceptSOS,
   getLeaderboard,
+  reportDonation, // 👉 EXPORTED THE NEW FUNCTION
 };

@@ -14,7 +14,8 @@ const {
   requestItem,     
   approveRequest,  
   getLeaderboard,
-  acceptSOS // 👉 NEW: Imported the Emergency SOS handler
+  acceptSOS,
+  reportDonation // 👉 NEW: Imported the Report handler
 } = require('../controllers/donationController');
 
 const { protect } = require('../middleware/authMiddleware');
@@ -31,11 +32,14 @@ router.get('/my-history', protect, getMyHistory);
 router.patch('/:id/fulfill', protect, markFulfilled);
 router.delete('/:id', protect, deleteDonation);
 
-// 👉 The new Marketplace Request Routes
+// 👉 The Marketplace Request Routes
 router.post('/:id/request', protect, requestItem);
 router.patch('/:id/approve', protect, approveRequest);
 
-// 👉 NEW: The Emergency SOS Accept Route
+// 👉 The Emergency SOS Accept Route
 router.patch('/:id/sos-accept', protect, acceptSOS);
+
+// 👉 NEW: The Report & Auto-Moderation Route
+router.post('/:id/report', protect, reportDonation);
 
 module.exports = router;

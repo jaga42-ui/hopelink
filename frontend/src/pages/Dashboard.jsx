@@ -27,7 +27,9 @@ import {
   FaEdit,
   FaKey,
   FaBell,
-  FaShareAlt, // 👉 ADDED SHARE ICON
+  FaShareAlt,
+  FaMedal,
+  FaFlag, // 👉 ADDED FLAG ICON FOR REPORTING
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -42,6 +44,25 @@ const optimizeImageUrl = (url) => {
     return url.startsWith("http") ? url : `${BACKEND_URL}${url}`;
   return url.replace("/upload/", "/upload/f_auto,q_auto,w_800/");
 };
+
+const SkeletonCard = () => (
+  <div className="relative overflow-hidden flex flex-col rounded-[2rem] border border-slate-800 bg-slate-900 shadow-lg h-[350px]">
+    <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-slate-800/50 to-transparent z-10" />
+    <div className="p-5 flex-1 flex flex-col">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 rounded-2xl bg-slate-800 shrink-0"></div>
+        <div className="space-y-2 flex-1">
+          <div className="h-3 w-24 bg-slate-800 rounded"></div>
+          <div className="h-2 w-16 bg-slate-800 rounded"></div>
+        </div>
+      </div>
+      <div className="w-full h-32 rounded-2xl bg-slate-800 mb-4"></div>
+      <div className="h-4 w-3/4 bg-slate-800 rounded mb-2"></div>
+      <div className="h-3 w-full bg-slate-800 rounded mb-2"></div>
+      <div className="h-3 w-5/6 bg-slate-800 rounded mt-auto"></div>
+    </div>
+  </div>
+);
 
 const Dashboard = () => {
   const { user, switchRole, enableNotifications } = useContext(AuthContext);
@@ -123,7 +144,6 @@ const Dashboard = () => {
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [typingTimeout, setTypingTimeout] = useState(null);
 
-  // PWA Install Prompt
   useEffect(() => {
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
@@ -516,7 +536,6 @@ const Dashboard = () => {
     }
   };
 
-  // 👉 THE FIX: Viral WhatsApp / Native Share Function
   const handleShare = async (item) => {
     const shareText = item.isEmergency
       ? `🚨 URGENT: ${item.bloodGroup} Blood needed at ${item.addressText?.split(",")[0] || "nearby"}. Can you help?`
@@ -538,6 +557,18 @@ const Dashboard = () => {
       window.open(
         `https://wa.me/?text=${encodeURIComponent(shareData.text + " -> " + shareData.url)}`,
       );
+    }
+  };
+
+  // 👉 THE FIX: Trust & Safety Report Engine
+  const handleReport = async (id) => {
+    if (window.confirm("Report this post for spam or inappropriate content?")) {
+      try {
+        const { data } = await api.post(`/donations/${id}/report`);
+        toast.success(data.message);
+      } catch (error) {
+        toast.error(error.response?.data?.message || "Failed to report post.");
+      }
     }
   };
 
@@ -602,7 +633,6 @@ const Dashboard = () => {
               </p>
             </motion.div>
 
-            {/* Mathematically perfect Flexbox Layout Toggle */}
             {!user.isAdmin && (
               <div
                 onClick={handleRoleToggle}
@@ -738,8 +768,10 @@ const Dashboard = () => {
             </div>
 
             {loading ? (
-              <div className="flex justify-center py-20">
-                <FaSpinner className="animate-spin text-4xl text-teal-600" />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {[1, 2, 3, 4, 5, 6].map((n) => (
+                  <SkeletonCard key={n} />
+                ))}
               </div>
             ) : processedFeed.length === 0 ? (
               <div className="text-center py-20 text-slate-500 font-medium text-sm">
@@ -782,8 +814,14 @@ const Dashboard = () => {
                                 />
                               </div>
                               <div>
-                                <p className="text-sm font-black text-white leading-none">
+                                <p className="text-sm font-black text-white leading-none flex items-center gap-1.5">
                                   {item.donorId?.name}
+                                  {item.donorId?.points >= 50 && (
+                                    <FaMedal
+                                      className="text-yellow-500 text-sm drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]"
+                                      title="Verified Hero (50+ Impact Points)"
+                                    />
+                                  )}
                                 </p>
                                 <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                                   {item.isEmergency ? (
@@ -847,7 +885,6 @@ const Dashboard = () => {
                             {item.description}
                           </p>
 
-                          {/* 👉 THE FIX: Clickable Get Directions Link & Viral Share Button */}
                           <div className="flex items-center justify-between mt-auto">
                             <a
                               href={
@@ -872,18 +909,31 @@ const Dashboard = () => {
                               </span>
                             </a>
 
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleShare(item);
-                              }}
-                              className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center shrink-0 transition-all active:scale-90"
-                            >
-                              <FaShareAlt size={12} />
-                            </button>
+                            <div className="flex items-center gap-2">
+                              {/* 👉 THE FIX: Report Button */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleReport(item._id);
+                                }}
+                                className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 text-slate-500 hover:text-red-400 hover:bg-red-900/30 flex items-center justify-center shrink-0 transition-all active:scale-90"
+                                title="Report Post"
+                              >
+                                <FaFlag size={10} />
+                              </button>
+
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleShare(item);
+                                }}
+                                className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center shrink-0 transition-all active:scale-90"
+                              >
+                                <FaShareAlt size={12} />
+                              </button>
+                            </div>
                           </div>
 
-                          {/* DISPLAY PIN TO APPROVED RECEIVER ONLY */}
                           {isApprovedReceiver &&
                             item.pickupPIN &&
                             item.status === "pending" && (
@@ -1010,7 +1060,6 @@ const Dashboard = () => {
           </motion.div>
         )}
 
-        {/* VIEW 2: ORGANIZATION EVENTS FEED */}
         {viewMode === "events" && (
           <motion.div
             initial={{ opacity: 0, x: 20 }}
@@ -1156,7 +1205,6 @@ const Dashboard = () => {
           </motion.div>
         )}
 
-        {/* MODALS */}
         <AnimatePresence>
           {showSOS && (
             <div className="fixed inset-0 z-[3000] flex items-end sm:items-center justify-center p-0 sm:p-4">
