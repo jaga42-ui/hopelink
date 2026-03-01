@@ -136,11 +136,21 @@ export const AuthProvider = ({ children }) => {
     });
 
     try {
+      console.log("[FCM] Requesting token from Firebase...");
       const fcmToken = await requestFirebaseToken();
+      
       if (fcmToken) {
-        await api.post("/auth/fcm-token", { fcmToken });
+        console.log("[FCM] Token acquired. Sending to backend.");
+        
+        // 👉 THE FIX: Explicitly inject the token into the headers!
+        await api.post("/auth/fcm-token", 
+          { fcmToken: fcmToken },
+          { headers: { Authorization: `Bearer ${user.token}` } } // FORCE THE TOKEN
+        );
+        
         toast.success("Lock-Screen Alerts Enabled! 🚀", { id: toastId });
       } else {
+        console.log("[FCM] requestFirebaseToken returned null/undefined");
         toast.error(
           "Permission denied. Please check your browser site settings.",
           { id: toastId },
@@ -148,24 +158,41 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error("FCM Token process failed:", error);
-      toast.error("Failed to establish secure channel.", { id: toastId });
+      toast.error("Failed to establish secure channel. Check console.", { id: toastId });
     }
   };
 
   // 👉 Async Login Function with Firebase Trigger
   const login = async (userData) => {
+    console.log("[AUTH] Logging in user:", userData.name);
+    
+    // Save to state and localStorage
     setUser(userData);
     localStorage.setItem("user", JSON.stringify(userData));
 
-    try {
-      const fcmToken = await requestFirebaseToken();
-      if (fcmToken) {
-        await api.post("/auth/fcm-token", { fcmToken });
-        console.log("Firebase Lock-Screen Notifications Enabled.");
-      }
-    } catch (error) {
-      console.error("FCM Token process failed on login:", error);
-    }
+    // Wait 500ms to let the browser breathe, then grab the FCM token
+    setTimeout(async () => {
+        try {
+          console.log("[FCM] Post-Login: Requesting token...");
+          const fcmToken = await requestFirebaseToken();
+          
+          if (fcmToken) {
+            console.log("[FCM] Post-Login: Sending token to backend.");
+            
+            // 👉 THE FIX: Explicitly inject the token into the headers!
+            await api.post("/auth/fcm-token", 
+              { fcmToken: fcmToken },
+              { headers: { Authorization: `Bearer ${userData.token}` } } // FORCE THE TOKEN
+            );
+            
+            console.log("🔥 Firebase Lock-Screen Notifications Enabled.");
+          } else {
+            console.log("[FCM] Post-Login: Token request returned null.");
+          }
+        } catch (error) {
+          console.error("FCM Token process failed on login:", error);
+        }
+    }, 500);
   };
 
   const logout = () => {
@@ -175,7 +202,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    // 👉 Export the new enableNotifications function
     <AuthContext.Provider
       value={{
         user,
