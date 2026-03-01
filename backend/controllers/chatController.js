@@ -139,9 +139,12 @@ const sendMessage = asyncHandler(async (req, res) => {
     io.to(receiverId.toString()).emit("new_message_notification");
   }
 
-  // 3. FIREBASE PUSH NOTIFICATION
+  // 3. FIREBASE PUSH NOTIFICATION (WITH DEBUG LOGS)
   try {
     const receiver = await User.findById(receiverId);
+
+    // 👉 THIS IS THE TRACKER: It will tell us if the database has their phone token
+    console.log(`[PUSH TEST] Checking receiver: ${receiver?.name}. Token exists? ${!!receiver?.fcmToken}`);
 
     if (receiver && receiver.fcmToken) {
       const pushMessage = {
@@ -160,6 +163,8 @@ const sendMessage = asyncHandler(async (req, res) => {
       console.log(
         `🔥 Firebase Chat Blast: Sent to ${receiver.name}'s locked phone.`,
       );
+    } else {
+      console.log(`⚠️ Push skipped: User ${receiver?.name} does NOT have a phone token saved in MongoDB.`);
     }
   } catch (error) {
     console.error("Firebase Chat Push Error:", error.message);
