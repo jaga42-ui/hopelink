@@ -71,18 +71,15 @@ const createDonation = asyncHandler(async (req, res) => {
     },
   });
 
-  // Fetch the full populated donation to send back to the frontend UI
   const populatedDonation = await Donation.findById(newDonation._id)
     .populate("donorId", "name profilePic addressText")
     .populate("requestedBy", "name profilePic");
 
-  // 👉 1. REAL-TIME: BROADCAST NEW LISTING TO EVERYONE ONLINE
   const io = req.app.get("io");
   if (io) {
     io.emit("new_listing", populatedDonation);
   }
 
-  // FIREBASE PUSH NOTIFICATION FOR SOS BLASTS
   if (isCriticalEmergency) {
     try {
       const potentialSaviors = await User.find({
@@ -126,7 +123,6 @@ const getDonations = asyncHandler(async (req, res) => {
   const limit = Number(req.query.limit) || 12;
   const skip = (page - 1) * limit;
 
-  // 👉 Notice we also hide 'hidden' posts from the map
   let query = { status: { $nin: ["fulfilled", "hidden"] } };
 
   if (lat && lng) {
@@ -156,7 +152,6 @@ const getNearbyFeed = asyncHandler(async (req, res) => {
   const limit = Number(req.query.limit) || 12;
   const skip = (page - 1) * limit;
 
-  // 👉 Hide fulfilled and reported/hidden posts from the main feed
   const donations = await Donation.find({
     status: { $nin: ["fulfilled", "hidden"] },
   })
@@ -323,9 +318,11 @@ const acceptSOS = asyncHandler(async (req, res) => {
   res.status(200).json(sosRequest);
 });
 
+// 👉 THE UPDATED MARK FULFILLED (With Nuclear Termination)
 const markFulfilled = asyncHandler(async (req, res) => {
   const { pin, rating } = req.body;
-  const donation = await Donation.findById(req.params.id);
+  const donationId = req.params.id;
+  const donation = await Donation.findById(donationId);
 
   if (!donation || donation.pickupPIN !== pin) {
     res.status(400);
@@ -335,7 +332,7 @@ const markFulfilled = asyncHandler(async (req, res) => {
   donation.status = "fulfilled";
   await donation.save();
 
-  // Update Donor
+  // Update Donor Points & Rank
   const donor = await User.findById(donation.donorId);
   donor.points += 50;
   donor.donationsCount += 1;
@@ -361,7 +358,15 @@ const markFulfilled = asyncHandler(async (req, res) => {
 
   const io = req.app.get("io");
   if (io) {
+    // 1. Remove listing from global feed
     io.emit("listing_deleted", donation._id);
+
+    // 2. 🚀 NUCLEAR TERMINATION: Close the chat room room for both parties
+    // The chat room ID is usually donationId_receiverId
+    const chatRoomId = `${donationId}_${donation.receiverId}`;
+    io.to(chatRoomId).emit("chat_terminated", {
+      message: "Mission AccomplISHED. Secure channel closed.",
+    });
   }
 
   res.json({ message: "Handshake Successful", pointsEarned: 50 });
@@ -398,7 +403,6 @@ const deleteDonation = asyncHandler(async (req, res) => {
   res.json({ id: req.params.id });
 });
 
-// 👉 THE TRUST & SAFETY ENGINE (Auto-Moderation)
 const reportDonation = asyncHandler(async (req, res) => {
   const donation = await Donation.findById(req.params.id);
 
@@ -407,23 +411,19 @@ const reportDonation = asyncHandler(async (req, res) => {
     throw new Error("Post not found");
   }
 
-  // Check if user already reported this specific post
   if (donation.reports && donation.reports.includes(req.user._id)) {
     return res.status(400).json({ message: "You already reported this post." });
   }
 
-  // Initialize array if it doesn't exist, then add the user
   if (!donation.reports) donation.reports = [];
   donation.reports.push(req.user._id);
 
-  // AUTO-MODERATION: If 3 different people report it, hide it immediately
   if (donation.reports.length >= 3) {
     donation.status = "hidden";
   }
 
   await donation.save();
 
-  // If it was auto-hidden, tell the frontend to instantly remove it from everyone's screen globally
   if (donation.status === "hidden") {
     const io = req.app.get("io");
     if (io) io.emit("listing_deleted", donation._id);
@@ -446,5 +446,5 @@ module.exports = {
   approveRequest,
   acceptSOS,
   getLeaderboard,
-  reportDonation, // 👉 EXPORTED THE NEW FUNCTION
+  reportDonation,
 };

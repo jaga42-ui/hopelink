@@ -38,18 +38,31 @@ const Inbox = () => {
       return;
     }
 
-    const fetchInbox = async () => {
+    // 👉 THE FIX: Added a background refresh flag so the UI doesn't flash the spinner
+    const fetchInbox = async (isBackgroundRefresh = false) => {
+      if (!isBackgroundRefresh) setLoading(true);
       try {
         const { data } = await api.get("/chat/inbox");
         setInboxChats(Array.isArray(data) ? data : []);
-        setLoading(false);
       } catch (error) {
         toast.error("Failed to load messages");
-        setLoading(false);
+      } finally {
+        if (!isBackgroundRefresh) setLoading(false);
       }
     };
 
-    fetchInbox();
+    fetchInbox(); // Initial fetch on page load
+
+    // 👉 REAL-TIME ENGINE: Listens for the ping from Layout.jsx and updates silently!
+    const handleRealTimeUpdate = () => {
+      fetchInbox(true); // True = invisible background update
+    };
+
+    window.addEventListener("new_unread_message", handleRealTimeUpdate);
+    
+    return () => {
+      window.removeEventListener("new_unread_message", handleRealTimeUpdate);
+    };
   }, [user, navigate]);
 
   if (!user) return null;

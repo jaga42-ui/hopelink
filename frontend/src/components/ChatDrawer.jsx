@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { io } from "socket.io-client";
 import {
   FaPaperPlane,
   FaTimes,
@@ -7,17 +8,24 @@ import {
   FaLock,
   FaCheckDouble,
   FaCheck,
+  FaSpinner,
 } from "react-icons/fa";
 import toast from "react-hot-toast";
 
 // 👉 IMPORT YOUR API MANAGER
 import api from "../utils/api";
 
-const ChatDrawer = ({ isOpen, onClose, currentUser, chatPartner, socket }) => {
+const SOCKET_URL = "https://hopelink-api.onrender.com";
+
+// Notice: Removed `socket` from props. The Drawer will manage its own connection.
+const ChatDrawer = ({ isOpen, onClose, currentUser, chatPartner }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
+  
+  // 👉 THE FIX: Dedicated socket ref for the drawer
+  const socketRef = useRef(null);
 
   // 👉 Create a unique Room ID for the two users
   const chatRoomId = chatPartner
@@ -25,77 +33,121 @@ const ChatDrawer = ({ isOpen, onClose, currentUser, chatPartner, socket }) => {
     : null;
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 50);
   };
 
-  // Fetch History when drawer opens
   useEffect(() => {
+    // Only connect if the drawer is open and we have both users
     if (isOpen && chatPartner && chatRoomId) {
-      fetchMessages();
-      // Join the unique combined room so both users hear each other
-      socket.emit("join_chat", {
+      // 1. Connect Socket
+      socketRef.current = io(SOCKET_URL, {
+        transports: ["websocket", "polling"],
+      });
+
+      socketRef.current.emit("join_chat", {
         userId: currentUser._id,
         donationId: chatRoomId,
       });
+
+      // 2. Fetch History
+      const fetchMessages = async () => {
+        setLoading(true);
+        try {
+          const { data } = await api.get(`/chat/${chatRoomId}`);
+          setMessages(Array.isArray(data) ? data : []);
+          
+          // Mark as read immediately
+          await api.put(`/chat/${chatRoomId}/read`);
+          socketRef.current.emit("mark_as_read", { donationId: chatRoomId, readerId: currentUser._id });
+          
+          scrollToBottom();
+        } catch (error) {
+          console.error("Failed to load secure chat history", error);
+          setMessages([]);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchMessages();
+
+      // 3. Set up Listeners
+      socketRef.current.on("receive_message", (msg) => {
+        setMessages((prev) => {
+          if (Array.isArray(prev) && prev.some((m) => m._id === msg._id)) return prev;
+          return [...(Array.isArray(prev) ? prev : []), msg];
+        });
+        
+        if (msg.sender !== currentUser._id) {
+          socketRef.current.emit("mark_as_read", { donationId: chatRoomId, readerId: currentUser._id });
+        }
+        scrollToBottom();
+      });
+
+      socketRef.current.on("messages_read", ({ readerId }) => {
+        if (readerId !== currentUser._id) {
+          setMessages((prev) =>
+            prev.map((msg) => (msg.sender === currentUser._id ? { ...msg, read: true } : msg)),
+          );
+        }
+      });
     }
-  }, [isOpen, chatPartner, chatRoomId]);
 
-  // Listen for incoming messages
-  useEffect(() => {
-    if (!socket) return;
-
-    const handleReceiveMessage = (msg) => {
-      // Check if the incoming message belongs to this specific room
-      if (msg.donationId === chatRoomId) {
-        setMessages((prev) => [...prev, msg]);
+    // Cleanup: Disconnect when drawer closes
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
       }
     };
+  }, [isOpen, chatPartner, chatRoomId, currentUser]);
 
-    socket.on("receive_message", handleReceiveMessage);
-
-    return () => socket.off("receive_message", handleReceiveMessage);
-  }, [socket, chatRoomId]);
-
-  // Always scroll to bottom when messages update
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const fetchMessages = async () => {
-    setLoading(true);
-    try {
-      // We use the chatRoomId as the identifier for history
-      const { data } = await api.get(`/chat/${chatRoomId}`);
-      setMessages(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Failed to load secure chat history", error);
-      setMessages([]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSend = async (e) => {
     e?.preventDefault();
     if (!newMessage.trim() || !chatRoomId) return;
 
-    const messageData = {
-      receiverId: chatPartner._id,
-      content: newMessage,
-      donationId: chatRoomId, // Using the unique room ID
+    const messageContent = newMessage.trim();
+    setNewMessage(""); // Instantly clear
+
+    // 👉 OPTIMISTIC UI: Show it instantly
+    const tempId = `temp_${Date.now()}`;
+    const tempMsg = {
+      _id: tempId,
+      content: messageContent,
+      sender: currentUser._id,
+      receiver: chatPartner._id,
+      createdAt: new Date().toISOString(),
+      read: false,
+      isSending: true, // Show loading spinner on message
     };
 
+    setMessages((prev) => [...prev, tempMsg]);
+    scrollToBottom();
+
     try {
+      const messageData = {
+        receiverId: chatPartner._id,
+        content: messageContent,
+        donationId: chatRoomId, 
+      };
+
       const { data } = await api.post("/chat", messageData);
 
-      // Emit via socket so the other user sees it instantly
-      socket.emit("send_message", data);
+      // Emit via socket
+      socketRef.current.emit("send_message", {
+        ...data,
+        donationId: chatRoomId,
+        receiver: chatPartner._id,
+        senderName: currentUser.name,
+      });
 
-      // Optimistic UI Update
-      setMessages((prev) => [...prev, data]);
-      setNewMessage("");
+      // Swap temp message with real one
+      setMessages((prev) => prev.map((msg) => (msg._id === tempId ? data : msg)));
     } catch (error) {
       toast.error("Transmission failed. Check connection.");
+      setMessages((prev) => prev.filter((msg) => msg._id !== tempId));
     }
   };
 
@@ -183,11 +235,11 @@ const ChatDrawer = ({ isOpen, onClose, currentUser, chatPartner, socket }) => {
                         className={`flex w-full ${isMe ? "justify-end" : "justify-start"}`}
                       >
                         <div
-                          className={`relative max-w-[85%] px-4 py-3 shadow-lg flex flex-col ${
+                          className={`relative max-w-[85%] px-4 py-3 shadow-lg flex flex-col transition-opacity duration-300 ${
                             isMe
                               ? "bg-gradient-to-br from-teal-500 to-teal-700 text-white rounded-[1.5rem] rounded-tr-md shadow-teal-900/40"
                               : "bg-slate-900 border border-slate-800 text-slate-200 rounded-[1.5rem] rounded-tl-md shadow-inner"
-                          }`}
+                          } ${msg.isSending ? "opacity-60" : "opacity-100"}`}
                         >
                           <span className="text-[14px] leading-relaxed break-words font-medium pr-2">
                             {msg.content}
@@ -204,7 +256,14 @@ const ChatDrawer = ({ isOpen, onClose, currentUser, chatPartner, socket }) => {
                                 minute: "2-digit",
                               })}
                             </span>
-                            {isMe && <FaCheck className="text-[10px]" />}
+                            {isMe &&
+                              (msg.isSending ? (
+                                <FaSpinner className="text-white/60 text-[8px] animate-spin" />
+                              ) : msg.read ? (
+                                <FaCheckDouble className="text-white text-[10px]" />
+                              ) : (
+                                <FaCheck className="text-white/60 text-[10px]" />
+                              ))}
                           </div>
                         </div>
                       </motion.div>

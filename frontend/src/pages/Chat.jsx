@@ -22,7 +22,6 @@ import toast from "react-hot-toast";
 import api from "../utils/api";
 
 const SOCKET_URL = "https://hopelink-api.onrender.com";
-let socket;
 
 const Chat = () => {
   const { user } = useContext(AuthContext);
@@ -43,6 +42,9 @@ const Chat = () => {
   const [dropdownOpen, setDropdownOpen] = useState(null);
 
   const messagesEndRef = useRef(null);
+
+  // 👉 THE FIX: Bind the socket to a Ref so React never drops the connection!
+  const socketRef = useRef(null);
 
   // 👉 SOLID DARK THEME CONFIG
   const localRole = user?.activeRole || "donor";
@@ -75,11 +77,12 @@ const Chat = () => {
       return;
     }
 
-    socket = io(SOCKET_URL, {
+    // Initialize airtight socket connection
+    socketRef.current = io(SOCKET_URL, {
       transports: ["websocket", "polling"],
     });
 
-    socket.emit("join_chat", { userId: user._id, donationId });
+    socketRef.current.emit("join_chat", { userId: user._id, donationId });
 
     const fetchHistoryAndMarkRead = async () => {
       try {
@@ -88,7 +91,10 @@ const Chat = () => {
         setLoading(false);
 
         await api.put(`/chat/${donationId}/read`);
-        socket.emit("mark_as_read", { donationId, readerId: user._id });
+        socketRef.current.emit("mark_as_read", {
+          donationId,
+          readerId: user._id,
+        });
         scrollToBottom();
       } catch (error) {
         setMessages([]);
@@ -98,7 +104,8 @@ const Chat = () => {
 
     fetchHistoryAndMarkRead();
 
-    socket.on("receive_message", (message) => {
+    // 👉 REAL-TIME RECEIVER: Appends instantly without refreshing
+    socketRef.current.on("receive_message", (message) => {
       setMessages((prev) => {
         // Prevent duplicate renders
         if (Array.isArray(prev) && prev.some((m) => m._id === message._id))
@@ -106,12 +113,15 @@ const Chat = () => {
         return [...(Array.isArray(prev) ? prev : []), message];
       });
       if (message.sender !== user._id) {
-        socket.emit("mark_as_read", { donationId, readerId: user._id });
+        socketRef.current.emit("mark_as_read", {
+          donationId,
+          readerId: user._id,
+        });
       }
       scrollToBottom();
     });
 
-    socket.on("messages_read", ({ readerId }) => {
+    socketRef.current.on("messages_read", ({ readerId }) => {
       if (readerId !== user._id) {
         setMessages((prev) =>
           prev.map((msg) =>
@@ -121,24 +131,48 @@ const Chat = () => {
       }
     });
 
-    socket.on("message_edited", (updatedMsg) => {
+    socketRef.current.on("message_edited", (updatedMsg) => {
       setMessages((prev) =>
         prev.map((msg) => (msg._id === updatedMsg._id ? updatedMsg : msg)),
       );
     });
 
-    socket.on("message_deleted", (deletedId) => {
+    socketRef.current.on("message_deleted", (deletedId) => {
       setMessages((prev) => prev.filter((msg) => msg._id !== deletedId));
     });
 
-    return () => socket.disconnect();
+    // 👉 🚀 THE NUCLEAR TERMINATION RECEIVER
+    socketRef.current.on("chat_terminated", (data) => {
+      toast.success(
+        data.message || "Transaction verified. Channel closing...",
+        {
+          duration: 4000,
+          icon: "🔒",
+          style: {
+            background: "#0f172a",
+            color: "#10b981",
+            border: "1px solid #10b981",
+            fontWeight: "bold",
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+          },
+        },
+      );
+
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 2000);
+    });
+
+    return () => {
+      if (socketRef.current) socketRef.current.disconnect();
+    };
   }, [user, donationId, otherUserId, navigate]);
 
   const onEmojiClick = (emojiObject) => {
     setNewMessage((prevInput) => prevInput + emojiObject.emoji);
   };
 
-  // 👉 THE FIX: OPTIMISTIC UI ENGINE
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
@@ -161,7 +195,7 @@ const Chat = () => {
         const { data } = await api.put(`/chat/${editingMessage._id}`, {
           content: messageContent,
         });
-        socket.emit("edit_message", data);
+        socketRef.current.emit("edit_message", data);
         setMessages((prev) =>
           prev.map((msg) => (msg._id === data._id ? data : msg)),
         );
@@ -178,15 +212,13 @@ const Chat = () => {
         receiver: otherUserId,
         createdAt: new Date().toISOString(),
         read: false,
-        isSending: true, // Custom flag to style it slightly faded
+        isSending: true,
       };
 
-      // 1. Slap it on the UI instantly & Scroll
       setMessages((prev) => [...(Array.isArray(prev) ? prev : []), tempMsg]);
       scrollToBottom();
 
       try {
-        // 2. Send to Backend
         const messageData = {
           receiverId: otherUserId,
           donationId,
@@ -194,21 +226,18 @@ const Chat = () => {
         };
         const { data } = await api.post("/chat", messageData);
 
-        // 3. Fire WebSocket with `senderName` to trigger receiver's toast!
-        socket.emit("send_message", {
+        socketRef.current.emit("send_message", {
           ...data,
           donationId,
           receiver: otherUserId,
           senderName: user.name,
         });
 
-        // 4. Swap temp message with real database message silently
         setMessages((prev) =>
           prev.map((msg) => (msg._id === tempId ? data : msg)),
         );
       } catch (error) {
         toast.error("Network unstable. Message failed to send.");
-        // Remove the fake message if the backend rejected it
         setMessages((prev) => prev.filter((msg) => msg._id !== tempId));
       }
     }
@@ -219,7 +248,7 @@ const Chat = () => {
       setMessages((prev) => prev.filter((msg) => msg._id !== msgId));
       try {
         await api.delete(`/chat/${msgId}`);
-        socket.emit("delete_message", { id: msgId, donationId });
+        socketRef.current.emit("delete_message", { id: msgId, donationId });
       } catch (error) {
         toast.error("Failed to delete message");
       }
@@ -247,7 +276,6 @@ const Chat = () => {
   return (
     <Layout>
       <div className="w-full h-[calc(100dvh-80px)] md:h-[85vh] md:max-w-4xl md:mx-auto md:my-4 flex flex-col bg-slate-950 md:border md:border-slate-800 md:rounded-[2.5rem] overflow-hidden md:shadow-2xl relative">
-        {/* CHAT HEADER */}
         <header className="bg-slate-900 p-3 md:p-5 flex items-center justify-between z-20 shadow-md border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-3 md:gap-5">
             <button
@@ -279,7 +307,6 @@ const Chat = () => {
           </div>
         </header>
 
-        {/* MESSAGES AREA */}
         <div
           className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 z-10 no-scrollbar relative bg-slate-950"
           onClick={() => {
@@ -326,9 +353,8 @@ const Chat = () => {
                         isMe
                           ? `bg-gradient-to-br ${roleTheme.primaryGradient} text-white rounded-[2rem] rounded-tr-md ${roleTheme.shadow}`
                           : "bg-slate-900 border border-slate-800 text-slate-200 rounded-[2rem] rounded-tl-md shadow-inner"
-                      } ${msg.isSending ? "opacity-60" : "opacity-100"}`} // 👉 Visual cue for sending
+                      } ${msg.isSending ? "opacity-60" : "opacity-100"}`}
                     >
-                      {/* Touch-Friendly Dropdown Toggle */}
                       {isMe && !msg.isSending && (
                         <div className="absolute top-1 right-1 z-20">
                           <button
@@ -343,7 +369,6 @@ const Chat = () => {
                             <FaChevronDown className="text-[10px]" />
                           </button>
 
-                          {/* Dropdown Menu */}
                           {dropdownOpen === msg._id && (
                             <div className="absolute right-0 top-8 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden w-36 py-1">
                               <button
@@ -400,7 +425,6 @@ const Chat = () => {
           <div ref={messagesEndRef} className="h-4" />
         </div>
 
-        {/* EMOJI PICKER */}
         <AnimatePresence>
           {showEmojis && (
             <motion.div
@@ -421,7 +445,6 @@ const Chat = () => {
           )}
         </AnimatePresence>
 
-        {/* EDIT BANNER */}
         <AnimatePresence>
           {editingMessage && (
             <motion.div
@@ -448,7 +471,6 @@ const Chat = () => {
           )}
         </AnimatePresence>
 
-        {/* INPUT AREA */}
         <div className="bg-slate-950 px-3 py-3 md:p-4 z-20 border-t border-slate-800 shrink-0 pb-6 md:pb-4">
           <form
             onSubmit={handleSendMessage}

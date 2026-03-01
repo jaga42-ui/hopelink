@@ -234,53 +234,22 @@ const Dashboard = () => {
       setEventsFeed((prev) => prev.filter((ev) => ev._id !== deletedId));
     });
 
-    // 👉 THE FIX: Bulletproof Inbox Notification (No Double Popups!)
+    // 👉 THE FIX: SILENT OS PUSH NOTIFICATION & RED BADGE TRIGGER
     socket.on("new_message_notification", (data) => {
-      // 1. Defend against empty ghost pings
       if (!data) return;
 
-      // 2. Safely extract values
       const senderName = data.senderName || "A Community Member";
       const messageText = data.text || data.content || "Sent you a message.";
-      const messageId = data._id || `msg_${Date.now()}`; // Guarantee a unique ID
 
-      // 3. Fire the toast with the specific ID to PREVENT DUPLICATES
-      toast(
-        (t) => (
-          <div className="flex flex-col gap-2 w-full">
-            <p className="text-sm font-bold text-white flex items-center gap-2">
-              <FaCommentDots className="text-teal-400" /> New Message
-            </p>
-            <p className="text-xs text-slate-300">
-              <span className="font-bold text-white">{senderName}:</span>{" "}
-              {messageText.length > 30
-                ? messageText.substring(0, 30) + "..."
-                : messageText}
-            </p>
-            <button
-              onClick={() => {
-                toast.dismiss(t.id);
-                navigate("/chat/inbox"); // Teleport directly to inbox!
-              }}
-              className="mt-1 w-full bg-teal-600 hover:bg-teal-500 text-white text-[10px] font-black uppercase tracking-widest py-2 rounded-lg transition-colors shadow-md"
-            >
-              Open Inbox
-            </button>
-          </div>
-        ),
-        {
-          id: messageId, // 👉 THIS SINGLE LINE KILLS THE DOUBLE POPUP BUG
-          duration: 8000,
-          position: "top-center",
-          style: {
-            background: "#0f172a",
-            border: "1px solid #334155",
-            minWidth: "250px",
-          },
-        },
-      );
+      // 1. Fire a global event so the Layout.jsx can catch it and show a red dot!
+      window.dispatchEvent(new CustomEvent("new_unread_message"));
 
-      // Trigger actual Phone OS Notification if granted
+      // 2. Vibrate the phone physically (works on Android/Supported Mobile Browsers)
+      if (navigator.vibrate) {
+        navigator.vibrate([200, 100, 200]);
+      }
+
+      // 3. Send the notification directly to the Phone OS (No spammy in-app toast)
       if (Notification.permission === "granted") {
         new Notification(`HopeLink: ${senderName}`, {
           body: messageText,

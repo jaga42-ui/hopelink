@@ -2,7 +2,6 @@ import { useState, useEffect, useContext } from "react";
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import AuthContext from "../context/AuthContext";
-// 👉 ADDED THE MISSING TOAST AND SOCKET IMPORTS
 import toast from "react-hot-toast";
 import { io } from "socket.io-client";
 import {
@@ -16,8 +15,8 @@ import {
   FaEnvelope,
   FaMapMarkerAlt,
   FaWifi,
-  FaExclamationTriangle, // 👉 ADDED FOR BROADCAST
-  FaTimes               // 👉 ADDED FOR BROADCAST
+  FaExclamationTriangle, 
+  FaTimes               
 } from "react-icons/fa";
 
 import logo from '../assets/logo.png';
@@ -27,8 +26,10 @@ const Layout = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // 👉 Real-time Offline Detection State
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  
+  // 👉 NEW STATE: Controls the glowing red unread badge
+  const [hasUnread, setHasUnread] = useState(false);
 
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
@@ -43,7 +44,27 @@ const Layout = ({ children }) => {
     };
   }, []);
 
-  // 👉 THE FIX: Global Admin Broadcast Receiver (Mission Control)
+  // 👉 BACKGROUND LISTENER: Catches the custom event from Dashboard to show the red dot
+  useEffect(() => {
+    const handleNewMessage = () => {
+      // Only show badge if they aren't already looking at the chat
+      if (!location.pathname.includes("/chat")) {
+        setHasUnread(true);
+      }
+    };
+    
+    window.addEventListener("new_unread_message", handleNewMessage);
+    return () => window.removeEventListener("new_unread_message", handleNewMessage);
+  }, [location.pathname]);
+
+  // 👉 AUTO-CLEAR BADGE: Removes the red dot the second they open their Inbox
+  useEffect(() => {
+    if (location.pathname.includes("/chat")) {
+      setHasUnread(false);
+    }
+  }, [location.pathname]);
+
+  // Global Admin Broadcast Receiver (Mission Control)
   useEffect(() => {
     const socket = io("https://hopelink-api.onrender.com", { transports: ["websocket", "polling"] });
     
@@ -84,7 +105,6 @@ const Layout = ({ children }) => {
     navigate("/login");
   };
 
-  // 👉 SOLID DARK THEME VARIABLES
   const isDonor = user?.activeRole === "donor"; 
   const themeTextAccent = isDonor ? 'text-teal-400' : 'text-blue-400';
   const themeBgAccent = isDonor ? 'bg-teal-500' : 'bg-blue-500';
@@ -130,7 +150,6 @@ const Layout = ({ children }) => {
           </span>
         </Link>
         
-        {/* Quick Role Switcher for Mobile Header */}
         {user && !user.isAdmin && (
           <button
             onClick={switchRole}
@@ -191,7 +210,6 @@ const Layout = ({ children }) => {
               const isActive = location.pathname === item.path; 
               const isRadar = item.path === "/radar";
               
-              // Dynamic Active Styling based on solid theme
               let linkClass = "bg-transparent border-transparent text-slate-400 hover:bg-slate-800 hover:text-white";
               if (isActive) {
                 if (isRadar) {
@@ -209,9 +227,18 @@ const Layout = ({ children }) => {
                   to={item.path}
                   className={`flex items-center gap-4 px-5 py-3.5 rounded-2xl font-bold transition-all duration-300 border ${linkClass}`}
                 >
-                  <span className={`text-lg ${isActive && !isRadar ? themeTextAccent : isActive ? "text-red-400" : isRadar ? "text-red-500/70" : "text-slate-500"} ${isRadar && !isActive ? "animate-pulse" : ""}`}>
-                    {item.icon}
-                  </span>
+                  {/* 👉 THE NEW RED DOT LOGIC FOR DESKTOP */}
+                  <div className="relative">
+                    <span className={`text-lg ${isActive && !isRadar ? themeTextAccent : isActive ? "text-red-400" : isRadar ? "text-red-500/70" : "text-slate-500"} ${isRadar && !isActive ? "animate-pulse" : ""}`}>
+                      {item.icon}
+                    </span>
+                    {item.name === "Inbox" && hasUnread && !isActive && (
+                      <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span>
+                      </span>
+                    )}
+                  </div>
                   {item.name}
                 </Link>
               );
@@ -244,18 +271,27 @@ const Layout = ({ children }) => {
                 to={item.path} 
                 className="flex flex-col items-center justify-center w-full h-full space-y-1 relative"
               >
-                {/* Active Indicator Dot */}
                 {isActive && !isRadar && (
                   <motion.div layoutId="mobileNavIndicator" className={`absolute -top-px w-8 h-1 rounded-b-full ${themeBgAccent} shadow-[0_0_10px_currentColor]`} />
                 )}
 
-                <div className={`text-xl transition-transform duration-300 ${
-                  isActive 
-                    ? isRadar ? 'text-red-500 scale-110' : `${themeTextAccent} scale-110` 
-                    : isRadar ? 'text-red-500/70 animate-pulse' : 'text-slate-500'
-                }`}>
-                  {item.icon}
+                {/* 👉 THE NEW RED DOT LOGIC FOR MOBILE */}
+                <div className="relative">
+                  <div className={`text-xl transition-transform duration-300 ${
+                    isActive 
+                      ? isRadar ? 'text-red-500 scale-110' : `${themeTextAccent} scale-110` 
+                      : isRadar ? 'text-red-500/70 animate-pulse' : 'text-slate-500'
+                  }`}>
+                    {item.icon}
+                  </div>
+                  {item.name === "Inbox" && hasUnread && !isActive && (
+                    <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span>
+                    </span>
+                  )}
                 </div>
+                
                 <span className={`text-[9px] font-black uppercase tracking-wider ${isActive ? (isRadar ? 'text-red-400' : 'text-white') : 'text-slate-500'}`}>
                   {item.name}
                 </span>

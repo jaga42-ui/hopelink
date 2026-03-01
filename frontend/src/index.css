@@ -34,6 +34,18 @@
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
 /* -----------------------------------------
+   👉 CHROME AUTOFILL DARK MODE FIX
+------------------------------------------ */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px #020617 inset !important; /* matches slate-950 */
+    -webkit-text-fill-color: white !important;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+/* -----------------------------------------
    LEAFLET SOLID DARK MODE FIXES (No more blur)
 ------------------------------------------ */
 .leaflet-popup-content-wrapper {
@@ -65,6 +77,7 @@
   background: #020617 !important; /* matches bg-slate-950 */
   border-radius: inherit;
 }
+
 @keyframes shimmer {
   100% { transform: translateX(100%); }
 }
