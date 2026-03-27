@@ -2,7 +2,6 @@ import { useEffect, useContext } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  FaHeartbeat,
   FaMapMarkerAlt,
   FaHandsHelping,
   FaUserPlus,
@@ -14,6 +13,7 @@ import {
   FaUsers,
   FaBolt,
   FaCheckCircle,
+  FaHeartbeat,
 } from "react-icons/fa";
 
 import logo from "../assets/logo.png";
@@ -58,7 +58,6 @@ const Landing = () => {
   };
 
   return (
-    // 👉 THE FIX: Added flex and flex-col to the main wrapper so the footer behaves properly
     <div className="flex flex-col min-h-screen bg-[#0a0f16] text-white font-sans overflow-x-hidden relative selection:bg-teal-500 selection:text-white">
       {/* CINEMATIC BACKGROUND GLOWS */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80vw] h-[50vh] bg-teal-900/20 blur-[150px] rounded-[100%] pointer-events-none"></div>
@@ -79,6 +78,7 @@ const Landing = () => {
         </Link>
 
         <div className="flex items-center gap-4">
+          {/* 👉 THE FIX: Standardized Navbar Buttons */}
           <Link
             to="/login"
             className="hidden sm:flex px-6 py-2.5 text-white/70 hover:text-white font-bold text-sm transition-colors"
@@ -89,7 +89,7 @@ const Landing = () => {
             to="/register"
             className="px-6 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 text-white rounded-full font-bold text-sm transition-all active:scale-95 flex items-center gap-2"
           >
-            <FaUserPlus /> Join Grid
+            <FaUserPlus /> Sign Up
           </Link>
         </div>
       </nav>
@@ -149,17 +149,18 @@ const Landing = () => {
           transition={{ delay: 0.6, type: "spring" }}
           className="flex flex-col sm:flex-row gap-5 w-full sm:w-auto"
         >
+          {/* 👉 THE FIX: Standardized Hero Buttons */}
           <Link
             to="/register"
             className="px-8 py-4 bg-teal-500 text-[#050505] rounded-full font-black text-sm uppercase tracking-widest hover:bg-teal-400 transition-all active:scale-95 flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(20,184,166,0.3)]"
           >
-            <FaUserPlus className="text-lg" /> Join as a Volunteer
+            <FaUserPlus className="text-lg" /> Sign Up
           </Link>
           <Link
             to="/login"
             className="px-8 py-4 bg-white/5 hover:bg-white/10 backdrop-blur-md border border-white/10 text-white rounded-full font-black text-sm uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-3"
           >
-            <FaSignInAlt className="text-lg" /> Access Grid
+            <FaSignInAlt className="text-lg" /> Sign In
           </Link>
         </motion.div>
       </div>
@@ -324,7 +325,7 @@ const Landing = () => {
         </div>
       </div>
 
-      {/* HOW IT WORKS & WHO IS IT FOR (Split Section) */}
+      {/* HOW IT WORKS & WHO IS IT FOR */}
       <div className="relative z-10 w-full bg-white/[0.02] border-y border-white/5 py-24">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16">
           {/* How It Works - Stepper */}
@@ -446,13 +447,13 @@ const Landing = () => {
             prepared. Stay connected. Save lives.
           </p>
 
-          {/* 👉 THE FIX: Simplified to a single, bold Call-To-Action button */}
+          {/* 👉 THE FIX: Single, clear 'Sign Up' button at the bottom */}
           <div className="flex justify-center mb-16">
             <Link
               to="/register"
               className="px-12 py-5 bg-teal-500 text-[#050505] rounded-full font-black text-sm sm:text-base uppercase tracking-widest hover:bg-teal-400 transition-all active:scale-95 shadow-[0_0_40px_rgba(20,184,166,0.25)] flex items-center gap-3"
             >
-              Get Started Today <FaBolt />
+              Sign Up Now <FaBolt />
             </Link>
           </div>
 
@@ -466,7 +467,7 @@ const Landing = () => {
         </motion.div>
       </div>
 
-      {/* 👉 THE FIX: Added mt-auto to anchor the footer securely to the bottom */}
+      {/* FOOTER WITH COPYRIGHT */}
       <footer className="mt-auto relative z-10 w-full bg-[#05080c] py-8 text-center border-t border-white/5">
         <p className="text-white/40 text-xs font-bold tracking-widest uppercase mb-2">
           HopeLink — Connecting Help, Instantly
