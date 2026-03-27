@@ -3,7 +3,6 @@ import {
   BrowserRouter as Router,
   Routes,
   Route,
-  Navigate,
 } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./context/AuthContext";
@@ -56,31 +55,33 @@ function App() {
               }
             >
               <Routes>
-                {/* Public Routes */}
+                {/* Public & Auth Routes */}
                 <Route path="/" element={<Landing />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
-                <Route path="/forgotpassword" element={<ForgotPassword />} />
-                <Route
-                  path="/resetpassword/:resettoken"
-                  element={<ResetPassword />}
-                />
+                
+                {/* 👉 THE FIX: Exact route match for the email reset link! */}
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password/:id/:token" element={<ResetPassword />} />
+
                 {/* Main App Routes */}
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/leaderboard" element={<Leaderboard />} />
                 <Route path="/radar" element={<BloodRadar />} />
                 <Route path="/profile" element={<Profile />} />
+                
                 {/* Form / Posting Routes */}
-                <Route path="/donate" element={<CreateDonation />} />{" "}
-                {/* Older form */}
-                <Route path="/donations" element={<Donations />} />{" "}
-                {/* 👉 New Glassmorphism Form */}
+                <Route path="/donate" element={<CreateDonation />} /> 
+                <Route path="/donations" element={<Donations />} /> 
                 <Route path="/blood-bank" element={<BloodBank />} />
+                
                 {/* Chat Routes */}
                 <Route path="/chat/inbox" element={<Inbox />} />
                 <Route path="/chat/:donationId" element={<Chat />} />
+                
                 {/* Admin Command Center */}
                 <Route path="/admin" element={<AdminDashboard />} />
+                
                 {/* 👉 404 CATCH-ALL ROUTE: Must be at the very bottom! */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

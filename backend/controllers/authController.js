@@ -6,6 +6,9 @@ const { OAuth2Client } = require("google-auth-library");
 const nodemailer = require("nodemailer");
 const admin = require("firebase-admin");
 
+// 👉 IMPORT OUR NEW EMAIL UTILITY
+const { sendPostAlertEmail } = require("../utils/sendEmail");
+
 // 👉 Initialize the Google OAuth Client
 const client = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
@@ -51,20 +54,19 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new Error("Email already registered");
   }
 
-  // 👉 THE FIX: Provide a default geographic Point so Mongoose doesn't crash on the 2dsphere index!
   const user = await User.create({
     name,
     email,
     password,
     phone,
-    bloodGroup: bloodGroup || undefined, // Allow optional blood group
+    bloodGroup: bloodGroup || undefined,
     activeRole: activeRole || "donor",
     isAdmin: false,
     profilePic: "",
     addressText: "",
     location: {
       type: "Point",
-      coordinates: [0, 0], // Default [lng, lat] to 0,0 until they turn on GPS
+      coordinates: [0, 0], 
     },
   });
 
@@ -177,7 +179,7 @@ const googleLogin = asyncHandler(async (req, res) => {
         points: 10,
         location: {
           type: "Point",
-          coordinates: [0, 0], // Default [lng, lat]
+          coordinates: [0, 0], 
         },
       });
     } else {
@@ -307,7 +309,7 @@ const getNearbyDonors = asyncHandler(async (req, res) => {
   res.json(donors);
 });
 
-// 👉 UPGRADED: Send Emergency Blast to nearby donors using Firebase
+// 👉 UPGRADED: Send Emergency Blast to nearby donors using Firebase AND Email
 // @route   POST /api/auth/emergency-blast
 const sendEmergencyBlast = asyncHandler(async (req, res) => {
   const { lat, lng, message, bloodGroup } = req.body;
@@ -324,7 +326,7 @@ const sendEmergencyBlast = asyncHandler(async (req, res) => {
     location: { type: "Point", coordinates: [Number(lng), Number(lat)] },
   });
 
-  // Find users acting as donors within 20km who have an FCM Token
+  // Find users acting as donors within 20km
   const nearbyDonors = await User.find({
     location: {
       $near: {
@@ -334,19 +336,20 @@ const sendEmergencyBlast = asyncHandler(async (req, res) => {
     },
     activeRole: "donor",
     _id: { $ne: req.user._id },
-    fcmToken: { $exists: true, $ne: null },
   });
 
-  const tokens = nearbyDonors.map((donor) => donor.fcmToken);
+  // Extract tokens and emails
+  const pushTokens = nearbyDonors.filter(donor => donor.fcmToken).map(donor => donor.fcmToken);
+  const emailAddresses = nearbyDonors.filter(donor => donor.email).map(donor => donor.email);
 
-  // If we found nearby users with registered phones, hit Firebase!
-  if (tokens.length > 0) {
+  // 1. FIREBASE PUSH BLAST (Async)
+  if (pushTokens.length > 0) {
     const pushMessage = {
       notification: {
         title: `🚨 URGENT: ${bloodGroup || "Help"} Needed Nearby`,
         body: message,
       },
-      tokens: tokens,
+      tokens: pushTokens,
     };
 
     admin
@@ -358,6 +361,12 @@ const sendEmergencyBlast = asyncHandler(async (req, res) => {
         ),
       )
       .catch((error) => console.error("Firebase Blast Failed:", error));
+  }
+
+  // 2. EMAIL ALERT BLAST (Async)
+  if (emailAddresses.length > 0) {
+    // We fire this without 'await' so the user doesn't have to wait for SMTP!
+    sendPostAlertEmail(emailAddresses, { message, bloodGroup });
   }
 
   res
