@@ -90,8 +90,8 @@ const Login = () => {
             <label className="text-slate-400 text-[10px] sm:text-xs font-black uppercase tracking-widest flex items-center gap-2">
               <FaLock className="text-teal-500" /> Passcode
             </label>
-            <Link to="/forgotpassword" className="text-[10px] text-teal-500 hover:text-teal-400 font-black uppercase tracking-widest transition-colors">
-              Override?
+            <Link to="/forgot-password" className="text-[10px] text-teal-500 hover:text-teal-400 font-black uppercase tracking-widest transition-colors">
+              Forgot Password?
             </Link>
           </div>
           <input 
