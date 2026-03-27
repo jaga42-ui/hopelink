@@ -58,7 +58,8 @@ const Landing = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0f16] text-white font-sans overflow-x-hidden relative selection:bg-teal-500 selection:text-white">
+    // 👉 THE FIX: Added flex and flex-col to the main wrapper so the footer behaves properly
+    <div className="flex flex-col min-h-screen bg-[#0a0f16] text-white font-sans overflow-x-hidden relative selection:bg-teal-500 selection:text-white">
       {/* CINEMATIC BACKGROUND GLOWS */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80vw] h-[50vh] bg-teal-900/20 blur-[150px] rounded-[100%] pointer-events-none"></div>
       <div className="absolute top-[30%] right-[-10%] w-[40vw] h-[60vh] bg-rose-900/10 blur-[150px] rounded-[100%] pointer-events-none"></div>
@@ -211,7 +212,7 @@ const Landing = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Feature 1 - Chat (Span 2 cols on tablet/desktop) */}
+            {/* Feature 1 - Chat */}
             <motion.div
               initial="hidden"
               whileInView="visible"
@@ -445,18 +446,13 @@ const Landing = () => {
             prepared. Stay connected. Save lives.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
+          {/* 👉 THE FIX: Simplified to a single, bold Call-To-Action button */}
+          <div className="flex justify-center mb-16">
             <Link
               to="/register"
-              className="px-10 py-5 bg-teal-500 text-[#050505] rounded-full font-black text-sm uppercase tracking-widest hover:bg-teal-400 transition-all active:scale-95 shadow-[0_0_30px_rgba(20,184,166,0.2)]"
+              className="px-12 py-5 bg-teal-500 text-[#050505] rounded-full font-black text-sm sm:text-base uppercase tracking-widest hover:bg-teal-400 transition-all active:scale-95 shadow-[0_0_40px_rgba(20,184,166,0.25)] flex items-center gap-3"
             >
-              Join as a Volunteer
-            </Link>
-            <Link
-              to="/login"
-              className="px-10 py-5 bg-slate-800 border border-slate-700 text-white rounded-full font-black text-sm uppercase tracking-widest hover:bg-slate-700 transition-all active:scale-95"
-            >
-              Download / Access App
+              Get Started Today <FaBolt />
             </Link>
           </div>
 
@@ -470,8 +466,8 @@ const Landing = () => {
         </motion.div>
       </div>
 
-      {/* FOOTER WITH COPYRIGHT */}
-      <footer className="relative z-10 w-full bg-[#05080c] py-8 text-center border-t border-white/5">
+      {/* 👉 THE FIX: Added mt-auto to anchor the footer securely to the bottom */}
+      <footer className="mt-auto relative z-10 w-full bg-[#05080c] py-8 text-center border-t border-white/5">
         <p className="text-white/40 text-xs font-bold tracking-widest uppercase mb-2">
           HopeLink — Connecting Help, Instantly
         </p>
