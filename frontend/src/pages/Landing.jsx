@@ -58,14 +58,17 @@ const Landing = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#0a0f16] text-white font-sans overflow-x-hidden relative selection:bg-teal-500 selection:text-white">
-      {/* CINEMATIC BACKGROUND GLOWS */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80vw] h-[50vh] bg-teal-900/20 blur-[150px] rounded-[100%] pointer-events-none"></div>
-      <div className="absolute top-[30%] right-[-10%] w-[40vw] h-[60vh] bg-rose-900/10 blur-[150px] rounded-[100%] pointer-events-none"></div>
-      <div className="absolute bottom-[-10%] left-[-10%] w-[50vw] h-[50vh] bg-blue-900/10 blur-[150px] rounded-[100%] pointer-events-none"></div>
+    // 👉 THE FIX: Removed complex flex-heights. The page will now size naturally.
+    <div className="bg-[#0a0f16] text-white font-sans relative selection:bg-teal-500 selection:text-white">
+      {/* 👉 THE FIX: Locked the background glows inside a fixed, hidden-overflow container so they never stretch the footer! */}
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80vw] h-[50vh] bg-teal-900/20 blur-[150px] rounded-[100%]"></div>
+        <div className="absolute top-[30%] right-[-10%] w-[40vw] h-[60vh] bg-rose-900/10 blur-[150px] rounded-[100%]"></div>
+        <div className="absolute bottom-[-10%] left-[-10%] w-[50vw] h-[50vh] bg-blue-900/10 blur-[150px] rounded-[100%]"></div>
+      </div>
 
-      {/* NAVBAR */}
-      <nav className="relative z-50 max-w-7xl mx-auto px-6 py-6 w-full flex justify-between items-center">
+      {/* NAVBAR: Simplified & Centered */}
+      <nav className="relative z-50 max-w-7xl mx-auto px-6 py-8 w-full flex justify-center items-center">
         <Link to="/" className="flex items-center gap-3 group">
           <img
             src={logo}
@@ -76,26 +79,10 @@ const Landing = () => {
             HOPE<span className="text-teal-400">LINK.</span>
           </span>
         </Link>
-
-        <div className="flex items-center gap-4">
-          {/* 👉 THE FIX: Standardized Navbar Buttons */}
-          <Link
-            to="/login"
-            className="hidden sm:flex px-6 py-2.5 text-white/70 hover:text-white font-bold text-sm transition-colors"
-          >
-            Sign In
-          </Link>
-          <Link
-            to="/register"
-            className="px-6 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 text-white rounded-full font-bold text-sm transition-all active:scale-95 flex items-center gap-2"
-          >
-            <FaUserPlus /> Sign Up
-          </Link>
-        </div>
       </nav>
 
       {/* HERO SECTION */}
-      <div className="relative z-10 max-w-5xl mx-auto px-6 pt-20 pb-24 flex flex-col items-center text-center min-h-[70vh] justify-center">
+      <div className="relative z-10 max-w-5xl mx-auto px-6 pt-16 pb-24 flex flex-col items-center text-center min-h-[65vh] justify-center">
         <motion.div
           variants={staggerContainer}
           initial="hidden"
@@ -149,7 +136,6 @@ const Landing = () => {
           transition={{ delay: 0.6, type: "spring" }}
           className="flex flex-col sm:flex-row gap-5 w-full sm:w-auto"
         >
-          {/* 👉 THE FIX: Standardized Hero Buttons */}
           <Link
             to="/register"
             className="px-8 py-4 bg-teal-500 text-[#050505] rounded-full font-black text-sm uppercase tracking-widest hover:bg-teal-400 transition-all active:scale-95 flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(20,184,166,0.3)]"
@@ -447,7 +433,6 @@ const Landing = () => {
             prepared. Stay connected. Save lives.
           </p>
 
-          {/* 👉 THE FIX: Single, clear 'Sign Up' button at the bottom */}
           <div className="flex justify-center mb-16">
             <Link
               to="/register"
@@ -467,8 +452,8 @@ const Landing = () => {
         </motion.div>
       </div>
 
-      {/* FOOTER WITH COPYRIGHT */}
-      <footer className="mt-auto relative z-10 w-full bg-[#05080c] py-8 text-center border-t border-white/5">
+      {/* FOOTER */}
+      <footer className="relative z-10 w-full bg-[#05080c] py-10 text-center border-t border-white/5">
         <p className="text-white/40 text-xs font-bold tracking-widest uppercase mb-2">
           HopeLink — Connecting Help, Instantly
         </p>
