@@ -3,6 +3,9 @@ const Donation = require("../models/Donation");
 const User = require("../models/User");
 const admin = require("firebase-admin");
 
+// 👉 THE FIX: Import your new smart email utility
+const { sendPostAlertEmail } = require("../utils/sendEmail");
+
 if (!admin.apps.length) {
   try {
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
@@ -80,6 +83,7 @@ const createDonation = asyncHandler(async (req, res) => {
     io.emit("new_listing", populatedDonation);
   }
 
+  // 👉 1. FIREBASE PUSH NOTIFICATIONS (For Emergencies Only)
   if (isCriticalEmergency) {
     try {
       const potentialSaviors = await User.find({
@@ -112,6 +116,39 @@ const createDonation = asyncHandler(async (req, res) => {
     } catch (pushError) {
       console.error("Failed to process push notifications:", pushError);
     }
+  }
+
+  // 👉 2. SMART EMAIL NOTIFICATIONS (For All Posts)
+  try {
+    let bccEmails = [];
+    
+    // Find users within 50km to notify them, excluding the person who posted it
+    if (parsedLat && parsedLng) {
+      const nearbyUsers = await User.find({
+        _id: { $ne: req.user._id }, 
+        email: { $exists: true, $ne: "" },
+        location: {
+          $near: {
+            $geometry: { type: "Point", coordinates: [parsedLng, parsedLat] },
+            $maxDistance: 50000, // 50km radius
+          },
+        },
+      }).limit(100); // Limit to 100 to prevent SMTP throttling/spam blocks
+
+      bccEmails = nearbyUsers.map((u) => u.email);
+    }
+
+    if (bccEmails.length > 0) {
+      // Fire the email in the background (no await) so it doesn't slow down the UI
+      sendPostAlertEmail(bccEmails, {
+        title: title,
+        message: description || title,
+        isEmergency: isCriticalEmergency,
+        bloodGroup: bloodGroup,
+      }).catch((err) => console.error("Email dispatch error:", err));
+    }
+  } catch (emailError) {
+    console.error("Failed to gather nearby users for email:", emailError);
   }
 
   res.status(201).json(populatedDonation);
@@ -318,7 +355,6 @@ const acceptSOS = asyncHandler(async (req, res) => {
   res.status(200).json(sosRequest);
 });
 
-// 👉 THE UPDATED MARK FULFILLED (With Nuclear Termination)
 const markFulfilled = asyncHandler(async (req, res) => {
   const { pin, rating } = req.body;
   const donationId = req.params.id;
@@ -332,7 +368,6 @@ const markFulfilled = asyncHandler(async (req, res) => {
   donation.status = "fulfilled";
   await donation.save();
 
-  // Update Donor Points & Rank
   const donor = await User.findById(donation.donorId);
   donor.points += 50;
   donor.donationsCount += 1;
@@ -340,7 +375,6 @@ const markFulfilled = asyncHandler(async (req, res) => {
   if (donor.points > 1000) donor.rank = "Guardian Angel";
   await donor.save();
 
-  // Update Receiver & Apply Rating
   if (donation.receiverId) {
     const receiver = await User.findById(donation.receiverId);
     receiver.points += 20;
@@ -358,11 +392,7 @@ const markFulfilled = asyncHandler(async (req, res) => {
 
   const io = req.app.get("io");
   if (io) {
-    // 1. Remove listing from global feed
     io.emit("listing_deleted", donation._id);
-
-    // 2. 🚀 NUCLEAR TERMINATION: Close the chat room room for both parties
-    // The chat room ID is usually donationId_receiverId
     const chatRoomId = `${donationId}_${donation.receiverId}`;
     io.to(chatRoomId).emit("chat_terminated", {
       message: "Mission AccomplISHED. Secure channel closed.",

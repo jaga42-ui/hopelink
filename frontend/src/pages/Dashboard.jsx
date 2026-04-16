@@ -234,7 +234,7 @@ const Dashboard = () => {
       setEventsFeed((prev) => prev.filter((ev) => ev._id !== deletedId));
     });
 
-    // 👉 THE FIX: SILENT OS PUSH NOTIFICATION & RED BADGE TRIGGER
+    // 👉 THE FIX: SILENT OS PUSH NOTIFICATION & RED BADGE TRIGGER + IN-APP TOAST
     socket.on("new_message_notification", (data) => {
       if (!data) return;
 
@@ -249,12 +249,28 @@ const Dashboard = () => {
         navigator.vibrate([200, 100, 200]);
       }
 
+      // 👉 THE FIX: Guaranteed in-app visual popup (Bypasses OS blocking)
+      toast(`💬 ${senderName}: ${messageText}`, {
+        duration: 5000,
+        position: "top-right",
+        style: {
+          background: "#1e293b",
+          color: "#fff",
+          border: "1px solid #3b82f6",
+          fontWeight: "bold",
+        },
+      });
+
       // 3. Send the notification directly to the Phone OS (No spammy in-app toast)
       if (Notification.permission === "granted") {
-        new Notification(`HopeLink: ${senderName}`, {
-          body: messageText,
-          icon: "/logo.png",
-        });
+        try {
+          new Notification(`HopeLink: ${senderName}`, {
+            body: messageText,
+            icon: "/logo.png",
+          });
+        } catch (e) {
+          console.warn("OS Notification blocked by browser settings.");
+        }
       }
     });
 
