@@ -1,38 +1,43 @@
 @import "tailwindcss";
 
-:root {
-  --dark-raspberry: #9f1164;
-  --pearl-beige: #e8dab2;
-  --dusty-lavender: #846b8a;
-  --blazing-flame: #ff4a1c;
-  --pine-teal: #29524a;
+/* 👉 TAILWIND V4 CONFIGURATION */
+@theme {
+  --color-dark-raspberry: #9f1164;
+  --color-pearl-beige: #e8dab2;
+  --color-dusty-lavender: #846b8a;
+  --color-blazing-flame: #ff4a1c;
+  --color-pine-teal: #29524a;
 }
 
-body {
-  background-color: var(--pearl-beige);
-  color: var(--pine-teal);
+/* 👉 BASE STYLES */
+@layer base {
+  body {
+    background-color: var(--color-pearl-beige);
+    color: var(--color-pine-teal);
+  }
 }
 
+/* 👉 UTILITIES */
 @layer utilities {
   .bg-brand-gradient {
-    background: var(--dark-raspberry); 
-    background: -webkit-linear-gradient(168deg, var(--dark-raspberry) 0%, var(--dusty-lavender) 50%, var(--blazing-flame) 100%);
-    background: linear-gradient(168deg, var(--dark-raspberry) 0%, var(--dusty-lavender) 50%, var(--blazing-flame) 100%);
+    background: var(--color-dark-raspberry); 
+    background: -webkit-linear-gradient(168deg, var(--color-dark-raspberry) 0%, var(--color-dusty-lavender) 50%, var(--color-blazing-flame) 100%);
+    background: linear-gradient(168deg, var(--color-dark-raspberry) 0%, var(--color-dusty-lavender) 50%, var(--color-blazing-flame) 100%);
   }
 
   /* Ready-to-use overlay for the opening credit sequence */
   .opening-credit-screen {
     @apply fixed inset-0 z-50 flex items-center justify-center font-black tracking-widest;
-    background: radial-gradient(circle at center, var(--pine-teal), #1a3630);
-    color: var(--pearl-beige);
+    background: radial-gradient(circle at center, var(--color-pine-teal), #1a3630);
+    color: var(--color-pearl-beige);
   }
 }
 
+/* 👉 COMPONENTS */
 @layer components {
   /* High-energy, bouncy buttons */
   .btn-aesthetic {
-    @apply px-8 py-4 rounded-2xl font-black text-white transition-all active:scale-95 shadow-lg;
-    background-color: var(--blazing-flame);
+    @apply px-8 py-4 rounded-2xl font-black text-white transition-all active:scale-95 shadow-lg bg-blazing-flame;
   }
   .btn-aesthetic:hover {
     box-shadow: 0 10px 25px rgba(255, 74, 28, 0.4);
@@ -62,7 +67,7 @@ input:-webkit-autofill:hover,
 input:-webkit-autofill:focus, 
 input:-webkit-autofill:active {
     -webkit-box-shadow: 0 0 0 30px #ffffff inset !important;
-    -webkit-text-fill-color: #29524a !important;
+    -webkit-text-fill-color: var(--color-pine-teal) !important;
     transition: background-color 5000s ease-in-out 0s;
 }
 
@@ -71,8 +76,8 @@ input:-webkit-autofill:active {
 ------------------------------------------ */
 .leaflet-popup-content-wrapper {
   background: #ffffff !important; 
-  color: var(--pine-teal) !important; 
-  border: 2px solid var(--dusty-lavender); 
+  color: var(--color-pine-teal) !important; 
+  border: 2px solid var(--color-dusty-lavender); 
   border-radius: 1.5rem !important;
   box-shadow: 0 20px 25px -5px rgba(41, 82, 74, 0.15) !important;
   font-weight: 500;
@@ -80,22 +85,22 @@ input:-webkit-autofill:active {
 
 .leaflet-popup-tip {
   background: #ffffff !important;
-  border-right: 2px solid var(--dusty-lavender);
-  border-bottom: 2px solid var(--dusty-lavender);
+  border-right: 2px solid var(--color-dusty-lavender);
+  border-bottom: 2px solid var(--color-dusty-lavender);
 }
 
 .leaflet-container a.leaflet-popup-close-button {
-  color: var(--dusty-lavender) !important; 
+  color: var(--color-dusty-lavender) !important; 
   padding: 4px !important;
 }
 
 .leaflet-container a.leaflet-popup-close-button:hover {
-  color: var(--dark-raspberry) !important; 
+  color: var(--color-dark-raspberry) !important; 
   background: transparent !important;
 }
 
 .leaflet-container {
-  background: var(--pearl-beige) !important; 
+  background: var(--color-pearl-beige) !important; 
   border-radius: inherit;
 }
 
