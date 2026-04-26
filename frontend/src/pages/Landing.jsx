@@ -94,7 +94,11 @@ const Landing = () => {
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="opening-credit-screen"
+            className="fixed inset-0 z-[9999] flex items-center justify-center font-black tracking-widest bg-pine-teal"
+            style={{
+              background:
+                "radial-gradient(circle at center, var(--color-pine-teal), #1a3630)",
+            }}
           >
             <motion.h1
               variants={textGlowVariant}
@@ -111,12 +115,12 @@ const Landing = () => {
         )}
       </AnimatePresence>
 
-      <main className="flex flex-col min-h-screen bg-pearl-beige text-pine-teal font-sans relative selection:bg-dark-raspberry selection:text-white overflow-hidden">
-        {/* VIBRANT BACKGROUND GLOWS */}
+      <main className="flex flex-col min-h-screen bg-pearl-beige text-pine-teal font-sans relative selection:bg-dark-raspberry selection:text-white overflow-x-hidden">
+        {/* VIBRANT BACKGROUND GLOWS (Fixed overflow issues) */}
         <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-          <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[80vw] h-[50vh] bg-dark-raspberry/10 blur-[150px] rounded-full"></div>
-          <div className="absolute top-[40%] right-[-10%] w-[40vw] h-[60vh] bg-blazing-flame/10 blur-[150px] rounded-full"></div>
-          <div className="absolute bottom-[-10%] left-[-10%] w-[50vw] h-[50vh] bg-pine-teal/10 blur-[150px] rounded-full"></div>
+          <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[80vw] max-w-[800px] h-[50vh] bg-dark-raspberry/10 blur-[120px] rounded-full"></div>
+          <div className="absolute top-[40%] right-[-10%] w-[40vw] max-w-[600px] h-[60vh] bg-blazing-flame/10 blur-[120px] rounded-full"></div>
+          <div className="absolute bottom-[-10%] left-[-10%] w-[50vw] max-w-[700px] h-[50vh] bg-pine-teal/10 blur-[120px] rounded-full"></div>
         </div>
 
         {/* HEADER */}
@@ -141,7 +145,8 @@ const Landing = () => {
             variants={staggerContainer}
             initial="hidden"
             animate="visible"
-            className="mb-6 perspective-1000"
+            className="mb-6"
+            style={{ perspective: "1000px" }}
           >
             <h1 className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tighter leading-[1.05] text-pine-teal">
               <span className="inline-block overflow-hidden">
@@ -233,7 +238,7 @@ const Landing = () => {
                 key={i}
                 initial="hidden"
                 whileInView="visible"
-                viewport={{ once: true }}
+                viewport={{ once: true, margin: "-50px" }}
                 variants={fadeUp}
                 className="bg-white/60 border border-white shadow-sm p-6 rounded-3xl text-center hover:bg-white hover:shadow-md transition-all duration-300 group"
               >
