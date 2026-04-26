@@ -56,25 +56,24 @@ const Landing = () => {
   };
 
   return (
-    // 👉 THE REAL FOOTER FIX: flex, flex-col, and min-h-screen are back to force the footer down.
-    <div className="flex flex-col min-h-screen bg-[#0a0f16] text-white font-sans relative selection:bg-teal-500 selection:text-white">
-      {/* LOCKED BACKGROUND GLOWS */}
+    // 👉 Updated: Base background is now Pearl Beige, text is Pine Teal
+    <div className="flex flex-col min-h-screen bg-pearl-beige text-pine-teal font-sans relative selection:bg-dark-raspberry selection:text-white">
+      {/* LOCKED BACKGROUND GLOWS (Updated to Raspberry & Flame) */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80vw] h-[50vh] bg-teal-900/20 blur-[150px] rounded-[100%]"></div>
-        <div className="absolute top-[30%] right-[-10%] w-[40vw] h-[60vh] bg-rose-900/10 blur-[150px] rounded-[100%]"></div>
-        <div className="absolute bottom-[-10%] left-[-10%] w-[50vw] h-[50vh] bg-blue-900/10 blur-[150px] rounded-[100%]"></div>
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80vw] h-[50vh] bg-dark-raspberry/10 blur-[150px] rounded-[100%]"></div>
+        <div className="absolute bottom-[-10%] left-[-10%] w-[50vw] h-[50vh] bg-blazing-flame/10 blur-[150px] rounded-[100%]"></div>
       </div>
 
-      {/* NAVBAR: Zero buttons, just the logo */}
+      {/* NAVBAR */}
       <nav className="relative z-50 max-w-7xl mx-auto px-6 py-8 w-full flex justify-center items-center">
         <Link to="/" className="flex items-center gap-3 group">
           <img
             src={logo}
             alt="HopeLink Logo"
-            className="h-10 sm:h-12 w-auto object-contain group-hover:scale-110 transition-transform duration-500 drop-shadow-[0_0_15px_rgba(20,184,166,0.3)]"
+            className="h-10 sm:h-12 w-auto object-contain group-hover:scale-110 transition-transform duration-500 drop-shadow-[0_0_15px_rgba(159,17,100,0.3)]"
           />
-          <span className="text-2xl sm:text-3xl font-black italic tracking-tighter text-white">
-            HOPE<span className="text-teal-400">LINK.</span>
+          <span className="text-2xl sm:text-3xl font-black italic tracking-tighter text-pine-teal">
+            HOPE<span className="text-blazing-flame">LINK.</span>
           </span>
         </Link>
       </nav>
@@ -87,7 +86,7 @@ const Landing = () => {
           animate="visible"
           className="mb-6 perspective-1000"
         >
-          <h1 className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tighter leading-[1.05] text-white">
+          <h1 className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tighter leading-[1.05] text-pine-teal">
             <span className="inline-block overflow-hidden">
               <motion.span variants={letterReveal} className="inline-block">
                 Connecting&nbsp;
@@ -96,7 +95,7 @@ const Landing = () => {
             <span className="inline-block overflow-hidden">
               <motion.span
                 variants={letterReveal}
-                className="inline-block text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-emerald-300"
+                className="inline-block text-transparent bg-clip-text bg-brand-gradient"
               >
                 Help,&nbsp;
               </motion.span>
@@ -116,19 +115,18 @@ const Landing = () => {
           transition={{ delay: 0.4, duration: 0.8 }}
           className="max-w-3xl"
         >
-          <p className="text-rose-400 font-bold uppercase tracking-widest text-sm mb-4 flex items-center justify-center gap-2">
-            <FaBolt className="animate-pulse" /> When Every Second Matters,
-            HopeLink Responds
+          <p className="text-dark-raspberry font-bold uppercase tracking-widest text-sm mb-4 flex items-center justify-center gap-2">
+            <FaBolt className="animate-pulse text-blazing-flame" /> When Every
+            Second Matters, HopeLink Responds
           </p>
-          <p className="text-white/60 text-lg sm:text-xl font-medium mb-12 leading-relaxed">
+          <p className="text-pine-teal/70 text-lg sm:text-xl font-medium mb-12 leading-relaxed">
             In times of emergency, delays cost lives. HopeLink is a real-time
             networking platform designed to instantly connect people in need
-            with nearby responders, volunteers, and essential services. Whether
-            it’s a medical emergency or an urgent request — you are never alone.
+            with nearby responders.
           </p>
         </motion.div>
 
-        {/* 👉 THE FIX: Only ONE button. (With a tiny text link for returning users to sign in) */}
+        {/* 👉 Updated to use the new bouncy btn-aesthetic */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -137,15 +135,15 @@ const Landing = () => {
         >
           <Link
             to="/register"
-            className="px-10 py-5 bg-teal-500 text-[#050505] rounded-full font-black text-sm sm:text-base uppercase tracking-widest hover:bg-teal-400 transition-all active:scale-95 shadow-[0_0_40px_rgba(20,184,166,0.25)] flex items-center justify-center gap-3 w-full sm:w-auto"
+            className="btn-aesthetic flex items-center justify-center gap-3 w-full sm:w-auto uppercase tracking-widest text-sm"
           >
             Get Started Today <FaBolt />
           </Link>
-          <p className="text-white/40 text-xs font-medium mt-2">
+          <p className="text-pine-teal/50 text-xs font-medium mt-2">
             Already have an account?{" "}
             <Link
               to="/login"
-              className="text-teal-400 hover:text-teal-300 transition-colors"
+              className="text-dark-raspberry hover:text-blazing-flame transition-colors font-bold"
             >
               Sign In
             </Link>
@@ -153,51 +151,13 @@ const Landing = () => {
         </motion.div>
       </div>
 
-      {/* WHY HOPELINK? */}
-      <div className="relative z-20 max-w-7xl w-full mx-auto px-6 py-20 border-t border-white/5 bg-black/20 backdrop-blur-sm mt-12">
-        <div className="text-center mb-16 max-w-3xl mx-auto">
-          <h2 className="text-3xl sm:text-4xl font-black tracking-tight mb-6 text-white flex items-center justify-center gap-3">
-            <FaBolt className="text-teal-400" /> Why HopeLink?
-          </h2>
-          <p className="text-white/60 text-lg leading-relaxed">
-            Traditional emergency systems can be slow, fragmented, and
-            inaccessible in critical moments. HopeLink changes that by creating
-            a fast, reliable, and community-driven response network.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-          {[
-            { icon: FaComments, text: "Real-time communication" },
-            { icon: FaMapMarkerAlt, text: "Location-based assistance" },
-            { icon: FaBell, text: "Instant alerts & notifications" },
-            { icon: FaHandsHelping, text: "Community-powered support" },
-          ].map((item, i) => (
-            <motion.div
-              key={i}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
-              variants={fadeUp}
-              className="bg-white/5 border border-white/10 p-6 rounded-3xl text-center hover:bg-white/10 transition-colors"
-            >
-              <item.icon className="text-3xl text-teal-400 mx-auto mb-4 opacity-80" />
-              <p className="font-bold text-white/90 text-sm">{item.text}</p>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-
-      {/* KEY FEATURES (BENTO BOX GRID) */}
+      {/* KEY FEATURES (BENTO BOX GRID) - Updated to use glass-card */}
       <div className="relative z-10 w-full py-24">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="mb-16">
-            <h2 className="text-3xl sm:text-4xl font-black tracking-tight mb-4 text-white">
+          <div className="mb-16 text-center">
+            <h2 className="text-3xl sm:text-4xl font-black tracking-tight mb-4 text-pine-teal">
               🌟 Key Features
             </h2>
-            <p className="text-white/50 text-sm font-bold uppercase tracking-widest">
-              Built for speed and reliability.
-            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -206,21 +166,19 @@ const Landing = () => {
               whileInView="visible"
               viewport={{ once: true }}
               variants={fadeUp}
-              className="md:col-span-2 bg-gradient-to-br from-slate-900 to-slate-950 border border-white/10 p-8 sm:p-10 rounded-[2rem] relative overflow-hidden group"
+              className="md:col-span-2 glass-card p-8 sm:p-10 relative overflow-hidden group"
             >
-              <FaComments className="absolute -right-4 -bottom-4 text-[150px] text-white/5 group-hover:scale-110 transition-transform duration-500" />
+              <FaComments className="absolute -right-4 -bottom-4 text-[150px] text-dusty-lavender/10 group-hover:scale-110 transition-transform duration-500" />
               <div className="relative z-10">
-                <div className="w-14 h-14 bg-blue-500/20 text-blue-400 rounded-2xl flex items-center justify-center text-2xl mb-6">
+                <div className="w-14 h-14 bg-dark-raspberry/10 text-dark-raspberry rounded-2xl flex items-center justify-center text-2xl mb-6">
                   <FaComments />
                 </div>
-                <h3 className="text-2xl font-bold mb-3 text-white">
+                <h3 className="text-2xl font-bold mb-3 text-pine-teal">
                   Real-Time Chat System
                 </h3>
-                <p className="text-white/60 leading-relaxed max-w-md">
+                <p className="text-pine-teal/70 leading-relaxed max-w-md">
                   Seamlessly connect with responders using our lightning-fast
-                  chat system powered by bidirectional communication. Stay
-                  updated with live responses, delivery status, and unread
-                  notifications.
+                  chat system powered by bidirectional communication.
                 </p>
               </div>
             </motion.div>
@@ -230,238 +188,31 @@ const Landing = () => {
               whileInView="visible"
               viewport={{ once: true }}
               variants={fadeUp}
-              className="bg-gradient-to-br from-slate-900 to-slate-950 border border-white/10 p-8 sm:p-10 rounded-[2rem] relative overflow-hidden group"
+              className="glass-card p-8 sm:p-10 relative overflow-hidden group"
             >
-              <FaBell className="absolute -right-4 -bottom-4 text-[120px] text-white/5 group-hover:scale-110 transition-transform duration-500" />
               <div className="relative z-10">
-                <div className="w-14 h-14 bg-rose-500/20 text-rose-400 rounded-2xl flex items-center justify-center text-2xl mb-6">
+                <div className="w-14 h-14 bg-blazing-flame/10 text-blazing-flame rounded-2xl flex items-center justify-center text-2xl mb-6">
                   <FaBell />
                 </div>
-                <h3 className="text-xl font-bold mb-3 text-white">
-                  Instant Emergency Alerts
+                <h3 className="text-xl font-bold mb-3 text-pine-teal">
+                  Instant Alerts
                 </h3>
-                <p className="text-white/60 text-sm leading-relaxed">
+                <p className="text-pine-teal/70 text-sm leading-relaxed">
                   Send distress signals with a single tap. Nearby users are
-                  notified instantly, ensuring rapid action when time is
-                  critical.
+                  notified instantly.
                 </p>
               </div>
             </motion.div>
-
-            <motion.div
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
-              variants={fadeUp}
-              className="bg-gradient-to-br from-slate-900 to-slate-950 border border-white/10 p-8 rounded-[2rem]"
-            >
-              <div className="w-12 h-12 bg-teal-500/20 text-teal-400 rounded-xl flex items-center justify-center text-xl mb-5">
-                <FaMapMarkerAlt />
-              </div>
-              <h3 className="text-lg font-bold mb-2 text-white">
-                Smart Location Tracking
-              </h3>
-              <p className="text-white/60 text-sm leading-relaxed">
-                Automatically share your location with responders to help them
-                reach you faster and accurately.
-              </p>
-            </motion.div>
-
-            <motion.div
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
-              variants={fadeUp}
-              className="bg-gradient-to-br from-slate-900 to-slate-950 border border-white/10 p-8 rounded-[2rem]"
-            >
-              <div className="w-12 h-12 bg-amber-500/20 text-amber-400 rounded-xl flex items-center justify-center text-xl mb-5">
-                <FaWifi />
-              </div>
-              <h3 className="text-lg font-bold mb-2 text-white">
-                Offline Push Notifications
-              </h3>
-              <p className="text-white/60 text-sm leading-relaxed">
-                Even with limited connectivity, HopeLink ensures you receive
-                important alerts using advanced push systems.
-              </p>
-            </motion.div>
-
-            <motion.div
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
-              variants={fadeUp}
-              className="bg-gradient-to-br from-slate-900 to-slate-950 border border-white/10 p-8 rounded-[2rem]"
-            >
-              <div className="w-12 h-12 bg-purple-500/20 text-purple-400 rounded-xl flex items-center justify-center text-xl mb-5">
-                <FaUsers />
-              </div>
-              <h3 className="text-lg font-bold mb-2 text-white">
-                Community Network
-              </h3>
-              <p className="text-white/60 text-sm leading-relaxed">
-                A growing network of volunteers and helpers ready to step in
-                when emergencies strike.
-              </p>
-            </motion.div>
           </div>
         </div>
       </div>
 
-      {/* HOW IT WORKS & WHO IS IT FOR */}
-      <div className="relative z-10 w-full bg-white/[0.02] border-y border-white/5 py-24">
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16">
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={fadeUp}
-          >
-            <h2 className="text-3xl font-black tracking-tight mb-8 text-white">
-              🚀 How It Works
-            </h2>
-            <div className="space-y-8 relative before:absolute before:inset-0 before:ml-6 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-teal-500 before:to-transparent">
-              {[
-                {
-                  title: "Raise an Alert",
-                  desc: "Tap to send an emergency request",
-                },
-                {
-                  title: "Get Connected",
-                  desc: "Nearby responders are notified instantly",
-                },
-                {
-                  title: "Communicate in Real-Time",
-                  desc: "Chat and share critical updates",
-                },
-                {
-                  title: "Receive Help Quickly",
-                  desc: "Faster response, better outcomes",
-                },
-              ].map((step, i) => (
-                <div key={i} className="relative flex items-center gap-6">
-                  <div className="w-12 h-12 bg-slate-900 border-2 border-teal-500 rounded-full flex items-center justify-center font-black text-teal-400 shrink-0 z-10 shadow-[0_0_15px_rgba(20,184,166,0.3)]">
-                    {i + 1}
-                  </div>
-                  <div>
-                    <h4 className="text-xl font-bold text-white">
-                      {step.title}
-                    </h4>
-                    <p className="text-white/60 text-sm mt-1">{step.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={fadeUp}
-            className="space-y-12"
-          >
-            <div>
-              <h2 className="text-3xl font-black tracking-tight mb-6 text-white">
-                🎯 Who Is It For?
-              </h2>
-              <ul className="space-y-4">
-                {[
-                  "Individuals in emergency situations",
-                  "Volunteers & first responders",
-                  "NGOs & relief organizations",
-                  "Communities looking to stay prepared",
-                ].map((item, i) => (
-                  <li
-                    key={i}
-                    className="flex items-center gap-3 text-white/80 font-medium"
-                  >
-                    <FaCheckCircle className="text-teal-400 shrink-0" /> {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-[2rem]">
-              <h2 className="text-2xl font-black tracking-tight mb-4 text-white flex items-center gap-3">
-                <FaShieldAlt className="text-blue-400" /> Safe, Secure &
-                Reliable
-              </h2>
-              <p className="text-white/60 text-sm mb-4">
-                Your safety is our priority. HopeLink ensures:
-              </p>
-              <ul className="space-y-3 text-sm text-white/80">
-                <li className="flex items-start gap-2">
-                  <span className="text-blue-400 font-black">•</span> Secure
-                  communication channels
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-blue-400 font-black">•</span> Reliable
-                  data syncing
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-blue-400 font-black">•</span> Minimal
-                  downtime with optimized infrastructure
-                </li>
-              </ul>
-            </div>
-          </motion.div>
-        </div>
-      </div>
-
-      {/* FINAL CTA & IMPACT */}
-      <div className="relative z-10 w-full pt-24 pb-16 text-center px-6">
-        <motion.div
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          variants={fadeUp}
-          className="max-w-3xl mx-auto"
-        >
-          <FaHeartbeat className="text-5xl text-rose-500 mx-auto mb-6 animate-pulse" />
-          <h2 className="text-4xl sm:text-5xl font-black tracking-tight mb-6 text-white">
-            💡 Built for Impact
-          </h2>
-          <p className="text-white/70 text-lg md:text-xl font-medium mb-12 leading-relaxed">
-            HopeLink is more than just an app — it’s a mission to bridge the gap
-            between emergencies and immediate help using technology. Be
-            prepared. Stay connected. Save lives.
-          </p>
-
-          <div className="flex flex-col items-center gap-4 w-full mb-16">
-            <Link
-              to="/register"
-              className="px-12 py-5 bg-teal-500 text-[#050505] rounded-full font-black text-sm sm:text-base uppercase tracking-widest hover:bg-teal-400 transition-all active:scale-95 shadow-[0_0_40px_rgba(20,184,166,0.25)] flex items-center justify-center gap-3 w-full sm:w-auto"
-            >
-              Get Started Today <FaBolt />
-            </Link>
-            <p className="text-white/40 text-xs font-medium mt-2">
-              Already have an account?{" "}
-              <Link
-                to="/login"
-                className="text-teal-400 hover:text-teal-300 transition-colors"
-              >
-                Sign In
-              </Link>
-            </p>
-          </div>
-
-          <p className="text-2xl font-black italic text-transparent bg-clip-text bg-gradient-to-r from-white to-white/50">
-            ❤️ Together, We Can Make a Difference.
-          </p>
-          <p className="text-white/50 mt-2 font-medium">
-            Every connection matters. Every second counts. With HopeLink, help
-            is always within reach.
-          </p>
-        </motion.div>
-      </div>
-
-      {/* 👉 FOOTER (Fixed layout anchor) */}
-      <footer className="mt-auto relative z-10 w-full bg-[#05080c] py-8 text-center border-t border-white/5">
-        <p className="text-white/40 text-xs font-bold tracking-widest uppercase mb-2">
+      {/* 👉 FOOTER - Deep Pine Teal */}
+      <footer className="mt-auto relative z-10 w-full bg-pine-teal py-8 text-center border-t border-dusty-lavender/30">
+        <p className="text-pearl-beige/60 text-xs font-bold tracking-widest uppercase mb-2">
           HopeLink — Connecting Help, Instantly
         </p>
-        <p className="text-white/30 text-[10px] font-medium uppercase tracking-widest">
+        <p className="text-pearl-beige/40 text-[10px] font-medium uppercase tracking-widest">
           &copy; {new Date().getFullYear()} HopeLink. All rights reserved.
         </p>
       </footer>
