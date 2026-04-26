@@ -17,7 +17,7 @@ import {
 import logo from "../assets/logo.png";
 import AuthContext from "../context/AuthContext";
 
-// --- EXTRACED ANIMATION VARIANTS (Performance Optimization) ---
+// --- EXTRACTED ANIMATION VARIANTS (Performance Optimization) ---
 const staggerContainer = {
   hidden: { opacity: 0 },
   visible: {
@@ -70,7 +70,7 @@ const Landing = () => {
   const navigate = useNavigate();
   const [showSplash, setShowSplash] = useState(true);
 
-  // Splash screen lifecycle
+  // Splash screen lifecycle cleanup to prevent memory leaks
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 2500);
     return () => clearTimeout(timer);
@@ -114,22 +114,22 @@ const Landing = () => {
       <main className="flex flex-col min-h-screen bg-pearl-beige text-pine-teal font-sans relative selection:bg-dark-raspberry selection:text-white overflow-hidden">
         {/* VIBRANT BACKGROUND GLOWS */}
         <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-          <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[80vw] h-[50vh] bg-dark-raspberry/10 blur-[150px] rounded-[100%]"></div>
-          <div className="absolute top-[40%] right-[-10%] w-[40vw] h-[60vh] bg-blazing-flame/10 blur-[150px] rounded-[100%]"></div>
-          <div className="absolute bottom-[-10%] left-[-10%] w-[50vw] h-[50vh] bg-pine-teal/10 blur-[150px] rounded-[100%]"></div>
+          <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[80vw] h-[50vh] bg-dark-raspberry/10 blur-[150px] rounded-full"></div>
+          <div className="absolute top-[40%] right-[-10%] w-[40vw] h-[60vh] bg-blazing-flame/10 blur-[150px] rounded-full"></div>
+          <div className="absolute bottom-[-10%] left-[-10%] w-[50vw] h-[50vh] bg-pine-teal/10 blur-[150px] rounded-full"></div>
         </div>
 
         {/* HEADER */}
-        <header className="relative z-50 max-w-7xl mx-auto px-6 py-8 w-full flex justify-center items-center shrink-0">
+        <header className="relative z-40 max-w-7xl mx-auto px-6 py-8 w-full flex justify-center items-center shrink-0">
           <nav>
             <Link to="/" className="flex items-center gap-3 group">
               <img
                 src={logo}
-                alt="HopeLink Logo"
+                alt="Sahayam Logo"
                 className="h-10 sm:h-12 w-auto object-contain group-hover:scale-110 transition-transform duration-500 drop-shadow-[0_0_15px_rgba(159,17,100,0.3)]"
               />
               <span className="text-2xl sm:text-3xl font-black italic tracking-tighter text-pine-teal">
-                HOPE<span className="text-blazing-flame">LINK.</span>
+                SAHA<span className="text-blazing-flame">YAM.</span>
               </span>
             </Link>
           </nav>
@@ -174,10 +174,10 @@ const Landing = () => {
           >
             <p className="text-dark-raspberry font-bold uppercase tracking-widest text-sm mb-4 flex items-center justify-center gap-2">
               <FaBolt className="animate-pulse text-blazing-flame" /> When Every
-              Second Matters, HopeLink Responds
+              Second Matters, Sahayam Responds
             </p>
-            <p className="text-pine-teal/70 text-lg sm:text-xl font-medium mb-12 leading-relaxed">
-              In times of emergency, delays cost lives. HopeLink is a real-time
+            <p className="text-pine-teal/80 text-lg sm:text-xl font-medium mb-12 leading-relaxed">
+              In times of emergency, delays cost lives. Sahayam is a real-time
               networking platform designed to instantly connect people in need
               with nearby responders, volunteers, and essential services.
               Whether it’s a medical emergency or an urgent request — you are
@@ -197,7 +197,7 @@ const Landing = () => {
             >
               Get Started Today <FaBolt />
             </Link>
-            <p className="text-pine-teal/50 text-xs font-medium mt-2">
+            <p className="text-pine-teal/60 text-xs font-medium mt-2">
               Already have an account?{" "}
               <Link
                 to="/login"
@@ -209,16 +209,16 @@ const Landing = () => {
           </motion.div>
         </section>
 
-        {/* WHY HOPELINK? */}
+        {/* WHY SAHAYAM? */}
         <section className="relative z-20 max-w-7xl w-full mx-auto px-6 py-20 border-t border-dusty-lavender/20 bg-white/30 backdrop-blur-md mt-12 rounded-t-[3rem]">
           <div className="text-center mb-16 max-w-3xl mx-auto">
             <h2 className="text-3xl sm:text-4xl font-black tracking-tight mb-6 text-pine-teal flex items-center justify-center gap-3">
-              <FaBolt className="text-blazing-flame" /> Why HopeLink?
+              <FaBolt className="text-blazing-flame" /> Why Sahayam?
             </h2>
-            <p className="text-pine-teal/70 text-lg leading-relaxed">
+            <p className="text-pine-teal/80 text-lg leading-relaxed">
               Traditional emergency systems can be slow, fragmented, and
-              inaccessible in critical moments. HopeLink changes that by
-              creating a fast, reliable, and community-driven response network.
+              inaccessible in critical moments. Sahayam changes that by creating
+              a fast, reliable, and community-driven response network.
             </p>
           </div>
 
@@ -272,7 +272,7 @@ const Landing = () => {
                   <h3 className="text-2xl font-bold mb-3 text-pine-teal">
                     Real-Time Chat System
                   </h3>
-                  <p className="text-pine-teal/70 leading-relaxed max-w-md">
+                  <p className="text-pine-teal/80 leading-relaxed max-w-md">
                     Seamlessly connect with responders using our lightning-fast
                     chat system powered by bidirectional communication. Stay
                     updated with live responses, delivery status, and unread
@@ -296,7 +296,7 @@ const Landing = () => {
                   <h3 className="text-xl font-bold mb-3 text-pine-teal">
                     Instant Emergency Alerts
                   </h3>
-                  <p className="text-pine-teal/70 text-sm leading-relaxed">
+                  <p className="text-pine-teal/80 text-sm leading-relaxed">
                     Send distress signals with a single tap. Nearby users are
                     notified instantly, ensuring rapid action when time is
                     critical.
@@ -317,7 +317,7 @@ const Landing = () => {
                 <h3 className="text-lg font-bold mb-2 text-pine-teal">
                   Smart Location Tracking
                 </h3>
-                <p className="text-pine-teal/70 text-sm leading-relaxed">
+                <p className="text-pine-teal/80 text-sm leading-relaxed">
                   Automatically share your location with responders to help them
                   reach you faster and accurately.
                 </p>
@@ -336,8 +336,8 @@ const Landing = () => {
                 <h3 className="text-lg font-bold mb-2 text-pine-teal">
                   Offline Push Notifications
                 </h3>
-                <p className="text-pine-teal/70 text-sm leading-relaxed">
-                  Even with limited connectivity, HopeLink ensures you receive
+                <p className="text-pine-teal/80 text-sm leading-relaxed">
+                  Even with limited connectivity, Sahayam ensures you receive
                   important alerts using advanced push systems.
                 </p>
               </motion.div>
@@ -355,7 +355,7 @@ const Landing = () => {
                 <h3 className="text-lg font-bold mb-2 text-pine-teal">
                   Community Network
                 </h3>
-                <p className="text-pine-teal/70 text-sm leading-relaxed">
+                <p className="text-pine-teal/80 text-sm leading-relaxed">
                   A growing network of volunteers and helpers ready to step in
                   when emergencies strike.
                 </p>
@@ -403,7 +403,7 @@ const Landing = () => {
                       <h4 className="text-xl font-bold text-pine-teal">
                         {step.title}
                       </h4>
-                      <p className="text-pine-teal/60 text-sm mt-1">
+                      <p className="text-pine-teal/70 text-sm mt-1">
                         {step.desc}
                       </p>
                     </div>
@@ -432,7 +432,7 @@ const Landing = () => {
                   ].map((item, i) => (
                     <li
                       key={i}
-                      className="flex items-center gap-3 text-pine-teal/80 font-medium"
+                      className="flex items-center gap-3 text-pine-teal/90 font-medium"
                     >
                       <FaCheckCircle className="text-blazing-flame shrink-0" />{" "}
                       {item}
@@ -446,10 +446,10 @@ const Landing = () => {
                   <FaShieldAlt className="text-dark-raspberry" /> Safe, Secure &
                   Reliable
                 </h2>
-                <p className="text-pine-teal/70 text-sm mb-4">
-                  Your safety is our priority. HopeLink ensures:
+                <p className="text-pine-teal/80 text-sm mb-4">
+                  Your safety is our priority. Sahayam ensures:
                 </p>
-                <ul className="space-y-3 text-sm text-pine-teal/80 font-medium">
+                <ul className="space-y-3 text-sm text-pine-teal/90 font-medium">
                   <li className="flex items-start gap-2">
                     <span className="text-dark-raspberry font-black">•</span>{" "}
                     Secure communication channels
@@ -481,8 +481,8 @@ const Landing = () => {
             <h2 className="text-4xl sm:text-5xl font-black tracking-tight mb-6 text-pine-teal">
               💡 Built for Impact
             </h2>
-            <p className="text-pine-teal/80 text-lg md:text-xl font-medium mb-12 leading-relaxed">
-              HopeLink is more than just an app — it’s a mission to bridge the
+            <p className="text-pine-teal/90 text-lg md:text-xl font-medium mb-12 leading-relaxed">
+              Sahayam is more than just an app — it’s a mission to bridge the
               gap between emergencies and immediate help using technology. Be
               prepared. Stay connected. Save lives.
             </p>
@@ -499,8 +499,8 @@ const Landing = () => {
             <p className="text-2xl font-black italic text-transparent bg-clip-text bg-brand-gradient">
               ❤️ Together, We Can Make a Difference.
             </p>
-            <p className="text-pine-teal/60 mt-2 font-medium">
-              Every connection matters. Every second counts. With HopeLink, help
+            <p className="text-pine-teal/70 mt-2 font-medium">
+              Every connection matters. Every second counts. With Sahayam, help
               is always within reach.
             </p>
           </motion.div>
@@ -508,11 +508,11 @@ const Landing = () => {
 
         {/* FOOTER */}
         <footer className="mt-auto relative z-10 w-full bg-pine-teal py-8 text-center border-t border-dusty-lavender/30 shrink-0">
-          <p className="text-pearl-beige/80 text-xs font-bold tracking-widest uppercase mb-2">
-            HopeLink — Connecting Help, Instantly
+          <p className="text-pearl-beige/90 text-xs font-bold tracking-widest uppercase mb-2">
+            Sahayam — Connecting Help, Instantly
           </p>
-          <p className="text-pearl-beige/50 text-[10px] font-medium uppercase tracking-widest">
-            &copy; {new Date().getFullYear()} HopeLink. All rights reserved.
+          <p className="text-pearl-beige/60 text-[10px] font-medium uppercase tracking-widest">
+            &copy; {new Date().getFullYear()} Sahayam. All rights reserved.
           </p>
         </footer>
       </main>
