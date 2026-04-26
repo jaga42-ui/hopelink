@@ -2,47 +2,51 @@ import { initializeApp } from "firebase/app";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: "AIzaSyD4B7cjaeF2IfdYTBO9O_EdWpZW-yRL8Ic",
+  authDomain: "hopelink-57e20.firebaseapp.com",
+  projectId: "hopelink-57e20",
+  storageBucket: "hopelink-57e20.firebasestorage.app",
+  messagingSenderId: "304854115504",
+  appId: "1:304854115504:web:a670a1824eaa359f4b8775",
+  measurementId: "G-9D0THCJLHP"
 };
 
-// Initialize Firebase only if the config is present
-let app, messaging;
-
-try {
-  app = initializeApp(firebaseConfig);
-  messaging = getMessaging(app);
-} catch (error) {
-  console.error("Firebase Initialization Error:", error);
-}
+const app = initializeApp(firebaseConfig);
+const messaging = getMessaging(app);
 
 export const requestFirebaseToken = async () => {
-  if (!messaging) return null;
   try {
-    const currentToken = await getToken(messaging, {
-      vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
-    });
-    if (currentToken) {
-      return currentToken;
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      
+      // 👉 THE FIX: Force the browser to register your background worker manually
+      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+        scope: '/'
+      });
+
+      // 👉 Hand the registered worker directly to Firebase
+      const currentToken = await getToken(messaging, { 
+        vapidKey: 'BDCZCEH2kk3zEgnxGe9KGUjFuleKJMCmLyDP-zqBxJPGyn5hoCRdGoYWbL8qgiWQ3YV6wh1v94UVus5jFjVTlgU',
+        serviceWorkerRegistration: registration 
+      });
+
+      if (currentToken) {
+        console.log("🔥 Token Generated Successfully linked to Background Worker");
+        return currentToken;
+      }
     } else {
-      console.log('No registration token available. Request permission to generate one.');
-      return null;
+      console.log("Notification permission not granted.");
     }
-  } catch (err) {
-    console.error('An error occurred while retrieving token. ', err);
+    return null;
+  } catch (error) {
+    console.error('An error occurred while retrieving token: ', error);
     return null;
   }
 };
 
-export const onMessageListener = () => {
-  if (!messaging) return new Promise((resolve) => resolve(null));
-  return new Promise((resolve) => {
+export const onMessageListener = () =>
+  new Promise((resolve) => {
     onMessage(messaging, (payload) => {
       resolve(payload);
     });
   });
-};
