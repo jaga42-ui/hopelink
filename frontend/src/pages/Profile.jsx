@@ -57,6 +57,7 @@ const Profile = () => {
     fetchImpactStats();
   }, [user]);
 
+  // 👉 GOOGLE MAPS REVERSE GEOCODING
   const handleGetLocation = () => {
     if (!navigator.geolocation) return toast.error('Geolocation not supported');
 
@@ -65,13 +66,22 @@ const Profile = () => {
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
-          const { data } = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&email=sahayam@example.com`);
-          const addressInfo = data.address;
-          const cityString = addressInfo.city || addressInfo.town || addressInfo.village || addressInfo.state || 'Unknown Location';
+          const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
           
-          setFormData({ ...formData, addressText: cityString });
-          toast.success(`Location locked: ${cityString}`);
-        } catch (error) { toast.error("Could not resolve location address"); } 
+          if (!apiKey) throw new Error("API Key Missing");
+
+          const { data } = await axios.get(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`);
+          
+          if (data.results && data.results.length > 0) {
+            const cityComponent = data.results[0].address_components.find(c => c.types.includes("locality"));
+            const cityString = cityComponent ? cityComponent.long_name : data.results[0].formatted_address.split(",")[0];
+            
+            setFormData({ ...formData, addressText: cityString });
+            toast.success(`Location locked: ${cityString}`);
+          } else {
+             throw new Error("Location unresolvable");
+          }
+        } catch (error) { toast.error("Could not resolve location via Google Maps"); } 
         finally { setIsFetchingLocation(false); }
       },
       () => {

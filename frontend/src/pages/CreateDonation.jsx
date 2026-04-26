@@ -36,32 +36,58 @@ const CreateDonation = () => {
   const themeBg = isRequest ? "bg-dark-raspberry hover:bg-[#850e53]" : "bg-blazing-flame hover:bg-[#e03a12]";
   const themeFocusBorder = isRequest ? "focus:border-dark-raspberry" : "focus:border-blazing-flame";
 
+  // 👉 GOOGLE MAPS REVERSE GEOCODING (GPS)
   const handleGetLocation = () => {
     if (!navigator.geolocation) { toast.error("Geolocation is not supported by your browser"); return; }
     setIsFetchingLocation(true);
+    
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
-          const { data } = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&email=sahayam@example.com`);
-          const cityString = data.address.city || data.address.town || data.address.village || data.address.state || "Unknown Location";
-          setFormData((prev) => ({ ...prev, addressText: cityString }));
-          toast.success(`Location locked: ${cityString}`);
+          const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+          
+          if (!apiKey) throw new Error("API Key Missing");
+
+          const { data } = await axios.get(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`);
+          
+          if (data.results && data.results.length > 0) {
+            const cityComponent = data.results[0].address_components.find(c => c.types.includes("locality"));
+            const cityString = cityComponent ? cityComponent.long_name : data.results[0].formatted_address.split(",")[0];
+            
+            setFormData((prev) => ({ ...prev, addressText: cityString }));
+            toast.success(`Location locked: ${cityString}`);
+          } else {
+             throw new Error("No location found");
+          }
         } catch (error) { toast.error("Could not resolve location address"); } finally { setIsFetchingLocation(false); }
       },
       () => { setIsFetchingLocation(false); toast.error("Please allow location permissions"); }
     );
   };
 
+  // 👉 GOOGLE MAPS AUTOCOMPLETE
   const handleLocationType = (e) => {
     const val = e.target.value;
     setFormData((prev) => ({ ...prev, addressText: val }));
     if (typingTimeout) clearTimeout(typingTimeout);
+    
     if (val.length > 2) {
       setTypingTimeout(setTimeout(async () => {
         try {
-          const { data } = await axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${val}&limit=4&email=sahayam@example.com`);
-          setSuggestions(data);
+          const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+          if (!apiKey) return;
+          
+          const { data } = await axios.get(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(val)}&key=${apiKey}`);
+          
+          if (data.status === "OK") {
+            const formattedSuggestions = data.results.slice(0, 4).map(res => ({
+              display_name: res.formatted_address,
+              lat: res.geometry.location.lat,
+              lon: res.geometry.location.lng
+            }));
+            setSuggestions(formattedSuggestions);
+          }
         } catch (error) { console.error("Autocomplete failed"); }
       }, 600));
     } else { setSuggestions([]); }
@@ -202,28 +228,26 @@ const CreateDonation = () => {
             <h3 className="text-pine-teal text-sm md:text-base font-bold flex items-center gap-2 border-b border-dusty-lavender/20 pb-3">
               <FaLocationArrow className={themeAccent} /> Logistics & Media
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
-              <div className="space-y-5 md:space-y-6">
-                <div className="relative">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 block">Your Location</label>
-                  <div className="flex gap-2">
-                    <input required value={formData.addressText} onChange={handleLocationType} placeholder="Type city or use GPS..." className={`flex-1 w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-5 py-3.5 md:py-4 text-pine-teal text-base font-bold placeholder-dusty-lavender/70 outline-none transition-colors focus:bg-white ${themeFocusBorder}`} />
-                    <button type="button" onClick={handleGetLocation} disabled={isFetchingLocation} className={`px-4 md:px-5 rounded-2xl transition-all disabled:opacity-50 flex items-center justify-center border bg-white text-blazing-flame hover:bg-pearl-beige border-dusty-lavender/40 shadow-sm`} title="Use GPS">
-                      {isFetchingLocation ? <FaSpinner className="animate-spin text-lg" /> : <FaLocationArrow className="text-lg" />}
-                    </button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6 items-end">
+              <div className="relative">
+                <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 block">Your Location</label>
+                <div className="flex gap-2">
+                  <input required value={formData.addressText} onChange={handleLocationType} placeholder="Type city or use GPS..." className={`flex-1 w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-5 py-3.5 md:py-4 text-pine-teal text-base font-bold placeholder-dusty-lavender/70 outline-none transition-colors focus:bg-white ${themeFocusBorder}`} />
+                  <button type="button" onClick={handleGetLocation} disabled={isFetchingLocation} className={`px-4 md:px-5 rounded-2xl transition-all disabled:opacity-50 flex items-center justify-center border bg-white text-blazing-flame hover:bg-pearl-beige border-dusty-lavender/40 shadow-sm`} title="Use GPS">
+                    {isFetchingLocation ? <FaSpinner className="animate-spin text-lg" /> : <FaLocationArrow className="text-lg" />}
+                  </button>
+                </div>
+                {suggestions.length > 0 && (
+                  <div className="absolute z-[100] w-full mt-2 bg-white border border-dusty-lavender/30 rounded-xl overflow-y-auto max-h-48 shadow-2xl">
+                    {suggestions.map((s, index) => (
+                      <div key={index} onClick={() => handleSelectSuggestion(s.display_name)} className="px-5 py-3 text-sm text-pine-teal hover:text-white hover:bg-pine-teal cursor-pointer border-b border-dusty-lavender/20 last:border-0 truncate">{s.display_name}</div>
+                    ))}
                   </div>
-                  {suggestions.length > 0 && (
-                    <div className="absolute z-[100] w-full mt-2 bg-white border border-dusty-lavender/30 rounded-xl overflow-y-auto max-h-48 shadow-2xl">
-                      {suggestions.map((s, index) => (
-                        <div key={index} onClick={() => handleSelectSuggestion(s.display_name)} className="px-5 py-3 text-sm text-pine-teal hover:text-white hover:bg-pine-teal cursor-pointer border-b border-dusty-lavender/20 last:border-0 truncate">{s.display_name}</div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 flex items-center gap-2"><FaClock /> Preferred {isRequest ? "Meetup" : "Pickup"} Time</label>
-                  <input required value={formData.pickupTime} onChange={(e) => setFormData({ ...formData, pickupTime: e.target.value })} placeholder="e.g. After 6 PM today, Weekends only" className={`w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-5 py-3.5 md:py-4 text-pine-teal text-base font-bold outline-none transition-colors focus:bg-white ${themeFocusBorder}`} />
-                </div>
+                )}
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 flex items-center gap-2"><FaClock /> Preferred {isRequest ? "Meetup" : "Pickup"} Time</label>
+                <input required value={formData.pickupTime} onChange={(e) => setFormData({ ...formData, pickupTime: e.target.value })} placeholder="e.g. After 6 PM today, Weekends only" className={`w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-5 py-3.5 md:py-4 text-pine-teal text-base font-bold outline-none transition-colors focus:bg-white ${themeFocusBorder}`} />
               </div>
               <div>
                 <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 block">Reference Image {isRequest && "(Optional)"}</label>

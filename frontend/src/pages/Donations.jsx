@@ -59,15 +59,28 @@ const Donations = () => {
   const themeFocusBorder = isRequest ? "focus:border-dark-raspberry" : "focus:border-blazing-flame";
   const themeContainerBorder = "border-white";
 
+  // 👉 GOOGLE MAPS AUTOCOMPLETE
   const handleLocationType = (e) => {
     const val = e.target.value;
     setFormData((prev) => ({ ...prev, addressText: val, lat: null, lng: null }));
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    
     if (val.length > 2) {
       typingTimeoutRef.current = setTimeout(async () => {
         try {
-          const { data } = await axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=4&email=sahayam@example.com`);
-          setSuggestions(data);
+          const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+          if (!apiKey) return;
+
+          const { data } = await axios.get(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(val)}&key=${apiKey}`);
+          
+          if (data.status === "OK") {
+            const formattedSuggestions = data.results.slice(0, 4).map(res => ({
+              display_name: res.formatted_address,
+              lat: res.geometry.location.lat,
+              lon: res.geometry.location.lng
+            }));
+            setSuggestions(formattedSuggestions);
+          }
         } catch (error) { console.error("Autocomplete failed"); }
       }, 600);
     } else { setSuggestions([]); }
@@ -79,18 +92,31 @@ const Donations = () => {
     setSuggestions([]);
   };
 
+  // 👉 GOOGLE MAPS REVERSE GEOCODING (GPS)
   const handleGetLocation = () => {
     if (!navigator.geolocation) return toast.error("GPS not supported");
     setIsFetchingLocation(true);
+    
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
-          const { data } = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&email=sahayam@example.com`);
-          const cityString = data.address.city || data.address.town || data.address.village || data.address.state || "Unknown Location";
-          setFormData((prev) => ({ ...prev, addressText: cityString, lat: latitude, lng: longitude }));
-          toast.success(`Location locked: ${cityString} 📍`);
-        } catch (error) { toast.error("Could not resolve location"); } finally { setIsFetchingLocation(false); }
+          const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+          
+          if (!apiKey) throw new Error("API Key Missing");
+
+          const { data } = await axios.get(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`);
+          
+          if (data.results && data.results.length > 0) {
+            const cityComponent = data.results[0].address_components.find(c => c.types.includes("locality"));
+            const cityString = cityComponent ? cityComponent.long_name : data.results[0].formatted_address.split(",")[0];
+            
+            setFormData((prev) => ({ ...prev, addressText: cityString, lat: latitude, lng: longitude }));
+            toast.success(`Location locked: ${cityString} 📍`);
+          } else {
+            throw new Error("Location unresolvable");
+          }
+        } catch (error) { toast.error("Could not resolve location via Google Maps."); } finally { setIsFetchingLocation(false); }
       },
       () => { setIsFetchingLocation(false); toast.error("Please allow location permissions."); },
       { enableHighAccuracy: true },

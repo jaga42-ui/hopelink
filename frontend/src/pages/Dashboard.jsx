@@ -275,39 +275,58 @@ const Dashboard = () => {
     setDeferredPrompt(null);
   };
 
+  // 👉 UPDATED TO GOOGLE MAPS GEOCODING
   const handleGetLocation = async (isEvent = false) => {
     if (!navigator.geolocation)
       return toast.error("Geolocation is not supported.");
     setIsFetchingLocation(true);
-    const toastId = toast.loading("Locking onto GPS...", {
+    const toastId = toast.loading("Locking onto GPS via Google Satellite...", {
       style: { background: "#ffffff", color: "#29524a", fontWeight: "bold" },
     });
+
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
+          const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
+          if (!apiKey) throw new Error("API Key Missing");
+
           const { data } = await axios.get(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&email=sahayam@example.com`,
+            `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`,
           );
-          const cityString =
-            data.address.city || data.address.town || "Unknown Location";
-          if (isEvent)
-            setEventData((prev) => ({
-              ...prev,
-              addressText: cityString,
-              lat: latitude,
-              lng: longitude,
-            }));
-          else
-            setSosData((prev) => ({
-              ...prev,
-              addressText: cityString,
-              lat: latitude,
-              lng: longitude,
-            }));
-          toast.success(`Coordinates locked: ${cityString}`, { id: toastId });
+
+          if (data.results && data.results.length > 0) {
+            const cityComponent = data.results[0].address_components.find((c) =>
+              c.types.includes("locality"),
+            );
+            const cityString = cityComponent
+              ? cityComponent.long_name
+              : data.results[0].formatted_address.split(",")[0];
+
+            if (isEvent)
+              setEventData((prev) => ({
+                ...prev,
+                addressText: cityString,
+                lat: latitude,
+                lng: longitude,
+              }));
+            else
+              setSosData((prev) => ({
+                ...prev,
+                addressText: cityString,
+                lat: latitude,
+                lng: longitude,
+              }));
+
+            toast.success(`Coordinates locked: ${cityString}`, { id: toastId });
+          } else {
+            throw new Error("No location found");
+          }
         } catch {
-          toast.error("Could not resolve address.", { id: toastId });
+          toast.error("Could not resolve address via Google Maps.", {
+            id: toastId,
+          });
         } finally {
           setIsFetchingLocation(false);
         }
@@ -320,19 +339,35 @@ const Dashboard = () => {
     );
   };
 
+  // 👉 UPDATED TO GOOGLE MAPS AUTOCOMPLETE
   const handleLocationType = (e, isEvent = false) => {
     const val = e.target.value;
     if (isEvent) setEventData((prev) => ({ ...prev, addressText: val }));
     else setSosData((prev) => ({ ...prev, addressText: val }));
+
     if (typingTimeout) clearTimeout(typingTimeout);
+
     if (val.length > 2) {
       setTypingTimeout(
         setTimeout(async () => {
           try {
+            const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+            if (!apiKey) return;
+
             const { data } = await axios.get(
-              `https://nominatim.openstreetmap.org/search?format=json&q=${val}&limit=4`,
+              `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(val)}&key=${apiKey}`,
             );
-            setSuggestions(data);
+
+            if (data.status === "OK") {
+              const formattedSuggestions = data.results
+                .slice(0, 4)
+                .map((res) => ({
+                  display_name: res.formatted_address,
+                  lat: res.geometry.location.lat,
+                  lon: res.geometry.location.lng,
+                }));
+              setSuggestions(formattedSuggestions);
+            }
           } catch {}
         }, 600),
       );
@@ -966,7 +1001,6 @@ const Dashboard = () => {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3 }}
           >
-            {/* Note: In a production scenario, you would similarly re-style the Events feed map here to mirror the p2p feed structure with white/70 bg and dust-lavender borders */}
             <div className="text-center py-20 bg-white/70 backdrop-blur-lg rounded-[2.5rem] border border-white shadow-[0_20px_40px_rgba(41,82,74,0.08)]">
               <FaBullhorn className="text-6xl text-dark-raspberry/50 mx-auto mb-4" />
               <h3 className="text-xl font-bold text-pine-teal mb-2">
@@ -980,7 +1014,7 @@ const Dashboard = () => {
           </motion.div>
         )}
 
-        {/* MODALS - Fully Inline Styled */}
+        {/* MODALS */}
         <AnimatePresence>
           {showSOS && (
             <div className="fixed inset-0 z-[3000] flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -1089,6 +1123,19 @@ const Dashboard = () => {
                         )}
                       </button>
                     </div>
+                    {suggestions.length > 0 && (
+                      <div className="absolute z-[100] w-full mt-2 bg-white border border-dusty-lavender/30 rounded-xl overflow-y-auto max-h-48 shadow-2xl">
+                        {suggestions.map((s, index) => (
+                          <div
+                            key={index}
+                            onClick={() => handleSelectSuggestion(s, false)}
+                            className="px-5 py-3 text-sm text-pine-teal hover:text-white hover:bg-pine-teal cursor-pointer border-b border-dusty-lavender/20 last:border-0 truncate"
+                          >
+                            {s.display_name}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="text-[10px] font-bold uppercase tracking-widest text-dusty-lavender block mb-1">

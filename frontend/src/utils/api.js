@@ -1,25 +1,21 @@
 import axios from 'axios';
 
-const baseURL = 'https://hopelink-api.onrender.com/api'; 
+// Automatically routes to your live Render backend
+const API_URL = import.meta.env.VITE_BACKEND_URL || 'https://hopelink-api.onrender.com/api';
 
 const api = axios.create({
-  baseURL,
-  // 👉 STRIPPED: We removed the hardcoded JSON header. 
-  // Now it will automatically allow image uploads!
+  baseURL: API_URL,
 });
 
+// Intercept requests to attach the secure authorization token
 api.interceptors.request.use((config) => {
-  // Look inside the 'user' object for the token
-  const userJSON = localStorage.getItem('user');
-  
-  if (userJSON) {
-    const user = JSON.parse(userJSON);
-    if (user.token) {
-      config.headers.Authorization = `Bearer ${user.token}`;
-    }
+  const user = JSON.parse(localStorage.getItem('user'));
+  if (user && user.token) {
+    config.headers.Authorization = `Bearer ${user.token}`;
   }
-  
   return config;
+}, (error) => {
+  return Promise.reject(error);
 });
 
 export default api;

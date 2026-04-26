@@ -1,109 +1,52 @@
 @import "tailwindcss";
 
-/* 👉 TAILWIND V4 CONFIGURATION */
 @theme {
-  --color-dark-raspberry: #9f1164;
+  /* THE SAHAYAM PREMIUM PALETTE */
   --color-pearl-beige: #e8dab2;
-  --color-dusty-lavender: #846b8a;
-  --color-blazing-flame: #ff4a1c;
   --color-pine-teal: #29524a;
-}
+  --color-blazing-flame: #ff4a1c;
+  --color-dark-raspberry: #9f1164;
+  --color-dusty-lavender: #846b8a;
 
-/* 👉 BASE STYLES */
-@layer base {
-  body {
-    background-color: var(--color-pearl-beige);
-    color: var(--color-pine-teal);
+  /* CUSTOM ANIMATIONS */
+  --animate-shimmer: shimmer 1.5s infinite;
+
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
   }
 }
 
-/* 👉 UTILITIES */
-@layer utilities {
-  .bg-brand-gradient {
-    background: var(--color-dark-raspberry); 
-    background: -webkit-linear-gradient(168deg, var(--color-dark-raspberry) 0%, var(--color-dusty-lavender) 50%, var(--color-blazing-flame) 100%);
-    background: linear-gradient(168deg, var(--color-dark-raspberry) 0%, var(--color-dusty-lavender) 50%, var(--color-blazing-flame) 100%);
-  }
-
-  /* Ready-to-use overlay for the opening credit sequence */
-  .opening-credit-screen {
-    @apply fixed inset-0 z-50 flex items-center justify-center font-black tracking-widest;
-    background: radial-gradient(circle at center, var(--color-pine-teal), #1a3630);
-    color: var(--color-pearl-beige);
-  }
+/* Base resets to enforce the light theme everywhere */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-pearl-beige);
+  color: var(--color-pine-teal);
+  font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* 👉 COMPONENTS */
-@layer components {
-  /* High-energy, bouncy buttons */
-  .btn-aesthetic {
-    @apply px-8 py-4 rounded-2xl font-black text-white transition-all active:scale-95 shadow-lg bg-blazing-flame;
-  }
-  .btn-aesthetic:hover {
-    box-shadow: 0 10px 25px rgba(255, 74, 28, 0.4);
-  }
-  
-  /* Inputs updated to crisp white with lavender borders */
-  .input-glass {
-    @apply bg-white border-2 border-dusty-lavender/40 rounded-2xl px-6 py-4 text-pine-teal placeholder-dusty-lavender focus:bg-white focus:border-dark-raspberry outline-none transition-all shadow-inner;
-  }
-
-  /* Cards transformed into bright, premium frosted glass */
-  .glass-card {
-    @apply bg-white/70 backdrop-blur-lg border border-white rounded-[2.5rem] shadow-xl;
-    box-shadow: 0 20px 40px rgba(41, 82, 74, 0.08);
-  }
+/* Hide scrollbar for clean horizontal scrolls */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-/* Hide scrollbars but keep functionality */
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-/* -----------------------------------------
-   👉 CHROME AUTOFILL LIGHT MODE FIX
------------------------------------------- */
-input:-webkit-autofill,
-input:-webkit-autofill:hover, 
-input:-webkit-autofill:focus, 
-input:-webkit-autofill:active {
-    -webkit-box-shadow: 0 0 0 30px #ffffff inset !important;
-    -webkit-text-fill-color: var(--color-pine-teal) !important;
-    transition: background-color 5000s ease-in-out 0s;
+/* Custom Marker styling for Leaflet (if still used anywhere as a fallback) */
+.custom-popup .leaflet-popup-content-wrapper {
+  background: #ffffff;
+  border: 1px solid rgba(132, 107, 138, 0.3);
+  border-radius: 1rem;
+  box-shadow: 0 10px 25px rgba(41, 82, 74, 0.1);
 }
-
-/* -----------------------------------------
-   LEAFLET PREMIUM LIGHT MODE FIXES
------------------------------------------- */
-.leaflet-popup-content-wrapper {
-  background: #ffffff !important; 
-  color: var(--color-pine-teal) !important; 
-  border: 2px solid var(--color-dusty-lavender); 
-  border-radius: 1.5rem !important;
-  box-shadow: 0 20px 25px -5px rgba(41, 82, 74, 0.15) !important;
-  font-weight: 500;
-}
-
-.leaflet-popup-tip {
-  background: #ffffff !important;
-  border-right: 2px solid var(--color-dusty-lavender);
-  border-bottom: 2px solid var(--color-dusty-lavender);
-}
-
-.leaflet-container a.leaflet-popup-close-button {
-  color: var(--color-dusty-lavender) !important; 
-  padding: 4px !important;
-}
-
-.leaflet-container a.leaflet-popup-close-button:hover {
-  color: var(--color-dark-raspberry) !important; 
-  background: transparent !important;
-}
-
-.leaflet-container {
-  background: var(--color-pearl-beige) !important; 
-  border-radius: inherit;
-}
-
-@keyframes shimmer {
-  100% { transform: translateX(100%); }
+.custom-popup .leaflet-popup-tip {
+  background: #ffffff;
+  border: 1px solid rgba(132, 107, 138, 0.3);
 }
