@@ -1,31 +1,52 @@
 @import "tailwindcss";
 
+:root {
+  --dark-raspberry: #9f1164;
+  --pearl-beige: #e8dab2;
+  --dusty-lavender: #846b8a;
+  --blazing-flame: #ff4a1c;
+  --pine-teal: #29524a;
+}
+
+body {
+  background-color: var(--pearl-beige);
+  color: var(--pine-teal);
+}
+
 @layer utilities {
   .bg-brand-gradient {
-    /* Fallback to deep slate */
-    background: #020617; 
-    
-    /* Deep Solid Dark Teal & Slate Gradient (No more bright pastel colors) */
-    background: -webkit-linear-gradient(168deg, #020617 0%, #064e3b 50%, #0f172a 100%);
-    background: -moz-linear-gradient(168deg, #020617 0%, #064e3b 50%, #0f172a 100%);
-    background: linear-gradient(168deg, #020617 0%, #064e3b 50%, #0f172a 100%);
+    background: var(--dark-raspberry); 
+    background: -webkit-linear-gradient(168deg, var(--dark-raspberry) 0%, var(--dusty-lavender) 50%, var(--blazing-flame) 100%);
+    background: linear-gradient(168deg, var(--dark-raspberry) 0%, var(--dusty-lavender) 50%, var(--blazing-flame) 100%);
+  }
+
+  /* Ready-to-use overlay for the opening credit sequence */
+  .opening-credit-screen {
+    @apply fixed inset-0 z-50 flex items-center justify-center font-black tracking-widest;
+    background: radial-gradient(circle at center, var(--pine-teal), #1a3630);
+    color: var(--pearl-beige);
   }
 }
 
 @layer components {
-  /* Soft, bouncy buttons */
+  /* High-energy, bouncy buttons */
   .btn-aesthetic {
-    @apply px-8 py-4 rounded-2xl font-black transition-all active:scale-95 shadow-lg;
+    @apply px-8 py-4 rounded-2xl font-black text-white transition-all active:scale-95 shadow-lg;
+    background-color: var(--blazing-flame);
+  }
+  .btn-aesthetic:hover {
+    box-shadow: 0 10px 25px rgba(255, 74, 28, 0.4);
   }
   
-  /* Inputs updated to Solid Dark (Slate-950) */
+  /* Inputs updated to crisp white with lavender borders */
   .input-glass {
-    @apply bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white placeholder-slate-500 focus:bg-slate-900 focus:border-teal-500 outline-none transition-all shadow-inner;
+    @apply bg-white border-2 border-dusty-lavender/40 rounded-2xl px-6 py-4 text-pine-teal placeholder-dusty-lavender focus:bg-white focus:border-dark-raspberry outline-none transition-all shadow-inner;
   }
 
-  /* Cards updated to Solid Dark (Slate-900) */
+  /* Cards transformed into bright, premium frosted glass */
   .glass-card {
-    @apply bg-slate-900 border border-slate-800 rounded-[2.5rem] shadow-xl;
+    @apply bg-white/70 backdrop-blur-lg border border-white rounded-[2.5rem] shadow-xl;
+    box-shadow: 0 20px 40px rgba(41, 82, 74, 0.08);
   }
 }
 
@@ -34,47 +55,47 @@
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
 /* -----------------------------------------
-   👉 CHROME AUTOFILL DARK MODE FIX
+   👉 CHROME AUTOFILL LIGHT MODE FIX
 ------------------------------------------ */
 input:-webkit-autofill,
 input:-webkit-autofill:hover, 
 input:-webkit-autofill:focus, 
 input:-webkit-autofill:active {
-    -webkit-box-shadow: 0 0 0 30px #020617 inset !important; /* matches slate-950 */
-    -webkit-text-fill-color: white !important;
+    -webkit-box-shadow: 0 0 0 30px #ffffff inset !important;
+    -webkit-text-fill-color: #29524a !important;
     transition: background-color 5000s ease-in-out 0s;
 }
 
 /* -----------------------------------------
-   LEAFLET SOLID DARK MODE FIXES (No more blur)
+   LEAFLET PREMIUM LIGHT MODE FIXES
 ------------------------------------------ */
 .leaflet-popup-content-wrapper {
-  background: #0f172a !important; /* matches bg-slate-900 */
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  color: #f8fafc !important; /* matches text-slate-50 */
-  border: 1px solid #1e293b; /* matches border-slate-800 */
+  background: #ffffff !important; 
+  color: var(--pine-teal) !important; 
+  border: 2px solid var(--dusty-lavender); 
   border-radius: 1.5rem !important;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5) !important;
+  box-shadow: 0 20px 25px -5px rgba(41, 82, 74, 0.15) !important;
+  font-weight: 500;
 }
 
 .leaflet-popup-tip {
-  background: #0f172a !important; /* matches bg-slate-900 */
+  background: #ffffff !important;
+  border-right: 2px solid var(--dusty-lavender);
+  border-bottom: 2px solid var(--dusty-lavender);
 }
 
 .leaflet-container a.leaflet-popup-close-button {
-  color: #64748b !important; /* matches text-slate-500 */
+  color: var(--dusty-lavender) !important; 
   padding: 4px !important;
 }
 
 .leaflet-container a.leaflet-popup-close-button:hover {
-  color: #f8fafc !important; /* matches text-white */
+  color: var(--dark-raspberry) !important; 
   background: transparent !important;
 }
 
-/* Make the map container match the rounded corners perfectly */
 .leaflet-container {
-  background: #020617 !important; /* matches bg-slate-950 */
+  background: var(--pearl-beige) !important; 
   border-radius: inherit;
 }
 
