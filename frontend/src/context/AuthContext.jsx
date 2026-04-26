@@ -2,15 +2,15 @@ import { createContext, useState, useEffect } from "react";
 import { io } from "socket.io-client";
 import toast from "react-hot-toast";
 
-// 👉 IMPORT YOUR HARDWIRED API PIPELINE
+// IMPORT YOUR HARDWIRED API PIPELINE
 import api from "../utils/api";
 
-// 👉 IMPORT FIREBASE TOKEN FUNCTION
+// IMPORT FIREBASE TOKEN FUNCTION
 import { requestFirebaseToken } from "../firebase";
 
 const AuthContext = createContext();
 
-// 👉 HARDWIRED SOCKET URL
+// HARDWIRED SOCKET URL
 const BACKEND_URL = "https://hopelink-api.onrender.com";
 
 export const AuthProvider = ({ children }) => {
@@ -19,10 +19,10 @@ export const AuthProvider = ({ children }) => {
     return savedUser ? JSON.parse(savedUser) : null;
   });
 
-  // 👉 Global Unread Message Counter
+  // Global Unread Message Counter
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // 🚨 SECURITY TRIPWIRE & GLOBAL LISTENERS
+  // SECURITY TRIPWIRE & GLOBAL LISTENERS
   useEffect(() => {
     if (!user) return;
 
@@ -31,31 +31,24 @@ export const AuthProvider = ({ children }) => {
       .get("/chat/inbox")
       .then((res) => {
         if (Array.isArray(res.data)) {
-          const count = res.data.reduce(
-            (acc, chat) => acc + chat.unreadCount,
-            0,
-          );
+          const count = res.data.reduce((acc, chat) => acc + chat.unreadCount, 0);
           setUnreadCount(count);
         }
       })
       .catch(console.error);
 
-    // 👉 Connect to the live server
+    // Connect to the live server
     const socket = io(BACKEND_URL, {
-      transports: ["websocket", "polling"], // Ensures stable connection on Render
+      transports: ["websocket", "polling"], 
     });
 
     socket.emit("setup", user._id);
 
-    // 👉 2. Listen for messages globally across the entire app
+    // 2. Listen for messages globally across the entire app
     socket.on("new_message_notification", () => {
       setUnreadCount((prev) => prev + 1);
       toast("💬 Secure Transmission Received!", {
-        style: {
-          background: "#0f172a",
-          color: "#fff",
-          border: "1px solid #1e293b",
-        },
+        style: { background: "#ffffff", color: "#29524a", border: "1px solid #846b8a" },
       });
     });
 
@@ -66,23 +59,12 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem("user", JSON.stringify(updatedUser));
 
         if (!data.isAdmin) {
-          toast.error(
-            "SECURITY ALERT: Your Admin privileges have been revoked.",
-            {
-              style: {
-                background: "#0f172a",
-                color: "#ef4444",
-                border: "1px solid #7f1d1d",
-              },
-            },
-          );
+          toast.error("SECURITY ALERT: Your Admin privileges have been revoked.", {
+            style: { background: "#ffffff", color: "#ff4a1c", border: "1px solid #ff4a1c" },
+          });
         } else {
           toast.success("You have been promoted to System Admin!", {
-            style: {
-              background: "#0f172a",
-              color: "#14b8a6",
-              border: "1px solid #134e4a",
-            },
+            style: { background: "#ffffff", color: "#29524a", border: "1px solid #846b8a" },
           });
         }
       }
@@ -108,31 +90,20 @@ export const AuthProvider = ({ children }) => {
       setUser(updatedUser);
       localStorage.setItem("user", JSON.stringify(updatedUser));
 
-      toast.success(
-        `Switched to ${data.activeRole.charAt(0).toUpperCase() + data.activeRole.slice(1)} Mode`,
-        {
-          style: {
-            background: "#0f172a",
-            color: "#fff",
-            border: "1px solid #1e293b",
-          },
-        },
-      );
+      toast.success(`Switched to ${data.activeRole.charAt(0).toUpperCase() + data.activeRole.slice(1)} Mode`, {
+        style: { background: "#ffffff", color: "#29524a", border: "1px solid #846b8a" },
+      });
     } catch (error) {
       toast.error("Failed to switch roles in the system.", {
-        style: {
-          background: "#0f172a",
-          color: "#ef4444",
-          border: "1px solid #7f1d1d",
-        },
+        style: { background: "#ffffff", color: "#ff4a1c", border: "1px solid #ff4a1c" },
       });
     }
   };
 
-  // 👉 NEW: Dedicated function to manually trigger notifications
+  // Dedicated function to manually trigger notifications
   const enableNotifications = async () => {
     const toastId = toast.loading("Requesting secure channel...", {
-      style: { background: "#0f172a", color: "#fff" },
+      style: { background: "#ffffff", color: "#29524a" },
     });
 
     try {
@@ -142,27 +113,23 @@ export const AuthProvider = ({ children }) => {
       if (fcmToken) {
         console.log("[FCM] Token acquired. Sending to backend.");
         
-        // 👉 THE FIX: Explicitly inject the token into the headers!
         await api.post("/auth/fcm-token", 
           { fcmToken: fcmToken },
-          { headers: { Authorization: `Bearer ${user.token}` } } // FORCE THE TOKEN
+          { headers: { Authorization: `Bearer ${user.token}` } } 
         );
         
-        toast.success("Lock-Screen Alerts Enabled! 🚀", { id: toastId });
+        toast.success("Lock-Screen Alerts Enabled! 🚀", { id: toastId, style: { background: "#ffffff", color: "#29524a", border: "1px solid #846b8a" } });
       } else {
         console.log("[FCM] requestFirebaseToken returned null/undefined");
-        toast.error(
-          "Permission denied. Please check your browser site settings.",
-          { id: toastId },
-        );
+        toast.error("Permission denied. Please check your browser site settings.", { id: toastId, style: { background: "#ffffff", color: "#ff4a1c", border: "1px solid #ff4a1c" } });
       }
     } catch (error) {
       console.error("FCM Token process failed:", error);
-      toast.error("Failed to establish secure channel. Check console.", { id: toastId });
+      toast.error("Failed to establish secure channel. Check console.", { id: toastId, style: { background: "#ffffff", color: "#ff4a1c", border: "1px solid #ff4a1c" } });
     }
   };
 
-  // 👉 Async Login Function with Firebase Trigger
+  // Async Login Function with Firebase Trigger
   const login = async (userData) => {
     console.log("[AUTH] Logging in user:", userData.name);
     
@@ -179,10 +146,9 @@ export const AuthProvider = ({ children }) => {
           if (fcmToken) {
             console.log("[FCM] Post-Login: Sending token to backend.");
             
-            // 👉 THE FIX: Explicitly inject the token into the headers!
             await api.post("/auth/fcm-token", 
               { fcmToken: fcmToken },
-              { headers: { Authorization: `Bearer ${userData.token}` } } // FORCE THE TOKEN
+              { headers: { Authorization: `Bearer ${userData.token}` } } 
             );
             
             console.log("🔥 Firebase Lock-Screen Notifications Enabled.");

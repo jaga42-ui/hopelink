@@ -2,14 +2,7 @@ import { useState, useContext } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  FaUserPlus,
-  FaEnvelope,
-  FaLock,
-  FaPhone,
-  FaTint,
-  FaShieldAlt,
-  FaTimes,
-  FaCheck,
+  FaUserPlus, FaEnvelope, FaLock, FaPhone, FaTint, FaShieldAlt, FaTimes, FaCheck,
 } from "react-icons/fa";
 import toast from "react-hot-toast";
 import AuthContext from "../context/AuthContext";
@@ -17,11 +10,7 @@ import api from "../utils/api";
 
 const Register = () => {
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    password: "",
-    phone: "",
-    bloodGroup: "",
+    name: "", email: "", password: "", phone: "", bloodGroup: "",
   });
   const [activeRole, setActiveRole] = useState("donor");
   const [isLoading, setIsLoading] = useState(false);
@@ -33,30 +22,35 @@ const Register = () => {
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
 
+  // 👉 DYNAMIC THEME HANDLERS BASED ON ROLE
+  const themeAccent = activeRole === "donor" ? "text-blazing-flame" : "text-dark-raspberry";
+  const themeBg = activeRole === "donor" ? "bg-blazing-flame hover:bg-[#e03a12]" : "bg-dark-raspberry hover:bg-[#850e53]";
+  const themeFocusBorder = activeRole === "donor" ? "focus:border-blazing-flame focus:ring-blazing-flame/10" : "focus:border-dark-raspberry focus:ring-dark-raspberry/10";
+  const themeShadow = activeRole === "donor" ? "shadow-[0_10px_25px_rgba(255,74,28,0.3)]" : "shadow-[0_10px_25px_rgba(159,17,100,0.3)]";
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!agreedToPolicy) {
-      return toast.error(
-        "You must agree to the Terms & Privacy Policy to join HopeLink.",
-      );
+      return toast.error("You must agree to the Terms & Privacy Policy to join Sahayam.", {
+        style: { background: '#ffffff', color: '#ff4a1c', border: '1px solid #ff4a1c' }
+      });
     }
 
     setIsLoading(true);
     try {
       const payload = { ...formData, activeRole };
-      if (!payload.bloodGroup) {
-        delete payload.bloodGroup;
-      }
+      if (!payload.bloodGroup) delete payload.bloodGroup;
 
       const { data } = await api.post("/auth/register", payload);
       login(data);
-      toast.success("Welcome to the HopeLink Community!");
+      toast.success("Welcome to the Sahayam Community!", {
+        style: { background: '#ffffff', color: '#29524a', border: '1px solid #846b8a' }
+      });
       navigate("/dashboard");
     } catch (error) {
-      toast.error(
-        error.response?.data?.message ||
-          "Registration failed. Please check your inputs.",
-      );
+      toast.error(error.response?.data?.message || "Registration failed. Please check your inputs.", {
+        style: { background: '#ffffff', color: '#ff4a1c', border: '1px solid #ff4a1c' }
+      });
     } finally {
       setIsLoading(false);
     }
@@ -68,153 +62,144 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative selection:bg-teal-500 selection:text-white overflow-hidden">
-      {/* Background Glows (Subtle, non-distracting) */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-teal-900/20 blur-[120px] rounded-full pointer-events-none"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-900/10 blur-[120px] rounded-full pointer-events-none"></div>
+    <main className="min-h-screen bg-pearl-beige flex items-center justify-center p-4 relative selection:bg-dark-raspberry selection:text-white overflow-hidden font-sans">
+      {/* VIBRANT BACKGROUND GLOWS */}
+      <div className="absolute top-[-10%] left-[-10%] w-[50vw] max-w-[600px] h-[50vh] bg-dark-raspberry/10 blur-[100px] rounded-full pointer-events-none"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] max-w-[600px] h-[50vh] bg-blazing-flame/10 blur-[100px] rounded-full pointer-events-none"></div>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 sm:p-10 shadow-2xl relative z-10"
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="w-full max-w-md bg-white/70 backdrop-blur-lg border border-white rounded-[2.5rem] p-8 sm:p-10 shadow-[0_20px_40px_rgba(41,82,74,0.08)] relative z-10"
       >
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-slate-950 border border-slate-800 rounded-2xl flex items-center justify-center text-3xl text-teal-500 mx-auto mb-4 shadow-inner">
+          <div className="w-16 h-16 bg-white border border-dusty-lavender/30 rounded-2xl flex items-center justify-center text-3xl text-pine-teal mx-auto mb-4 shadow-sm">
             <FaUserPlus />
           </div>
-          <h2 className="text-3xl font-extrabold text-white tracking-tight mb-1">
-            Join HopeLink.
+          <h2 className="text-3xl font-black text-pine-teal tracking-tight mb-1 uppercase">
+            Join <span className={themeAccent}>Sahayam.</span>
           </h2>
-          <p className="text-slate-400 text-sm font-medium">
-            Create your free account today.
+          <p className="text-dusty-lavender text-xs font-bold uppercase tracking-widest mt-1">
+            Create your secure account.
           </p>
         </div>
 
         {/* Role Selector */}
-        <div className="flex bg-slate-950 p-1.5 rounded-2xl mb-6 border border-slate-800 shadow-inner">
+        <div className="flex bg-white/50 backdrop-blur-md p-1.5 rounded-2xl mb-6 border border-dusty-lavender/30 shadow-sm">
           <button
             type="button"
             onClick={() => setActiveRole("donor")}
-            className={`flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${activeRole === "donor" ? "bg-teal-600 text-white shadow-md" : "text-slate-500 hover:text-white hover:bg-slate-800"}`}
+            className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeRole === "donor" ? "bg-blazing-flame text-white shadow-md" : "text-dusty-lavender hover:text-pine-teal hover:bg-white"}`}
           >
-            Donor
+            I am a Donor
           </button>
           <button
             type="button"
             onClick={() => setActiveRole("receiver")}
-            className={`flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${activeRole === "receiver" ? "bg-blue-600 text-white shadow-md" : "text-slate-500 hover:text-white hover:bg-slate-800"}`}
+            className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeRole === "receiver" ? "bg-dark-raspberry text-white shadow-md" : "text-dusty-lavender hover:text-pine-teal hover:bg-white"}`}
           >
-            Receiver
+            I am a Receiver
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="relative">
-            <FaUserPlus className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+            <FaUserPlus className="absolute left-4 top-1/2 -translate-y-1/2 text-dusty-lavender/80" />
             <input
               required
+              aria-label="Full Name"
               type="text"
               placeholder="Full Name"
               value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
-              className={`w-full bg-slate-950 border border-slate-800 rounded-xl pl-11 pr-4 py-3.5 text-white text-base md:text-sm outline-none transition-colors shadow-inner placeholder-slate-600 ${activeRole === "donor" ? "focus:border-teal-500" : "focus:border-blue-500"}`}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className={`w-full bg-white border border-dusty-lavender/40 rounded-xl pl-11 pr-4 py-3.5 text-pine-teal text-base md:text-sm outline-none focus:ring-4 transition-all shadow-inner placeholder-dusty-lavender/70 ${themeFocusBorder}`}
             />
           </div>
 
           <div className="relative">
-            <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+            <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-dusty-lavender/80" />
             <input
               required
+              aria-label="Email Address"
               type="email"
-              placeholder="Email Address"
+              placeholder="operator@sahayam.com"
               value={formData.email}
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
-              className={`w-full bg-slate-950 border border-slate-800 rounded-xl pl-11 pr-4 py-3.5 text-white text-base md:text-sm outline-none transition-colors shadow-inner placeholder-slate-600 ${activeRole === "donor" ? "focus:border-teal-500" : "focus:border-blue-500"}`}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className={`w-full bg-white border border-dusty-lavender/40 rounded-xl pl-11 pr-4 py-3.5 text-pine-teal text-base md:text-sm outline-none focus:ring-4 transition-all shadow-inner placeholder-dusty-lavender/70 ${themeFocusBorder}`}
             />
           </div>
 
           <div className="relative">
-            <FaPhone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+            <FaPhone className="absolute left-4 top-1/2 -translate-y-1/2 text-dusty-lavender/80" />
             <input
               required
+              aria-label="Phone Number"
               type="tel"
-              placeholder="Phone Number"
+              placeholder="+91 XXXXXXXXXX"
               value={formData.phone}
-              onChange={(e) =>
-                setFormData({ ...formData, phone: e.target.value })
-              }
-              className={`w-full bg-slate-950 border border-slate-800 rounded-xl pl-11 pr-4 py-3.5 text-white text-base md:text-sm outline-none transition-colors shadow-inner placeholder-slate-600 ${activeRole === "donor" ? "focus:border-teal-500" : "focus:border-blue-500"}`}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              className={`w-full bg-white border border-dusty-lavender/40 rounded-xl pl-11 pr-4 py-3.5 text-pine-teal text-base md:text-sm outline-none focus:ring-4 transition-all shadow-inner placeholder-dusty-lavender/70 ${themeFocusBorder}`}
             />
           </div>
 
           <div className="relative">
-            <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+            <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-dusty-lavender/80" />
             <input
               required
+              aria-label="Secure Password"
               type="password"
               placeholder="Secure Password"
               value={formData.password}
-              onChange={(e) =>
-                setFormData({ ...formData, password: e.target.value })
-              }
-              className={`w-full bg-slate-950 border border-slate-800 rounded-xl pl-11 pr-4 py-3.5 text-white text-base md:text-sm outline-none transition-colors shadow-inner placeholder-slate-600 ${activeRole === "donor" ? "focus:border-teal-500" : "focus:border-blue-500"}`}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              className={`w-full bg-white border border-dusty-lavender/40 rounded-xl pl-11 pr-4 py-3.5 text-pine-teal text-base md:text-sm outline-none focus:ring-4 transition-all shadow-inner placeholder-dusty-lavender/70 ${themeFocusBorder}`}
             />
           </div>
 
           {activeRole === "donor" && (
             <div className="relative">
-              <FaTint className="absolute left-4 top-1/2 -translate-y-1/2 text-red-500" />
+              <FaTint className="absolute left-4 top-1/2 -translate-y-1/2 text-blazing-flame" />
               <select
+                aria-label="Blood Group"
                 value={formData.bloodGroup}
-                onChange={(e) =>
-                  setFormData({ ...formData, bloodGroup: e.target.value })
-                }
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-11 pr-4 py-3.5 text-white text-base md:text-sm outline-none focus:border-teal-500 transition-colors appearance-none shadow-inner cursor-pointer"
+                onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
+                className={`w-full bg-white border border-dusty-lavender/40 rounded-xl pl-11 pr-4 py-3.5 text-pine-teal text-base md:text-sm outline-none focus:ring-4 transition-all appearance-none shadow-inner cursor-pointer ${themeFocusBorder}`}
               >
-                <option value="" disabled className="text-slate-500">
-                  Blood Group (Optional)
-                </option>
-                {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map(
-                  (bg) => (
-                    <option key={bg} value={bg}>
-                      {bg}
-                    </option>
-                  ),
-                )}
+                <option value="" disabled className="text-dusty-lavender">Blood Group (Optional)</option>
+                {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bg) => (
+                  <option key={bg} value={bg}>{bg}</option>
+                ))}
               </select>
             </div>
           )}
 
-          {/* 👉 THE LEGAL SHIELD: Explicit Disclaimer & Checkbox */}
-          <div className="flex items-start gap-3 mt-6 mb-2 bg-slate-900/50 p-4 rounded-xl border border-slate-800/50">
+          {/* 👉 THE LEGAL SHIELD: A11y Compliant Checkbox */}
+          <div className="flex items-start gap-3 mt-6 mb-2 bg-white/50 p-4 rounded-xl border border-white shadow-sm">
             <button
               type="button"
+              role="checkbox"
+              aria-checked={agreedToPolicy}
               onClick={() => setAgreedToPolicy(!agreedToPolicy)}
-              className={`w-5 h-5 mt-0.5 rounded border flex items-center justify-center shrink-0 transition-all ${agreedToPolicy ? (activeRole === "donor" ? "bg-teal-500 border-teal-500" : "bg-blue-500 border-blue-500") : "bg-slate-800 border-slate-600"}`}
+              className={`w-5 h-5 mt-0.5 rounded border flex items-center justify-center shrink-0 transition-all ${agreedToPolicy ? (activeRole === "donor" ? "bg-blazing-flame border-blazing-flame" : "bg-dark-raspberry border-dark-raspberry") : "bg-white border-dusty-lavender/50 shadow-inner"}`}
             >
               {agreedToPolicy && <FaCheck className="text-white text-[10px]" />}
             </button>
-            <p className="text-[10px] sm:text-xs text-slate-400 leading-relaxed font-medium">
+            <p className="text-[10px] sm:text-xs text-pine-teal leading-relaxed font-medium">
               I agree to the{" "}
               <button
                 type="button"
                 onClick={() => setShowPolicyModal(true)}
-                className="text-white font-bold underline decoration-slate-600 underline-offset-4 hover:decoration-white transition-all"
+                className={`font-bold underline decoration-dusty-lavender underline-offset-4 transition-all ${themeAccent}`}
               >
                 Terms & Privacy Policy
               </button>
               .
-              <br />
-              <br />
-              <span className="text-slate-500 block leading-tight">
-                <strong className="text-slate-300">Disclaimer:</strong> HopeLink
+              <br /><br />
+              <span className="text-dusty-lavender block leading-tight">
+                <strong className="text-pine-teal">Disclaimer:</strong> Sahayam
                 is a community coordination tool, not an official emergency
-                service. I take full legal and medical responsibility for any
-                physical exchanges made through this platform.
+                service. I take full legal responsibility for any
+                exchanges made through this platform.
               </span>
             </p>
           </div>
@@ -223,19 +208,15 @@ const Register = () => {
           <button
             type="submit"
             disabled={isLoading || !agreedToPolicy}
-            className={`w-full py-4 rounded-xl font-extrabold uppercase tracking-wider text-sm text-white transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:active:scale-100 disabled:cursor-not-allowed mt-2 ${activeRole === "donor" ? "bg-teal-600 hover:bg-teal-500 shadow-teal-900/50" : "bg-blue-600 hover:bg-blue-500 shadow-blue-900/50"}`}
+            className={`w-full py-4 mt-4 rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-xs text-white transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${themeBg} ${themeShadow}`}
           >
-            {isLoading ? (
-              <FaSpinner className="animate-spin mx-auto text-xl" />
-            ) : (
-              "Create Account"
-            )}
+            {isLoading ? <FaSpinner className="animate-spin text-xl" /> : "Create Account"}
           </button>
         </form>
 
-        <p className="text-center text-slate-400 text-sm mt-8 font-medium">
+        <p className="text-center text-dusty-lavender text-[10px] uppercase font-bold tracking-widest mt-8">
           Already a hero?{" "}
-          <Link to="/login" className="text-white font-bold hover:underline">
+          <Link to="/login" className="text-pine-teal font-black hover:text-blazing-flame transition-colors">
             Sign In
           </Link>
         </p>
@@ -244,98 +225,65 @@ const Register = () => {
       {/* The Privacy Policy Popup Modal */}
       <AnimatePresence>
         {showPolicyModal && (
-          <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 sm:p-6">
+          <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 sm:p-6" role="dialog" aria-modal="true">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-slate-950/80"
+              className="absolute inset-0 bg-pine-teal/60 backdrop-blur-sm"
               onClick={() => setShowPolicyModal(false)}
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-[2rem] p-6 sm:p-8 shadow-2xl flex flex-col max-h-[85vh]"
+              className="relative w-full max-w-lg bg-white border border-white rounded-[2.5rem] p-6 sm:p-8 shadow-2xl flex flex-col max-h-[85vh]"
             >
-              <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-3 text-white">
-                  <div className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center text-teal-400 border border-slate-700">
+              <div className="flex justify-between items-center mb-6 border-b border-dusty-lavender/20 pb-4">
+                <div className="flex items-center gap-3 text-pine-teal">
+                  <div className="w-10 h-10 bg-pearl-beige/50 rounded-full flex items-center justify-center text-dark-raspberry border border-dusty-lavender/30">
                     <FaShieldAlt className="text-lg" />
                   </div>
-                  <h3 className="text-xl font-bold">Terms & Privacy</h3>
+                  <h3 className="text-xl font-black uppercase tracking-tight">Terms & Privacy</h3>
                 </div>
                 <button
                   onClick={() => setShowPolicyModal(false)}
-                  className="text-slate-500 hover:text-white p-2 bg-slate-800 hover:bg-slate-700 rounded-full"
+                  className="text-dusty-lavender hover:text-blazing-flame p-2 bg-white hover:bg-pearl-beige rounded-full transition-colors border border-dusty-lavender/20"
                 >
                   <FaTimes />
                 </button>
               </div>
 
-              <div className="overflow-y-auto pr-2 no-scrollbar space-y-4 text-sm text-slate-300 leading-relaxed mb-6 flex-1">
-                <p>
-                  Welcome to HopeLink. By joining our platform, you agree to the
-                  following terms designed to keep our community safe and
-                  transparent.
+              <div className="overflow-y-auto pr-4 no-scrollbar space-y-5 text-sm text-pine-teal/80 leading-relaxed mb-6 flex-1">
+                <p className="font-bold">
+                  Welcome to Sahayam. By joining our platform, you agree to the
+                  following terms designed to keep our community safe.
                 </p>
                 <div>
-                  <h4 className="font-bold text-white mb-1">
-                    1. Not an Emergency Service
-                  </h4>
-                  <p>
-                    HopeLink is a peer-to-peer communication platform. It does
-                    not replace 911, an ambulance, or professional medical
-                    advice. In life-threatening situations, always contact
-                    official authorities first.
-                  </p>
+                  <h4 className="font-black text-pine-teal uppercase tracking-widest text-[10px] mb-1">1. Not an Emergency Service</h4>
+                  <p>Sahayam is a peer-to-peer communication platform. It does not replace professional medical advice or official emergency services.</p>
                 </div>
                 <div>
-                  <h4 className="font-bold text-white mb-1">
-                    2. No Verification of Goods/Blood
-                  </h4>
-                  <p>
-                    HopeLink acts solely as a connector. We do not and cannot
-                    medically test, screen, or verify the safety, quality, or
-                    legality of the blood, food, clothing, or other resources
-                    exchanged between users. You accept all associated risks.
-                  </p>
+                  <h4 className="font-black text-pine-teal uppercase tracking-widest text-[10px] mb-1">2. No Verification of Goods</h4>
+                  <p>We do not and cannot medically test, screen, or verify the safety, quality, or legality of resources exchanged. You accept all associated risks.</p>
                 </div>
                 <div>
-                  <h4 className="font-bold text-white mb-1">
-                    3. Location Data & Privacy
-                  </h4>
-                  <p>
-                    When you post an SOS or a donation, we use your location to
-                    alert nearby users. Your exact pinpoint is generalized on
-                    the public feed to protect your privacy.
-                  </p>
+                  <h4 className="font-bold text-pine-teal uppercase tracking-widest text-[10px] mb-1">3. Location Data & Privacy</h4>
+                  <p>When you post an SOS or a donation, we use your location to alert nearby users. Your exact pinpoint is generalized on the public feed to protect your privacy.</p>
                 </div>
                 <div>
-                  <h4 className="font-bold text-white mb-1">4. Data Sharing</h4>
-                  <p>
-                    We absolutely do not sell your data. Your profile details
-                    are only shared with other verified users when you actively
-                    interact with them (e.g., accepting a donation request or
-                    opening a secure chat).
-                  </p>
+                  <h4 className="font-bold text-pine-teal uppercase tracking-widest text-[10px] mb-1">4. Data Sharing</h4>
+                  <p>We absolutely do not sell your data. Your profile details are only shared with other verified users when you actively interact with them.</p>
                 </div>
                 <div>
-                  <h4 className="font-bold text-white mb-1">
-                    5. Zero Liability
-                  </h4>
-                  <p>
-                    By creating an account, you agree that the creators,
-                    developers, and hosts of HopeLink bear zero liability for
-                    any harm, loss, or damages resulting from the use of this
-                    platform or physical meetings arranged through it.
-                  </p>
+                  <h4 className="font-bold text-pine-teal uppercase tracking-widest text-[10px] mb-1">5. Zero Liability</h4>
+                  <p>By creating an account, you agree that the creators of Sahayam bear zero liability for any harm resulting from the use of this platform.</p>
                 </div>
               </div>
 
               <button
                 onClick={handleAcceptPolicy}
-                className="w-full py-4 bg-teal-600 hover:bg-teal-500 text-white rounded-xl font-bold uppercase tracking-wider text-sm transition-colors shadow-lg"
+                className="w-full py-4 bg-pine-teal hover:bg-[#1a3630] text-white rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-xs transition-colors shadow-[0_10px_25px_rgba(41,82,74,0.3)] active:scale-95"
               >
                 I Accept & Agree
               </button>
@@ -343,7 +291,7 @@ const Register = () => {
           </div>
         )}
       </AnimatePresence>
-    </div>
+    </main>
   );
 };
 

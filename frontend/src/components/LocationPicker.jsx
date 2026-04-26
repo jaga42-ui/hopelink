@@ -3,14 +3,13 @@ import 'leaflet/dist/leaflet.css';
 import { useState, useEffect } from 'react';
 import L from 'leaflet';
 
-// 👉 Custom Tactical Marker (Matches Radar styling)
+// 👉 Custom Tactical Marker
 const tacticalIcon = new L.Icon({
   iconUrl: 'https://cdn-icons-png.flaticon.com/512/8155/8155451.png', 
   iconSize: [35, 35],
   iconAnchor: [17, 35],
 });
 
-// Helper to auto-center map when position changes
 const RecenterMap = ({ position }) => {
   const map = useMap();
   useEffect(() => {
@@ -35,7 +34,6 @@ const LocationMarker = ({ onSelect }) => {
 const LocationPicker = ({ onLocationSelect, initialPos = [20.2961, 85.8245] }) => {
   const [center, setCenter] = useState(initialPos);
 
-  // Auto-detect location on mount for better mobile UX
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
       (pos) => setCenter([pos.coords.latitude, pos.coords.longitude]),
@@ -45,18 +43,18 @@ const LocationPicker = ({ onLocationSelect, initialPos = [20.2961, 85.8245] }) =
   }, []);
 
   return (
-    <div className="w-full space-y-2">
-      <div className="h-64 w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl relative group">
+    <div className="w-full space-y-2 font-sans">
+      <div className="h-64 w-full rounded-2xl overflow-hidden border border-dusty-lavender/30 shadow-md relative group">
         <MapContainer 
           center={center} 
           zoom={13} 
           scrollWheelZoom={true} 
-          style={{ height: '100%', width: '100%', background: '#050505' }}
+          style={{ height: '100%', width: '100%', background: '#e8dab2' }}
           zoomControl={false}
         >
-          {/* 👉 DARK MODE TILES: CartoDB Dark Matter */}
+          {/* 👉 PREMIUM LIGHT THEME TILES */}
           <TileLayer 
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" 
+            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" 
             attribution='&copy; <a href="https://carto.com/">CARTO</a>'
           />
           
@@ -66,16 +64,16 @@ const LocationPicker = ({ onLocationSelect, initialPos = [20.2961, 85.8245] }) =
 
         {/* Overlay Instruction */}
         <div className="absolute top-3 left-3 z-[400] pointer-events-none">
-          <div className="bg-black/60 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-lg">
-            <p className="text-[9px] font-black text-teal-400 uppercase tracking-widest leading-none">
+          <div className="bg-white/90 backdrop-blur-md border border-dusty-lavender/30 px-3 py-1.5 rounded-lg shadow-sm">
+            <p className="text-[9px] font-black text-blazing-flame uppercase tracking-widest leading-none">
               Tactical Positioning
             </p>
           </div>
         </div>
       </div>
 
-      <div className="bg-white/5 border border-white/5 rounded-xl py-2.5 text-center">
-        <p className="text-[10px] text-white/40 font-black uppercase tracking-[0.2em]">
+      <div className="bg-white/60 border border-dusty-lavender/20 rounded-xl py-2.5 text-center">
+        <p className="text-[10px] text-dusty-lavender font-black uppercase tracking-[0.2em]">
           Tap map to drop mission coordinates
         </p>
       </div>

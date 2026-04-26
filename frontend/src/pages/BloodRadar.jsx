@@ -28,7 +28,7 @@ import axios from "axios";
 import api from "../utils/api";
 import EmergencyMatchModal from "../components/EmergencyMatchModal";
 
-// Slightly larger icons for better touch targets
+// Icons
 const donorIcon = new L.Icon({
   iconUrl: "https://cdn-icons-png.flaticon.com/512/8155/8155451.png",
   iconSize: [40, 40],
@@ -66,9 +66,8 @@ const BloodRadar = () => {
   const [emotionalMessage, setEmotionalMessage] = useState("");
   const [isBlasting, setIsBlasting] = useState(false);
   const [activeSOS, setActiveSOS] = useState(null);
-  const [myAddressText, setMyAddressText] = useState("Unknown Location"); // Track user city for the feed post
+  const [myAddressText, setMyAddressText] = useState("Unknown Location");
 
-  // 👉 THE GPS FIX: Forcing hardware precision
   useEffect(() => {
     if (!navigator.geolocation)
       return toast.error("GPS not supported by your browser.");
@@ -78,9 +77,9 @@ const BloodRadar = () => {
       "Acquiring satellite lock. Please step near a window...",
       {
         style: {
-          background: "#0f172a",
-          color: "#fff",
-          border: "1px solid #1e293b",
+          background: "#ffffff",
+          color: "#29524a",
+          border: "1px solid #846b8a",
         },
       },
     );
@@ -92,9 +91,8 @@ const BloodRadar = () => {
         setMyLocation([latitude, longitude]);
         try {
           await api.put("/auth/location", { lat: latitude, lng: longitude });
-          // Reverse geocode to get a readable string for the Feed post
           const { data } = await axios.get(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&email=hopelink.dev@example.com`,
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&email=sahayam@example.com`,
           );
           const cityString =
             data.address.city ||
@@ -114,11 +112,7 @@ const BloodRadar = () => {
           "GPS signal weak. Please ensure location services are enabled.",
         );
       },
-      {
-        enableHighAccuracy: true,
-        timeout: 20000,
-        maximumAge: 0,
-      },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
     );
   }, [user]);
 
@@ -139,7 +133,6 @@ const BloodRadar = () => {
     fetchDonors();
   }, [myLocation, radius, bloodGroup]);
 
-  // 👉 DUAL-WIELD FIX: Hit both the Blast (Push Notif) and Donation (Feed) endpoints
   const handleEmergencyBlast = async () => {
     if (!emotionalMessage.trim())
       return toast.error("Please write your message.");
@@ -147,7 +140,6 @@ const BloodRadar = () => {
     try {
       const selectedBloodGroup = user.bloodGroup || "Blood";
 
-      // 1. Send the Ping & Push Notification
       const { data } = await api.post("/auth/emergency-blast", {
         lat: myLocation[0],
         lng: myLocation[1],
@@ -155,7 +147,6 @@ const BloodRadar = () => {
         bloodGroup: selectedBloodGroup,
       });
 
-      // 2. Build form data to inject it into the Community Feed
       const formData = new FormData();
       formData.append("listingType", "request");
       formData.append("category", "blood");
@@ -168,17 +159,19 @@ const BloodRadar = () => {
       formData.append("lat", myLocation[0]);
       formData.append("lng", myLocation[1]);
 
-      // 3. Post to Feed
       await api.post("/donations", formData);
 
-      toast.success(`SOS broadcasted to ${data.recipients} donors! 🚀`, {
-        duration: 6000,
-        style: {
-          background: "#0f172a",
-          color: "#fff",
-          border: "1px solid #1e293b",
+      toast.success(
+        `SOS broadcasted to ${data.recipients} Sahayam donors! 🚀`,
+        {
+          duration: 6000,
+          style: {
+            background: "#ffffff",
+            color: "#29524a",
+            border: "1px solid #846b8a",
+          },
         },
-      });
+      );
       setShowBlastModal(false);
       setEmotionalMessage("");
     } catch (error) {
@@ -194,9 +187,9 @@ const BloodRadar = () => {
       toast.success("Emergency locked! Establish contact immediately.", {
         duration: 5000,
         style: {
-          background: "#0f172a",
-          color: "#14b8a6",
-          border: "1px solid #134e4a",
+          background: "#ffffff",
+          color: "#ff4a1c",
+          border: "1px solid #ff4a1c",
         },
       });
       setActiveSOS(data);
@@ -213,80 +206,68 @@ const BloodRadar = () => {
 
   return (
     <Layout>
-      {/* Dynamic Viewport Height container */}
-      <div className="relative w-full h-[calc(100dvh-70px)] md:h-[85vh] md:max-w-6xl md:mx-auto md:mt-4 md:rounded-[2rem] overflow-hidden text-white bg-slate-950">
-        {/* FLOATING TOP BAR (Solid Dark) */}
+      <div className="relative w-full h-[calc(100dvh-70px)] md:h-[85vh] md:max-w-6xl md:mx-auto md:mt-4 md:rounded-[2rem] overflow-hidden text-pine-teal bg-pearl-beige">
+        {/* FLOATING TOP BAR */}
         <div className="absolute top-4 left-4 right-4 z-[1000] flex flex-wrap items-center justify-between gap-2 pointer-events-none">
-          {/* Live Status Card */}
-          <div className="bg-slate-900 border border-slate-800 px-4 py-2.5 rounded-2xl flex items-center gap-3 shadow-lg pointer-events-auto">
+          <div className="bg-white/80 backdrop-blur-md border border-white px-4 py-2.5 rounded-2xl flex items-center gap-3 shadow-[0_10px_30px_rgba(41,82,74,0.1)] pointer-events-auto">
             <div
-              className={`w-2.5 h-2.5 rounded-full ${loading ? "bg-yellow-500 animate-pulse" : "bg-teal-500 animate-pulse shadow-[0_0_10px_rgba(20,184,166,0.8)]"}`}
+              className={`w-2.5 h-2.5 rounded-full ${loading ? "bg-blazing-flame animate-pulse" : "bg-pine-teal animate-pulse shadow-[0_0_10px_rgba(41,82,74,0.5)]"}`}
             />
-            <span className="text-white text-[10px] md:text-xs font-black uppercase tracking-widest">
+            <span className="text-pine-teal text-[10px] md:text-xs font-black uppercase tracking-widest">
               {donors.length} Nearby
             </span>
           </div>
 
-          {/* Floating Filters Cards */}
           <div className="flex gap-2 pointer-events-auto">
             <select
               value={bloodGroup}
               onChange={(e) => setBloodGroup(e.target.value)}
-              className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5 text-white text-xs font-black outline-none appearance-none text-center shadow-lg focus:border-teal-500 transition-all cursor-pointer"
+              className="bg-white/90 backdrop-blur-md border border-white rounded-xl px-3 py-2.5 text-pine-teal text-xs font-black outline-none appearance-none text-center shadow-md focus:border-blazing-flame transition-all cursor-pointer"
             >
-              <option value="All" className="bg-slate-900 text-white">
-                ALL TYPE
-              </option>
+              <option value="All">ALL TYPE</option>
               {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bg) => (
-                <option key={bg} value={bg} className="bg-slate-900 text-white">
+                <option key={bg} value={bg}>
                   {bg}
                 </option>
               ))}
             </select>
-
             <select
               value={radius}
               onChange={(e) => setRadius(Number(e.target.value))}
-              className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5 text-white text-xs font-black outline-none appearance-none text-center shadow-lg focus:border-teal-500 transition-all cursor-pointer"
+              className="bg-white/90 backdrop-blur-md border border-white rounded-xl px-3 py-2.5 text-pine-teal text-xs font-black outline-none appearance-none text-center shadow-md focus:border-blazing-flame transition-all cursor-pointer"
             >
-              <option value={5000} className="bg-slate-900 text-white">
-                5 KM
-              </option>
-              <option value={15000} className="bg-slate-900 text-white">
-                15 KM
-              </option>
-              <option value={50000} className="bg-slate-900 text-white">
-                50 KM
-              </option>
+              <option value={5000}>5 KM</option>
+              <option value={15000}>15 KM</option>
+              <option value={50000}>50 KM</option>
             </select>
           </div>
         </div>
 
-        {/* MISSION DETECTED BANNER (Solid Warning) */}
+        {/* MISSION DETECTED BANNER */}
         <AnimatePresence>
           {blastId && (
             <motion.div
               initial={{ y: -100, x: "-50%", opacity: 0 }}
               animate={{ y: 80, x: "-50%", opacity: 1 }}
               exit={{ y: -100, x: "-50%", opacity: 0 }}
-              className="absolute top-0 left-1/2 z-[2000] bg-slate-900 border-2 border-red-900/50 p-4 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] flex flex-col sm:flex-row items-center gap-4 w-[90%] max-w-lg pointer-events-auto"
+              className="absolute top-0 left-1/2 z-[2000] bg-white border-2 border-blazing-flame p-4 rounded-2xl shadow-[0_20px_50px_rgba(255,74,28,0.3)] flex flex-col sm:flex-row items-center gap-4 w-[90%] max-w-lg pointer-events-auto"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-red-950 text-red-500 border border-red-900 rounded-full flex items-center justify-center text-xl shrink-0">
+                <div className="w-10 h-10 bg-blazing-flame/10 text-blazing-flame border border-blazing-flame/30 rounded-full flex items-center justify-center text-xl shrink-0">
                   <FaExclamationTriangle className="animate-pulse" />
                 </div>
                 <div className="flex-1 text-left">
-                  <h3 className="text-white font-black tracking-tighter leading-tight text-sm md:text-base">
+                  <h3 className="text-pine-teal font-black tracking-tighter leading-tight text-sm md:text-base">
                     EMERGENCY DETECTED
                   </h3>
-                  <p className="text-slate-400 text-[10px] uppercase tracking-widest font-bold">
+                  <p className="text-dusty-lavender text-[10px] uppercase tracking-widest font-bold">
                     Help needed nearby.
                   </p>
                 </div>
               </div>
               <button
                 onClick={handleIAmComing}
-                className="w-full sm:w-auto bg-red-600 hover:bg-red-500 text-white border border-red-500 px-6 py-3 rounded-xl font-black uppercase tracking-widest text-xs active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shrink-0"
+                className="w-full sm:w-auto bg-blazing-flame hover:bg-[#e03a12] text-white px-6 py-3 rounded-xl font-black uppercase tracking-widest text-xs active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shrink-0"
               >
                 <FaRunning className="text-lg" /> I'M COMING
               </button>
@@ -294,11 +275,11 @@ const BloodRadar = () => {
           )}
         </AnimatePresence>
 
-        {/* THE MAP */}
-        <div className="absolute inset-0 z-0 bg-slate-950">
+        {/* THE MAP - Updated to Light Theme */}
+        <div className="absolute inset-0 z-0 bg-pearl-beige">
           {!myLocation ? (
-            <div className="h-full w-full flex flex-col items-center justify-center space-y-4 text-slate-500">
-              <FaSpinner className="animate-spin text-4xl text-teal-600" />
+            <div className="h-full w-full flex flex-col items-center justify-center space-y-4 text-dusty-lavender">
+              <FaSpinner className="animate-spin text-4xl text-pine-teal" />
               <p className="font-bold tracking-[0.2em] uppercase text-xs">
                 Acquiring GPS Lock...
               </p>
@@ -309,24 +290,24 @@ const BloodRadar = () => {
               zoom={13}
               zoomControl={false}
               scrollWheelZoom={true}
-              className="w-full h-full bg-slate-950"
+              className="w-full h-full bg-pearl-beige z-0"
             >
-              <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+              <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
               <FlyToLocation center={myLocation} />
               <Circle
                 center={myLocation}
                 radius={radius}
                 pathOptions={{
-                  color: "#0d9488",
-                  fillColor: "#14b8a6",
-                  fillOpacity: 0.1,
+                  color: "#9f1164",
+                  fillColor: "#9f1164",
+                  fillOpacity: 0.05,
                   weight: 1.5,
                 }}
               />
 
               <Marker position={myLocation} icon={myIcon}>
                 <Popup className="custom-popup border-none">
-                  <b className="text-xs text-white">Your Location</b>
+                  <b className="text-xs text-pine-teal">Your Location</b>
                 </Popup>
               </Marker>
 
@@ -339,21 +320,21 @@ const BloodRadar = () => {
                   ]}
                   icon={donorIcon}
                 >
-                  <Popup className="rounded-2xl overflow-hidden border-0 p-0 shadow-2xl">
-                    <div className="text-center p-4 w-48 bg-slate-900 border border-slate-800 rounded-2xl">
+                  <Popup className="rounded-2xl overflow-hidden border-0 p-0 shadow-[0_20px_40px_rgba(41,82,74,0.15)]">
+                    <div className="text-center p-4 w-48 bg-white border border-dusty-lavender/30 rounded-2xl">
                       <img
                         src={
                           donor.profilePic ||
-                          `https://ui-avatars.com/api/?name=${donor.name}&background=0f172a&color=fff`
+                          `https://ui-avatars.com/api/?name=${donor.name}&background=e8dab2&color=29524a`
                         }
-                        className="w-16 h-16 rounded-full mx-auto mb-2 object-cover border-2 border-slate-700 shadow-md"
+                        className="w-16 h-16 rounded-full mx-auto mb-2 object-cover border-2 border-white shadow-sm"
                       />
-                      <h3 className="font-black text-white truncate text-sm">
+                      <h3 className="font-black text-pine-teal truncate text-sm">
                         {donor.name}
                       </h3>
                       <div className="flex justify-center items-center gap-1 mt-1 mb-4">
-                        <FaHeartbeat className="text-red-500 text-xs" />
-                        <span className="bg-red-950 border border-red-900 text-red-500 font-black px-2 py-0.5 rounded text-[10px]">
+                        <FaHeartbeat className="text-blazing-flame text-xs" />
+                        <span className="bg-blazing-flame/10 border border-blazing-flame/20 text-blazing-flame font-black px-2 py-0.5 rounded text-[10px]">
                           {donor.bloodGroup}
                         </span>
                       </div>
@@ -366,7 +347,7 @@ const BloodRadar = () => {
                             },
                           })
                         }
-                        className="w-full py-3 bg-teal-600 hover:bg-teal-500 active:bg-teal-700 text-white rounded-xl text-xs font-black tracking-wider transition-colors shadow-md"
+                        className="w-full py-3 bg-pine-teal hover:bg-[#1a3630] text-white rounded-xl text-xs font-black tracking-wider transition-colors shadow-md"
                       >
                         MESSAGE
                       </button>
@@ -384,8 +365,8 @@ const BloodRadar = () => {
             onClick={() => setShowBlastModal(true)}
             className="group relative flex items-center justify-center pointer-events-auto"
           >
-            <div className="absolute inset-0 bg-red-600 rounded-full animate-ping opacity-30" />
-            <div className="relative bg-red-600 border border-red-500 text-white px-8 py-4 md:px-10 md:py-5 rounded-full flex items-center gap-3 shadow-[0_0_30px_rgba(220,38,38,0.4)] transition-transform active:scale-95 hover:bg-red-500">
+            <div className="absolute inset-0 bg-blazing-flame rounded-full animate-ping opacity-30" />
+            <div className="relative bg-blazing-flame text-white px-8 py-4 md:px-10 md:py-5 rounded-full flex items-center gap-3 shadow-[0_10px_30px_rgba(255,74,28,0.4)] transition-transform active:scale-95 hover:bg-[#e03a12]">
               <FaBullhorn className="text-xl animate-bounce" />
               <span className="text-xs md:text-sm font-black uppercase tracking-widest text-shadow-sm">
                 Send SOS Blast
@@ -394,7 +375,7 @@ const BloodRadar = () => {
           </button>
         </div>
 
-        {/* EMERGENCY BLAST MODAL (Solid Dark) */}
+        {/* EMERGENCY BLAST MODAL */}
         <AnimatePresence>
           {showBlastModal && (
             <div className="fixed inset-0 z-[3000] flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -402,32 +383,33 @@ const BloodRadar = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-slate-950/80"
+                className="absolute inset-0 bg-pine-teal/60 backdrop-blur-sm"
                 onClick={() => setShowBlastModal(false)}
               />
-
               <motion.div
                 initial={{ y: "100%" }}
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="relative w-full max-w-lg bg-slate-900 border-t sm:border border-slate-800 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl text-white"
+                className="relative w-full max-w-lg bg-white border-t sm:border border-white rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl text-pine-teal"
               >
-                <div className="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-6 sm:hidden" />
+                <div className="w-12 h-1.5 bg-dusty-lavender/20 rounded-full mx-auto mb-6 sm:hidden" />
                 <button
                   type="button"
                   onClick={() => setShowBlastModal(false)}
-                  className="hidden sm:block absolute top-6 right-6 text-slate-500 hover:text-white bg-slate-800 p-2 rounded-full"
+                  className="hidden sm:block absolute top-6 right-6 text-dusty-lavender hover:text-pine-teal bg-pearl-beige p-2 rounded-full"
                 >
                   <FaTimes className="text-sm" />
                 </button>
 
-                <h2 className="text-2xl sm:text-3xl font-black italic tracking-tighter mb-1 text-red-500">
+                <h2 className="text-2xl sm:text-3xl font-black italic tracking-tighter mb-1 text-blazing-flame">
                   SOS BROADCAST
                 </h2>
-                <p className="text-slate-400 text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-6">
+                <p className="text-dusty-lavender text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-6">
                   Alert all{" "}
-                  {bloodGroup === "All" ? "donors" : bloodGroup + " donors"}{" "}
+                  {bloodGroup === "All"
+                    ? "Sahayam donors"
+                    : bloodGroup + " donors"}{" "}
                   within {radius / 1000}km
                 </p>
 
@@ -435,20 +417,20 @@ const BloodRadar = () => {
                   value={emotionalMessage}
                   onChange={(e) => setEmotionalMessage(e.target.value)}
                   placeholder="Explain the emergency... e.g. 'Critical surgery at Apollo Hospital. Need O+ blood immediately.'"
-                  className="w-full h-32 sm:h-40 bg-slate-950 border border-slate-800 rounded-2xl p-4 text-white text-sm outline-none focus:border-red-500 transition-all resize-none mb-6 shadow-inner placeholder-slate-600"
+                  className="w-full h-32 sm:h-40 bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl p-4 text-pine-teal text-sm outline-none focus:border-blazing-flame focus:bg-white transition-all resize-none mb-6 shadow-inner placeholder-dusty-lavender/80"
                 />
 
                 <div className="flex gap-3 sm:gap-4 pb-4 sm:pb-0">
                   <button
                     onClick={() => setShowBlastModal(false)}
-                    className="flex-1 py-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-2xl text-slate-300 font-black uppercase tracking-widest text-[10px] transition-colors"
+                    className="flex-1 py-4 bg-white hover:bg-pearl-beige border border-dusty-lavender/40 rounded-2xl text-dusty-lavender hover:text-dark-raspberry font-black uppercase tracking-widest text-[10px] transition-colors shadow-sm"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleEmergencyBlast}
                     disabled={isBlasting}
-                    className="flex-[2] bg-red-600 active:bg-red-700 hover:bg-red-500 border border-red-500 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-xs flex items-center justify-center gap-2 shadow-lg shadow-red-900/50 transition-all disabled:opacity-50"
+                    className="flex-[2] bg-blazing-flame active:bg-[#c43212] hover:bg-[#e03a12] text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-xs flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(255,74,28,0.4)] transition-all disabled:opacity-50"
                   >
                     {isBlasting ? (
                       <FaSpinner className="animate-spin text-lg" />

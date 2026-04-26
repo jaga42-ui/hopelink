@@ -1,7 +1,7 @@
 import { useState, useContext, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import imageCompression from "browser-image-compression"; // 👉 ADDED COMPRESSION LIBRARY
+import imageCompression from "browser-image-compression";
 import AuthContext from "../context/AuthContext";
 import Layout from "../components/Layout";
 import {
@@ -52,228 +52,116 @@ const Donations = () => {
   const [suggestions, setSuggestions] = useState([]);
   const typingTimeoutRef = useRef(null);
 
-  // 👉 SOLID DARK THEME VARIABLES
+  // 👉 PREMIUM LIGHT THEME VARIABLES
   const isRequest = formData.listingType === "request";
-  const themeAccent = isRequest ? "text-blue-400" : "text-teal-400";
-  const themeBg = isRequest ? "bg-blue-600" : "bg-teal-600";
-  const themeHover = isRequest ? "hover:bg-blue-500" : "hover:bg-teal-500";
-  const themeFocusBorder = isRequest
-    ? "focus:border-blue-500"
-    : "focus:border-teal-500";
-  const themeContainerBorder = isRequest
-    ? "border-blue-900/50"
-    : "border-teal-900/50";
+  const themeAccent = isRequest ? "text-dark-raspberry" : "text-blazing-flame";
+  const themeBg = isRequest ? "bg-dark-raspberry hover:bg-[#850e53]" : "bg-blazing-flame hover:bg-[#e03a12]";
+  const themeFocusBorder = isRequest ? "focus:border-dark-raspberry" : "focus:border-blazing-flame";
+  const themeContainerBorder = "border-white";
 
   const handleLocationType = (e) => {
     const val = e.target.value;
-
-    setFormData((prev) => ({
-      ...prev,
-      addressText: val,
-      lat: null,
-      lng: null,
-    }));
-
+    setFormData((prev) => ({ ...prev, addressText: val, lat: null, lng: null }));
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-
     if (val.length > 2) {
       typingTimeoutRef.current = setTimeout(async () => {
         try {
-          const { data } = await axios.get(
-            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=4&email=hopelink.dev@example.com`,
-          );
+          const { data } = await axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=4&email=sahayam@example.com`);
           setSuggestions(data);
-        } catch (error) {
-          console.error("Autocomplete failed");
-        }
+        } catch (error) { console.error("Autocomplete failed"); }
       }, 600);
-    } else {
-      setSuggestions([]);
-    }
+    } else { setSuggestions([]); }
   };
 
   const handleSelectSuggestion = (locationObj) => {
     const cleanName = locationObj.display_name.split(",")[0];
-    setFormData((prev) => ({
-      ...prev,
-      addressText: cleanName,
-      lat: locationObj.lat,
-      lng: locationObj.lon,
-    }));
+    setFormData((prev) => ({ ...prev, addressText: cleanName, lat: locationObj.lat, lng: locationObj.lon }));
     setSuggestions([]);
   };
 
   const handleGetLocation = () => {
     if (!navigator.geolocation) return toast.error("GPS not supported");
-
     setIsFetchingLocation(true);
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
-          const { data } = await axios.get(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&email=hopelink.dev@example.com`,
-          );
-          const cityString =
-            data.address.city ||
-            data.address.town ||
-            data.address.village ||
-            data.address.state ||
-            "Unknown Location";
-
-          setFormData((prev) => ({
-            ...prev,
-            addressText: cityString,
-            lat: latitude,
-            lng: longitude,
-          }));
+          const { data } = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&email=sahayam@example.com`);
+          const cityString = data.address.city || data.address.town || data.address.village || data.address.state || "Unknown Location";
+          setFormData((prev) => ({ ...prev, addressText: cityString, lat: latitude, lng: longitude }));
           toast.success(`Location locked: ${cityString} 📍`);
-        } catch (error) {
-          toast.error("Could not resolve location");
-        } finally {
-          setIsFetchingLocation(false);
-        }
+        } catch (error) { toast.error("Could not resolve location"); } finally { setIsFetchingLocation(false); }
       },
-      () => {
-        setIsFetchingLocation(false);
-        toast.error("Please allow location permissions.");
-      },
+      () => { setIsFetchingLocation(false); toast.error("Please allow location permissions."); },
       { enableHighAccuracy: true },
     );
   };
 
-  // 👉 THE FIX: Added Image Compression Engine!
   const handleImageChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      // 1. Show instant UI preview so the app feels lightning fast
       setImagePreview(URL.createObjectURL(file));
-
-      // 2. Shrink it in the background before sending to the database
       try {
-        const options = {
-          maxSizeMB: 0.3, // Compresses 5MB photos down to ~300KB
-          maxWidthOrHeight: 1024,
-          useWebWorker: true,
-        };
+        const options = { maxSizeMB: 0.3, maxWidthOrHeight: 1024, useWebWorker: true };
         const compressedFile = await imageCompression(file, options);
         setFormData({ ...formData, image: compressedFile });
-      } catch (error) {
-        console.error("Compression Error:", error);
-        // If compression fails, just fallback to the original file
-        setFormData({ ...formData, image: file });
-      }
+      } catch (error) { setFormData({ ...formData, image: file }); }
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.title || !formData.description || !formData.addressText) {
-      return toast.error("Please fill in all required fields.");
-    }
-
-    if (!formData.lat || !formData.lng) {
-      return toast.error(
-        "Please select a valid location from the dropdown or use GPS.",
-      );
-    }
+    if (!formData.title || !formData.description || !formData.addressText) return toast.error("Please fill in all required fields.");
+    if (!formData.lat || !formData.lng) return toast.error("Please select a valid location from the dropdown or use GPS.");
 
     setIsSubmitting(true);
     try {
       const submitData = new FormData();
-      Object.keys(formData).forEach((key) => {
-        if (formData[key]) submitData.append(key, formData[key]);
-      });
-
+      Object.keys(formData).forEach((key) => { if (formData[key]) submitData.append(key, formData[key]); });
       await api.post("/donations", submitData);
-
-      toast.success(
-        formData.listingType === "donation"
-          ? "Item posted for donation! 🚀"
-          : "Request broadcasted! 📡",
-      );
+      toast.success(formData.listingType === "donation" ? "Item posted for donation! 🎉" : "Request broadcasted! 📡");
       navigate("/dashboard");
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to post item.");
-    } finally {
-      setIsSubmitting(false);
-    }
+    } catch (error) { toast.error(error.response?.data?.message || "Failed to post item."); } finally { setIsSubmitting(false); }
   };
 
   const categories = [
-    {
-      id: "food",
-      label: "Food",
-      icon: <FaHamburger />,
-      color: "hover:bg-slate-800 hover:border-orange-500",
-      active:
-        "bg-orange-600 border-orange-500 text-white shadow-lg shadow-orange-900/50",
-    },
-    {
-      id: "clothes",
-      label: "Clothes",
-      icon: <FaTshirt />,
-      color: "hover:bg-slate-800 hover:border-pink-500",
-      active:
-        "bg-pink-600 border-pink-500 text-white shadow-lg shadow-pink-900/50",
-    },
-    {
-      id: "book",
-      label: "Book",
-      icon: <FaBook />,
-      color: "hover:bg-slate-800 hover:border-blue-500",
-      active:
-        "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-900/50",
-    },
-    {
-      id: "general",
-      label: "General",
-      icon: <FaCube />,
-      color: "hover:bg-slate-800 hover:border-teal-500",
-      active:
-        "bg-teal-600 border-teal-500 text-white shadow-lg shadow-teal-900/50",
-    },
+    { id: "food", label: "Food", icon: <FaHamburger />, inactive: "text-dusty-lavender hover:text-blazing-flame hover:bg-white hover:border-blazing-flame/30", active: "bg-blazing-flame border-blazing-flame text-white shadow-lg shadow-blazing-flame/30" },
+    { id: "clothes", label: "Clothes", icon: <FaTshirt />, inactive: "text-dusty-lavender hover:text-dark-raspberry hover:bg-white hover:border-dark-raspberry/30", active: "bg-dark-raspberry border-dark-raspberry text-white shadow-lg shadow-dark-raspberry/30" },
+    { id: "book", label: "Book", icon: <FaBook />, inactive: "text-dusty-lavender hover:text-pine-teal hover:bg-white hover:border-pine-teal/30", active: "bg-pine-teal border-pine-teal text-white shadow-lg shadow-pine-teal/30" },
+    { id: "general", label: "General", icon: <FaCube />, inactive: "text-dusty-lavender hover:text-dusty-lavender hover:bg-white hover:border-dusty-lavender/50", active: "bg-dusty-lavender border-dusty-lavender text-white shadow-lg shadow-dusty-lavender/30" },
   ];
 
   if (!user) return null;
 
   return (
     <Layout>
-      <div className="max-w-3xl mx-auto px-4 pb-32 md:pb-24 relative text-white min-h-screen">
+      <div className="max-w-3xl mx-auto px-4 pb-32 md:pb-24 relative text-pine-teal min-h-screen">
         <header className="mb-6 md:mb-8 text-center pt-6">
-          <div className="w-16 h-16 md:w-20 md:h-20 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-center text-3xl md:text-4xl text-slate-300 mx-auto mb-4 shadow-xl">
-            {formData.listingType === "donation" ? (
-              <FaHandHoldingHeart className="text-teal-400" />
-            ) : (
-              <FaBoxOpen className="text-blue-400" />
-            )}
+          <div className="w-16 h-16 md:w-20 md:h-20 bg-white/80 border border-white rounded-2xl flex items-center justify-center text-3xl md:text-4xl text-pine-teal mx-auto mb-4 shadow-[0_10px_30px_rgba(41,82,74,0.05)] backdrop-blur-md">
+            {formData.listingType === "donation" ? <FaHandHoldingHeart className="text-blazing-flame" /> : <FaBoxOpen className="text-dark-raspberry" />}
           </div>
-          <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight uppercase">
+          <h1 className="text-3xl md:text-4xl font-black text-pine-teal tracking-tight uppercase">
             CREATE <span className={themeAccent}>LISTING.</span>
           </h1>
-          <p className="text-slate-400 text-[10px] md:text-sm font-bold mt-2 tracking-widest uppercase md:normal-case">
-            Share details to make an impact.
+          <p className="text-dusty-lavender text-[10px] md:text-sm font-bold mt-2 tracking-widest uppercase md:normal-case">
+            Share details to make a Sahayam impact.
           </p>
         </header>
 
         <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8">
           {/* SECTION 1: Listing Type Toggle */}
-          <div className="bg-slate-900 p-1.5 md:p-2 rounded-2xl border border-slate-800 flex shadow-inner">
+          <div className="bg-white/50 backdrop-blur-md p-1.5 md:p-2 rounded-2xl border border-dusty-lavender/30 flex shadow-sm">
             <button
               type="button"
-              onClick={() =>
-                setFormData({ ...formData, listingType: "donation" })
-              }
-              className={`flex-1 py-3 md:py-3.5 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest transition-all ${formData.listingType === "donation" ? "bg-teal-600 text-white shadow-md" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+              onClick={() => setFormData({ ...formData, listingType: "donation" })}
+              className={`flex-1 py-3 md:py-3.5 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest transition-all ${formData.listingType === "donation" ? "bg-blazing-flame text-white shadow-md" : "text-dusty-lavender hover:bg-white hover:text-blazing-flame"}`}
             >
               I am Donating
             </button>
             <button
               type="button"
-              onClick={() =>
-                setFormData({ ...formData, listingType: "request" })
-              }
-              className={`flex-1 py-3 md:py-3.5 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest transition-all ${formData.listingType === "request" ? "bg-blue-600 text-white shadow-md" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+              onClick={() => setFormData({ ...formData, listingType: "request" })}
+              className={`flex-1 py-3 md:py-3.5 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest transition-all ${formData.listingType === "request" ? "bg-dark-raspberry text-white shadow-md" : "text-dusty-lavender hover:bg-white hover:text-dark-raspberry"}`}
             >
               I am Requesting
             </button>
@@ -281,146 +169,71 @@ const Donations = () => {
 
           {/* SECTION 2: Interactive Category Cards */}
           <div>
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2 mb-2 block">
-              1. Select Category
-            </label>
+            <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 mb-2 block">1. Select Category</label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
               {categories.map((cat) => (
                 <div
                   key={cat.id}
                   onClick={() => setFormData({ ...formData, category: cat.id })}
-                  className={`cursor-pointer flex flex-col items-center justify-center p-4 md:p-6 rounded-2xl md:rounded-3xl border transition-all duration-300 active:scale-95 ${formData.category === cat.id ? cat.active : `bg-slate-950 border-slate-800 text-slate-400 ${cat.color}`}`}
+                  className={`cursor-pointer flex flex-col items-center justify-center p-4 md:p-6 rounded-2xl md:rounded-3xl border transition-all duration-300 active:scale-95 ${formData.category === cat.id ? cat.active : `bg-white/60 border-white/50 ${cat.inactive}`}`}
                 >
                   <div className="text-2xl md:text-3xl mb-2">{cat.icon}</div>
-                  <span className="font-bold text-[10px] md:text-xs tracking-wider uppercase">
-                    {cat.label}
-                  </span>
+                  <span className="font-bold text-[10px] md:text-xs tracking-wider uppercase">{cat.label}</span>
                 </div>
               ))}
             </div>
           </div>
 
           {/* MAIN FORM WRAPPER */}
-          <div
-            className={`bg-slate-900 border rounded-3xl md:rounded-[2.5rem] p-5 md:p-8 shadow-xl space-y-6 md:space-y-8 transition-colors duration-500 ${themeContainerBorder}`}
-          >
+          <div className={`bg-white/70 backdrop-blur-lg border rounded-3xl md:rounded-[2.5rem] p-5 md:p-8 shadow-[0_20px_40px_rgba(41,82,74,0.08)] space-y-6 md:space-y-8 transition-colors duration-500 ${themeContainerBorder}`}>
+            
             {/* SECTION 3: Main Details */}
             <div className="space-y-5 md:space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6">
                 <div className="md:col-span-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2 md:ml-4 mb-1.5 block">
-                    Item Title *
-                  </label>
-                  <input
-                    required
-                    type="text"
-                    placeholder="e.g. 10 Fresh Apples..."
-                    value={formData.title}
-                    onChange={(e) =>
-                      setFormData({ ...formData, title: e.target.value })
-                    }
-                    className={`w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 md:px-6 py-3.5 md:py-4 text-white text-base md:text-sm font-bold placeholder-slate-500 outline-none transition-all shadow-inner ${themeFocusBorder}`}
-                  />
+                  <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 block">Item Title *</label>
+                  <input required type="text" placeholder="e.g. 10 Fresh Apples..." value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} className={`w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-6 py-3.5 md:py-4 text-pine-teal text-base md:text-sm font-bold placeholder-dusty-lavender/70 outline-none transition-all shadow-inner focus:bg-white ${themeFocusBorder}`} />
                 </div>
                 <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2 md:ml-4 mb-1.5 block">
-                    Quantity
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 5 kgs"
-                    value={formData.quantity}
-                    onChange={(e) =>
-                      setFormData({ ...formData, quantity: e.target.value })
-                    }
-                    className={`w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 md:px-6 py-3.5 md:py-4 text-white text-base md:text-sm font-bold placeholder-slate-500 outline-none transition-all shadow-inner ${themeFocusBorder}`}
-                  />
+                  <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 block">Quantity</label>
+                  <input type="text" placeholder="e.g. 5 kgs" value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: e.target.value })} className={`w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-6 py-3.5 md:py-4 text-pine-teal text-base md:text-sm font-bold placeholder-dusty-lavender/70 outline-none transition-all shadow-inner focus:bg-white ${themeFocusBorder}`} />
                 </div>
               </div>
-
               <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2 md:ml-4 mb-1.5 block">
-                  Description *
-                </label>
-                <textarea
-                  required
-                  rows="3"
-                  placeholder="Describe the item, specifics..."
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  className={`w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 md:px-6 py-3.5 md:py-4 text-white text-base md:text-sm placeholder-slate-500 outline-none transition-all resize-none shadow-inner ${themeFocusBorder}`}
-                ></textarea>
+                <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 block">Description *</label>
+                <textarea required rows="3" placeholder="Describe the item, specifics..." value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className={`w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-6 py-3.5 md:py-4 text-pine-teal text-base md:text-sm placeholder-dusty-lavender/70 outline-none transition-all resize-none shadow-inner focus:bg-white ${themeFocusBorder}`}></textarea>
               </div>
             </div>
 
             {/* SECTION 4: Category Specific Data */}
-            <div className="bg-slate-950 p-5 md:p-6 rounded-3xl border border-slate-800 shadow-inner grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+            <div className="bg-white/60 p-5 md:p-6 rounded-3xl border border-white shadow-sm grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
               {formData.category === "food" && (
                 <>
                   <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2 md:ml-4 mb-1.5 flex items-center gap-2">
-                      <FaLeaf className={themeAccent} /> Food Type
-                    </label>
-                    <select
-                      value={formData.foodType}
-                      onChange={(e) =>
-                        setFormData({ ...formData, foodType: e.target.value })
-                      }
-                      className={`w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 md:px-6 py-3.5 md:py-4 text-white text-base md:text-sm font-bold outline-none cursor-pointer appearance-none ${themeFocusBorder}`}
-                    >
+                    <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 flex items-center gap-2"><FaLeaf className={themeAccent} /> Food Type</label>
+                    <select value={formData.foodType} onChange={(e) => setFormData({ ...formData, foodType: e.target.value })} className={`w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-6 py-3.5 md:py-4 text-pine-teal text-base md:text-sm font-bold outline-none cursor-pointer appearance-none focus:bg-white ${themeFocusBorder}`}>
                       <option value="Veg">Vegetarian</option>
                       <option value="Non-Veg">Non-Vegetarian</option>
                     </select>
                   </div>
                   <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2 md:ml-4 mb-1.5 flex items-center gap-2">
-                      <FaCalendarAlt className={themeAccent} /> Expiry
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.expiryDate}
-                      onChange={(e) =>
-                        setFormData({ ...formData, expiryDate: e.target.value })
-                      }
-                      className={`w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 md:px-6 py-3.5 md:py-4 text-white text-base md:text-sm font-bold outline-none [color-scheme:dark] ${themeFocusBorder}`}
-                    />
+                    <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 flex items-center gap-2"><FaCalendarAlt className={themeAccent} /> Expiry</label>
+                    <input type="date" value={formData.expiryDate} onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })} className={`w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-6 py-3.5 md:py-4 text-pine-teal text-base md:text-sm font-bold outline-none focus:bg-white ${themeFocusBorder}`} />
                   </div>
                 </>
               )}
 
               {formData.category === "book" && (
                 <div className="md:col-span-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2 md:ml-4 mb-1.5 flex items-center gap-2">
-                    <FaBook className={themeAccent} /> Author
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Author name"
-                    value={formData.bookAuthor}
-                    onChange={(e) =>
-                      setFormData({ ...formData, bookAuthor: e.target.value })
-                    }
-                    className={`w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 md:px-6 py-3.5 md:py-4 text-white text-base md:text-sm font-bold outline-none placeholder-slate-500 ${themeFocusBorder}`}
-                  />
+                  <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 flex items-center gap-2"><FaBook className={themeAccent} /> Author</label>
+                  <input type="text" placeholder="Author name" value={formData.bookAuthor} onChange={(e) => setFormData({ ...formData, bookAuthor: e.target.value })} className={`w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-6 py-3.5 md:py-4 text-pine-teal text-base md:text-sm font-bold outline-none placeholder-dusty-lavender/70 focus:bg-white ${themeFocusBorder}`} />
                 </div>
               )}
 
-              {(formData.category === "clothes" ||
-                formData.category === "book" ||
-                formData.category === "general") && (
+              {(formData.category === "clothes" || formData.category === "book" || formData.category === "general") && (
                 <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2 md:ml-4 mb-1.5 flex items-center gap-2">
-                    <FaTags className={themeAccent} /> Condition
-                  </label>
-                  <select
-                    value={formData.condition}
-                    onChange={(e) =>
-                      setFormData({ ...formData, condition: e.target.value })
-                    }
-                    className={`w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 md:px-6 py-3.5 md:py-4 text-white text-base md:text-sm font-bold outline-none cursor-pointer appearance-none ${themeFocusBorder}`}
-                  >
+                  <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 flex items-center gap-2"><FaTags className={themeAccent} /> Condition</label>
+                  <select value={formData.condition} onChange={(e) => setFormData({ ...formData, condition: e.target.value })} className={`w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-6 py-3.5 md:py-4 text-pine-teal text-base md:text-sm font-bold outline-none cursor-pointer appearance-none focus:bg-white ${themeFocusBorder}`}>
                     <option value="New">Brand New</option>
                     <option value="Good">Gently Used</option>
                     <option value="Fair">Fair</option>
@@ -429,122 +242,51 @@ const Donations = () => {
               )}
 
               <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2 md:ml-4 mb-1.5 flex items-center gap-2">
-                  <FaClock className={themeAccent} /> Preferred Time
-                </label>
-                <input
-                  type="time"
-                  value={formData.pickupTime}
-                  onChange={(e) =>
-                    setFormData({ ...formData, pickupTime: e.target.value })
-                  }
-                  className={`w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 md:px-6 py-3.5 md:py-4 text-white text-base md:text-sm font-bold outline-none cursor-pointer [color-scheme:dark] ${themeFocusBorder}`}
-                />
+                <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 flex items-center gap-2"><FaClock className={themeAccent} /> Preferred Time</label>
+                <input type="time" value={formData.pickupTime} onChange={(e) => setFormData({ ...formData, pickupTime: e.target.value })} className={`w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-6 py-3.5 md:py-4 text-pine-teal text-base md:text-sm font-bold outline-none cursor-pointer focus:bg-white ${themeFocusBorder}`} />
               </div>
             </div>
 
             {/* SECTION 5: Location & Image */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6 items-end">
               <div className="relative">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2 md:ml-4 mb-1.5 block">
-                  Location *
-                </label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 block">Location *</label>
                 <div className="flex gap-2">
-                  <input
-                    required
-                    type="text"
-                    placeholder="Use GPS..."
-                    value={formData.addressText}
-                    onChange={handleLocationType}
-                    className={`flex-1 w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 md:px-5 py-3.5 md:py-4 text-white text-base md:text-sm font-bold placeholder-slate-500 outline-none transition-all shadow-inner ${themeFocusBorder}`}
-                  />
-                  <button
-                    type="button"
-                    onClick={handleGetLocation}
-                    disabled={isFetchingLocation}
-                    className="px-4 md:px-5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-2xl active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center shrink-0"
-                  >
-                    {isFetchingLocation ? (
-                      <FaSpinner className="animate-spin text-lg" />
-                    ) : (
-                      <FaLocationArrow className="text-lg" />
-                    )}
+                  <input required type="text" placeholder="Use GPS..." value={formData.addressText} onChange={handleLocationType} className={`flex-1 w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-5 py-3.5 md:py-4 text-pine-teal text-base md:text-sm font-bold placeholder-dusty-lavender/70 outline-none transition-all shadow-inner focus:bg-white ${themeFocusBorder}`} />
+                  <button type="button" onClick={handleGetLocation} disabled={isFetchingLocation} className="px-4 md:px-5 bg-white text-blazing-flame border border-dusty-lavender/40 rounded-2xl active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center shrink-0 shadow-sm hover:shadow-md">
+                    {isFetchingLocation ? <FaSpinner className="animate-spin text-lg" /> : <FaLocationArrow className="text-lg" />}
                   </button>
                 </div>
                 {suggestions.length > 0 && (
-                  <div className="absolute z-[100] w-full mt-2 bg-slate-800 border border-slate-700 rounded-xl overflow-y-auto max-h-48 shadow-2xl">
+                  <div className="absolute z-[100] w-full mt-2 bg-white border border-dusty-lavender/30 rounded-xl overflow-y-auto max-h-48 shadow-2xl">
                     {suggestions.map((s, index) => (
-                      <div
-                        key={index}
-                        onClick={() => handleSelectSuggestion(s)}
-                        className="px-5 py-3 text-sm text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer border-b border-slate-700 last:border-0 truncate"
-                      >
-                        {s.display_name}
-                      </div>
+                      <div key={index} onClick={() => handleSelectSuggestion(s)} className="px-5 py-3 text-sm text-pine-teal hover:text-white hover:bg-pine-teal cursor-pointer border-b border-dusty-lavender/20 last:border-0 truncate">{s.display_name}</div>
                     ))}
                   </div>
                 )}
               </div>
 
               <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2 md:ml-4 mb-1.5 block">
-                  Upload Image
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  ref={fileInputRef}
-                  onChange={handleImageChange}
-                  className="hidden"
-                />
-                <div
-                  onClick={() => fileInputRef.current.click()}
-                  className={`w-full h-[120px] md:h-[58px] bg-slate-950 border-2 border-dashed border-slate-700 rounded-2xl flex flex-col md:flex-row items-center justify-center gap-2 md:gap-3 cursor-pointer hover:bg-slate-800 transition-all text-slate-400 overflow-hidden relative group shadow-inner ${themeFocusBorder.replace("focus:", "hover:")}`}
-                >
+                <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 block">Upload Image</label>
+                <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageChange} className="hidden" />
+                <div onClick={() => fileInputRef.current.click()} className={`w-full h-[120px] md:h-[58px] bg-white border-2 border-dashed border-dusty-lavender/50 rounded-2xl flex flex-col md:flex-row items-center justify-center gap-2 md:gap-3 cursor-pointer hover:bg-pearl-beige/50 transition-all text-dusty-lavender overflow-hidden relative group shadow-sm ${themeFocusBorder.replace("focus:", "hover:")}`}>
                   {imagePreview ? (
                     <>
-                      <img
-                        src={imagePreview}
-                        alt="Preview"
-                        className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity"
-                      />
-                      <span className="relative z-10 font-bold text-[10px] md:text-xs uppercase tracking-widest text-white drop-shadow-md flex flex-col md:flex-row items-center gap-1 md:gap-2">
-                        <FaUpload /> Change Image
-                      </span>
+                      <img src={imagePreview} alt="Preview" className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" />
+                      <span className="relative z-10 font-bold text-[10px] md:text-xs uppercase tracking-widest text-pine-teal drop-shadow-md flex flex-col md:flex-row items-center gap-1 md:gap-2"><FaUpload /> Change Image</span>
                     </>
                   ) : (
                     <>
-                      <FaUpload
-                        className={`text-2xl md:text-lg transition-colors group-hover:${themeAccent}`}
-                      />{" "}
-                      <span className="font-bold text-[10px] md:text-xs uppercase tracking-widest text-center mt-1 md:mt-0">
-                        Select Image
-                      </span>
+                      <FaUpload className={`text-2xl md:text-lg transition-colors group-hover:${themeAccent}`} /> 
+                      <span className="font-bold text-[10px] md:text-xs uppercase tracking-widest text-center mt-1 md:mt-0">Select Image</span>
                     </>
                   )}
                 </div>
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className={`w-full mt-4 py-4 md:py-5 rounded-2xl font-black text-white uppercase tracking-[0.1em] md:tracking-[0.2em] text-xs md:text-sm transition-all shadow-lg active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 md:gap-3 ${themeBg} ${themeHover} ${isRequest ? "shadow-blue-900/50" : "shadow-teal-900/50"}`}
-            >
-              {isSubmitting ? (
-                <FaSpinner className="animate-spin text-xl" />
-              ) : (
-                <>
-                  {formData.listingType === "donation" ? (
-                    <FaHandHoldingHeart className="text-lg" />
-                  ) : (
-                    <FaBoxOpen className="text-lg" />
-                  )}
-                  {formData.listingType === "donation"
-                    ? "Publish Donation"
-                    : "Broadcast Request"}
-                </>
-              )}
+            <button type="submit" disabled={isSubmitting} className={`w-full mt-4 py-4 md:py-5 rounded-2xl font-black text-white uppercase tracking-[0.1em] md:tracking-[0.2em] text-xs md:text-sm transition-all shadow-lg active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 md:gap-3 ${themeBg} ${isRequest ? "shadow-dark-raspberry/30" : "shadow-blazing-flame/30"}`}>
+              {isSubmitting ? <FaSpinner className="animate-spin text-xl" /> : <>{formData.listingType === "donation" ? <FaHandHoldingHeart className="text-lg" /> : <FaBoxOpen className="text-lg" />}{formData.listingType === "donation" ? "Publish Donation" : "Broadcast Request"}</>}
             </button>
           </div>
         </form>

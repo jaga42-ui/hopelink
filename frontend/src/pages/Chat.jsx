@@ -31,7 +31,7 @@ const Chat = () => {
 
   const otherUserId = location.state?.otherUserId;
   const otherUserName = location.state?.otherUserName || "Community Member";
-  const itemTitle = location.state?.itemTitle || "Donation Listing";
+  const itemTitle = location.state?.itemTitle || "Sahayam Listing";
 
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
@@ -42,30 +42,29 @@ const Chat = () => {
   const [dropdownOpen, setDropdownOpen] = useState(null);
 
   const messagesEndRef = useRef(null);
-
-  // 👉 THE FIX: Bind the socket to a Ref so React never drops the connection!
   const socketRef = useRef(null);
 
-  // 👉 SOLID DARK THEME CONFIG
+  // 👉 PREMIUM LIGHT THEME CONFIG
   const localRole = user?.activeRole || "donor";
   const isDonor = localRole === "donor";
   const roleTheme = {
     primaryGradient: isDonor
-      ? "from-teal-500 to-teal-700"
-      : "from-blue-500 to-blue-700",
+      ? "from-blazing-flame to-[#e03a12]"
+      : "from-dark-raspberry to-[#850e53]",
     buttonBg: isDonor
-      ? "bg-teal-600 hover:bg-teal-500"
-      : "bg-blue-600 hover:bg-blue-500",
-    text: isDonor ? "text-teal-400" : "text-blue-400",
-    border: isDonor ? "border-teal-700/50" : "border-blue-700/50",
-    shadow: isDonor ? "shadow-teal-900/40" : "shadow-blue-900/40",
+      ? "bg-blazing-flame hover:bg-[#e03a12]"
+      : "bg-dark-raspberry hover:bg-[#850e53]",
+    text: isDonor ? "text-blazing-flame" : "text-dark-raspberry",
+    border: isDonor ? "border-blazing-flame/30" : "border-dark-raspberry/30",
+    shadow: isDonor
+      ? "shadow-[0_10px_25px_rgba(255,74,28,0.3)]"
+      : "shadow-[0_10px_25px_rgba(159,17,100,0.3)]",
     avatarBg: isDonor
-      ? "bg-teal-950 text-teal-400"
-      : "bg-blue-950 text-blue-400",
+      ? "bg-blazing-flame/10 text-blazing-flame"
+      : "bg-dark-raspberry/10 text-dark-raspberry",
   };
 
   const scrollToBottom = () => {
-    // Slight timeout ensures DOM has updated before scrolling
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, 50);
@@ -77,11 +76,9 @@ const Chat = () => {
       return;
     }
 
-    // Initialize airtight socket connection
     socketRef.current = io(SOCKET_URL, {
       transports: ["websocket", "polling"],
     });
-
     socketRef.current.emit("join_chat", { userId: user._id, donationId });
 
     const fetchHistoryAndMarkRead = async () => {
@@ -89,7 +86,6 @@ const Chat = () => {
         const { data } = await api.get(`/chat/${donationId}`);
         setMessages(Array.isArray(data) ? data : []);
         setLoading(false);
-
         await api.put(`/chat/${donationId}/read`);
         socketRef.current.emit("mark_as_read", {
           donationId,
@@ -104,20 +100,17 @@ const Chat = () => {
 
     fetchHistoryAndMarkRead();
 
-    // 👉 REAL-TIME RECEIVER: Appends instantly without refreshing
     socketRef.current.on("receive_message", (message) => {
       setMessages((prev) => {
-        // Prevent duplicate renders
         if (Array.isArray(prev) && prev.some((m) => m._id === message._id))
           return prev;
         return [...(Array.isArray(prev) ? prev : []), message];
       });
-      if (message.sender !== user._id) {
+      if (message.sender !== user._id)
         socketRef.current.emit("mark_as_read", {
           donationId,
           readerId: user._id,
         });
-      }
       scrollToBottom();
     });
 
@@ -141,24 +134,22 @@ const Chat = () => {
       setMessages((prev) => prev.filter((msg) => msg._id !== deletedId));
     });
 
-    // 👉 🚀 THE NUCLEAR TERMINATION RECEIVER
     socketRef.current.on("chat_terminated", (data) => {
       toast.success(
         data.message || "Transaction verified. Channel closing...",
         {
           duration: 4000,
-          icon: "🔒",
+          icon: "✅",
           style: {
-            background: "#0f172a",
-            color: "#10b981",
-            border: "1px solid #10b981",
+            background: "#ffffff",
+            color: "#29524a",
+            border: "1px solid #29524a",
             fontWeight: "bold",
             textTransform: "uppercase",
             letterSpacing: "0.1em",
           },
         },
       );
-
       setTimeout(() => {
         navigate("/dashboard");
       }, 2000);
@@ -178,11 +169,10 @@ const Chat = () => {
     if (!newMessage.trim()) return;
 
     const messageContent = newMessage.trim();
-    setNewMessage(""); // Instantly clear the input
+    setNewMessage("");
     setShowEmojis(false);
 
     if (editingMessage) {
-      // Optimistic Edit
       const tempEditedMsg = { ...editingMessage, content: messageContent };
       setMessages((prev) =>
         prev.map((msg) =>
@@ -203,7 +193,6 @@ const Chat = () => {
         toast.error("Failed to edit message");
       }
     } else {
-      // 👉 OPTIMISTIC SEND
       const tempId = `temp_${Date.now()}`;
       const tempMsg = {
         _id: tempId,
@@ -225,14 +214,12 @@ const Chat = () => {
           content: messageContent,
         };
         const { data } = await api.post("/chat", messageData);
-
         socketRef.current.emit("send_message", {
           ...data,
           donationId,
           receiver: otherUserId,
           senderName: user.name,
         });
-
         setMessages((prev) =>
           prev.map((msg) => (msg._id === tempId ? data : msg)),
         );
@@ -275,12 +262,12 @@ const Chat = () => {
 
   return (
     <Layout>
-      <div className="w-full h-[calc(100dvh-80px)] md:h-[85vh] md:max-w-4xl md:mx-auto md:my-4 flex flex-col bg-slate-950 md:border md:border-slate-800 md:rounded-[2.5rem] overflow-hidden md:shadow-2xl relative">
-        <header className="bg-slate-900 p-3 md:p-5 flex items-center justify-between z-20 shadow-md border-b border-slate-800 shrink-0">
+      <main className="w-full h-[calc(100dvh-80px)] md:h-[85vh] md:max-w-4xl md:mx-auto md:my-4 flex flex-col bg-pearl-beige md:border md:border-white md:rounded-[2.5rem] overflow-hidden md:shadow-[0_20px_40px_rgba(41,82,74,0.08)] relative font-sans">
+        <header className="bg-white/80 backdrop-blur-md p-3 md:p-5 flex items-center justify-between z-20 shadow-sm border-b border-white shrink-0">
           <div className="flex items-center gap-3 md:gap-5">
             <button
               onClick={() => navigate("/chat/inbox")}
-              className="text-slate-400 hover:text-white transition-colors p-2.5 active:scale-90 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-full shadow-inner"
+              className="text-dusty-lavender hover:text-pine-teal transition-colors p-2.5 active:scale-90 bg-white hover:bg-pearl-beige border border-dusty-lavender/30 rounded-full shadow-sm"
             >
               <FaArrowLeft className="text-sm md:text-base" />
             </button>
@@ -289,12 +276,12 @@ const Chat = () => {
               onClick={() => navigate(`/profile/${otherUserId}`)}
             >
               <div
-                className={`w-11 h-11 md:w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg md:text-xl uppercase shadow-md border ${roleTheme.border} ${roleTheme.avatarBg} group-hover:scale-105 transition-transform`}
+                className={`w-11 h-11 md:w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg md:text-xl uppercase shadow-sm border ${roleTheme.border} ${roleTheme.avatarBg} group-hover:scale-105 transition-transform`}
               >
                 {otherUserName.charAt(0)}
               </div>
               <div className="flex flex-col">
-                <h2 className="text-[15px] md:text-[17px] font-black text-white leading-tight truncate max-w-[150px] sm:max-w-xs flex items-center gap-2">
+                <h2 className="text-[15px] md:text-[17px] font-black text-pine-teal leading-tight truncate max-w-[150px] sm:max-w-xs flex items-center gap-2">
                   {otherUserName}
                 </h2>
                 <p
@@ -307,8 +294,8 @@ const Chat = () => {
           </div>
         </header>
 
-        <div
-          className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 z-10 no-scrollbar relative bg-slate-950"
+        <section
+          className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 z-10 no-scrollbar relative bg-pearl-beige/30"
           onClick={() => {
             setDropdownOpen(null);
             setShowEmojis(false);
@@ -321,25 +308,24 @@ const Chat = () => {
               />
             </div>
           ) : activeConversation.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-slate-500 space-y-3">
-              <div className="w-20 h-20 bg-slate-900 border border-slate-800 rounded-full flex items-center justify-center mb-2 shadow-inner">
+            <div className="flex flex-col items-center justify-center h-full text-dusty-lavender space-y-3">
+              <div className="w-20 h-20 bg-white border border-white rounded-full flex items-center justify-center mb-2 shadow-sm">
                 <FaShieldAlt
-                  className={`text-4xl ${roleTheme.text} animate-pulse opacity-50`}
+                  className={`text-4xl ${roleTheme.text} animate-pulse opacity-70`}
                 />
               </div>
-              <p className="font-black text-xs uppercase tracking-[0.3em] text-slate-400">
+              <p className="font-black text-xs uppercase tracking-[0.3em] text-pine-teal">
                 Secure Channel Open
               </p>
-              <p className="text-[10px] text-center max-w-[250px] font-medium text-slate-500 leading-relaxed">
+              <p className="text-[10px] text-center max-w-[250px] font-medium text-dusty-lavender leading-relaxed">
                 Messages are end-to-end encrypted and routed directly through
-                the HopeLink grid.
+                the Sahayam grid.
               </p>
             </div>
           ) : (
             <AnimatePresence initial={false}>
               {activeConversation.map((msg, index) => {
                 const isMe = msg.sender === user._id;
-
                 return (
                   <motion.div
                     key={msg._id || index}
@@ -349,11 +335,7 @@ const Chat = () => {
                     className={`flex ${isMe ? "justify-end" : "justify-start"} w-full`}
                   >
                     <div
-                      className={`relative max-w-[85%] md:max-w-[70%] px-5 py-3.5 shadow-lg flex flex-col group transition-all duration-300 ${
-                        isMe
-                          ? `bg-gradient-to-br ${roleTheme.primaryGradient} text-white rounded-[2rem] rounded-tr-md ${roleTheme.shadow}`
-                          : "bg-slate-900 border border-slate-800 text-slate-200 rounded-[2rem] rounded-tl-md shadow-inner"
-                      } ${msg.isSending ? "opacity-60" : "opacity-100"}`}
+                      className={`relative max-w-[85%] md:max-w-[70%] px-5 py-3.5 shadow-md flex flex-col group transition-all duration-300 ${isMe ? `bg-gradient-to-br ${roleTheme.primaryGradient} text-white rounded-[2rem] rounded-tr-md ${roleTheme.shadow}` : "bg-white border border-dusty-lavender/20 text-pine-teal rounded-[2rem] rounded-tl-md"} ${msg.isSending ? "opacity-60" : "opacity-100"}`}
                     >
                       {isMe && !msg.isSending && (
                         <div className="absolute top-1 right-1 z-20">
@@ -364,20 +346,19 @@ const Chat = () => {
                                 dropdownOpen === msg._id ? null : msg._id,
                               );
                             }}
-                            className="text-white/60 hover:text-white p-2 md:p-1.5 md:opacity-0 md:group-hover:opacity-100 transition-all active:bg-black/20 rounded-full"
+                            className="text-white/80 hover:text-white p-2 md:p-1.5 md:opacity-0 md:group-hover:opacity-100 transition-all active:bg-black/10 rounded-full"
                           >
                             <FaChevronDown className="text-[10px]" />
                           </button>
-
                           {dropdownOpen === msg._id && (
-                            <div className="absolute right-0 top-8 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden w-36 py-1">
+                            <div className="absolute right-0 top-8 bg-white border border-dusty-lavender/30 rounded-2xl shadow-xl z-50 flex flex-col overflow-hidden w-36 py-1">
                               <button
                                 onClick={() => {
                                   setEditingMessage(msg);
                                   setNewMessage(msg.content);
                                   setDropdownOpen(null);
                                 }}
-                                className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:bg-slate-700 hover:text-white text-left flex items-center gap-3 transition-colors"
+                                className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-pine-teal hover:bg-pearl-beige text-left flex items-center gap-3 transition-colors"
                               >
                                 <FaEdit className="text-sm" /> Edit
                               </button>
@@ -386,7 +367,7 @@ const Chat = () => {
                                   handleDeleteMessage(msg._id);
                                   setDropdownOpen(null);
                                 }}
-                                className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-red-400 hover:bg-red-500 hover:text-white text-left flex items-center gap-3 border-t border-slate-700/50 transition-colors"
+                                className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-blazing-flame hover:bg-blazing-flame hover:text-white text-left flex items-center gap-3 border-t border-dusty-lavender/20 transition-colors"
                               >
                                 <FaTrash className="text-sm" /> Purge
                               </button>
@@ -394,13 +375,11 @@ const Chat = () => {
                           )}
                         </div>
                       )}
-
                       <p
                         className={`text-[14px] md:text-[15px] leading-relaxed whitespace-pre-wrap break-words font-medium ${isMe ? "pr-5" : ""}`}
                       >
                         {msg.content}
                       </p>
-
                       <div
                         className={`flex justify-end items-center gap-1.5 mt-2 ${isMe ? "opacity-90" : "opacity-50"}`}
                       >
@@ -413,7 +392,7 @@ const Chat = () => {
                           ) : msg.read ? (
                             <FaCheckDouble className="text-white text-[10px]" />
                           ) : (
-                            <FaCheck className="text-white/60 text-[10px]" />
+                            <FaCheck className="text-white/80 text-[10px]" />
                           ))}
                       </div>
                     </div>
@@ -423,7 +402,7 @@ const Chat = () => {
             </AnimatePresence>
           )}
           <div ref={messagesEndRef} className="h-4" />
-        </div>
+        </section>
 
         <AnimatePresence>
           {showEmojis && (
@@ -433,10 +412,10 @@ const Chat = () => {
               exit={{ opacity: 0, y: 20 }}
               className="absolute bottom-[90px] left-2 right-2 md:left-4 md:right-auto z-50 shadow-2xl flex justify-center md:block"
             >
-              <div className="w-full md:w-[320px] rounded-3xl overflow-hidden border border-slate-800 bg-slate-900 shadow-[0_10px_40px_rgba(0,0,0,0.5)]">
+              <div className="w-full md:w-[320px] rounded-3xl overflow-hidden border border-dusty-lavender/30 bg-white shadow-[0_10px_40px_rgba(41,82,74,0.15)]">
                 <EmojiPicker
                   onEmojiClick={onEmojiClick}
-                  theme="dark"
+                  theme="light"
                   width="100%"
                   height={350}
                 />
@@ -451,7 +430,7 @@ const Chat = () => {
               initial={{ height: 0 }}
               animate={{ height: "auto" }}
               exit={{ height: 0 }}
-              className="bg-slate-900 px-5 py-3 flex justify-between items-center border-t border-slate-800 z-20 shadow-inner overflow-hidden"
+              className="bg-white px-5 py-3 flex justify-between items-center border-t border-dusty-lavender/30 z-20 shadow-inner overflow-hidden"
             >
               <span
                 className={`${roleTheme.text} text-[10px] font-black uppercase tracking-widest flex items-center gap-2`}
@@ -463,7 +442,7 @@ const Chat = () => {
                   setEditingMessage(null);
                   setNewMessage("");
                 }}
-                className="text-slate-500 hover:text-white p-2 bg-slate-950 rounded-full transition-colors border border-slate-800"
+                className="text-dusty-lavender hover:text-pine-teal p-2 bg-pearl-beige rounded-full transition-colors border border-dusty-lavender/30"
               >
                 <FaTimes className="text-xs" />
               </button>
@@ -471,26 +450,25 @@ const Chat = () => {
           )}
         </AnimatePresence>
 
-        <div className="bg-slate-950 px-3 py-3 md:p-4 z-20 border-t border-slate-800 shrink-0 pb-6 md:pb-4">
+        <div className="bg-white/80 backdrop-blur-md px-3 py-3 md:p-4 z-20 border-t border-white shrink-0 pb-6 md:pb-4 shadow-[0_-10px_20px_rgba(41,82,74,0.03)]">
           <form
             onSubmit={handleSendMessage}
-            className="max-w-3xl mx-auto flex items-end gap-2 bg-slate-900 border border-slate-800 rounded-3xl p-1.5 shadow-inner transition-all focus-within:border-slate-600 focus-within:ring-1 focus-within:ring-slate-800"
+            className="max-w-3xl mx-auto flex items-end gap-2 bg-white border border-dusty-lavender/30 rounded-3xl p-1.5 shadow-sm transition-all focus-within:border-pine-teal focus-within:ring-1 focus-within:ring-pine-teal/30"
           >
             <button
               type="button"
               onClick={() => setShowEmojis(!showEmojis)}
-              className={`p-3 rounded-full transition-colors flex shrink-0 items-center justify-center self-end mb-0.5 ${showEmojis ? roleTheme.text + " bg-slate-950 shadow-sm" : "text-slate-500 hover:text-white"}`}
+              className={`p-3 rounded-full transition-colors flex shrink-0 items-center justify-center self-end mb-0.5 ${showEmojis ? roleTheme.text + " bg-pearl-beige shadow-sm" : "text-dusty-lavender hover:text-pine-teal hover:bg-pearl-beige"}`}
             >
               <FaSmile className="text-xl" />
             </button>
-
             <textarea
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               onFocus={() => setShowEmojis(false)}
               placeholder="Type a message..."
               rows={1}
-              className="flex-1 bg-transparent py-3.5 px-2 text-white text-[15px] outline-none placeholder-slate-500 resize-none max-h-32 overflow-y-auto"
+              className="flex-1 bg-transparent py-3.5 px-2 text-pine-teal font-medium text-[15px] outline-none placeholder-dusty-lavender resize-none max-h-32 overflow-y-auto"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -498,15 +476,10 @@ const Chat = () => {
                 }
               }}
             />
-
             <button
               type="submit"
               disabled={!newMessage.trim()}
-              className={`w-11 h-11 rounded-full flex shrink-0 items-center justify-center text-white transition-all shadow-md self-end mb-1 mr-1 ${
-                editingMessage
-                  ? "bg-orange-600 shadow-orange-900/50 hover:bg-orange-500"
-                  : `${roleTheme.buttonBg} ${roleTheme.shadow}`
-              } disabled:opacity-30 disabled:scale-100 active:scale-95`}
+              className={`w-11 h-11 rounded-full flex shrink-0 items-center justify-center text-white transition-all shadow-md self-end mb-1 mr-1 ${editingMessage ? "bg-pine-teal shadow-[0_10px_25px_rgba(41,82,74,0.3)] hover:bg-[#1a3630]" : `${roleTheme.buttonBg} ${roleTheme.shadow}`} disabled:opacity-30 disabled:scale-100 active:scale-95`}
             >
               {editingMessage ? (
                 <FaCheckDouble className="text-[14px]" />
@@ -516,7 +489,7 @@ const Chat = () => {
             </button>
           </form>
         </div>
-      </div>
+      </main>
     </Layout>
   );
 };

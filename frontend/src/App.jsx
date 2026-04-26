@@ -1,25 +1,14 @@
 import { lazy, Suspense } from "react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-} from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./context/AuthContext";
-
-// 👉 IMPORT THE NEW SEO & ANALYTICS ENGINES
 import { HelmetProvider } from "react-helmet-async";
-// import posthog from "posthog-js"; // 🛑 Temporarily disabled to silence console errors
 
 // 👉 IMPORT THE NEW MASTER LOADER & ERROR BOUNDARY
 import Loader from "./components/Loader";
 import ErrorBoundary from "./components/ErrorBoundary";
 
-// 👉 INITIALIZE POSTHOG (Heatmaps & Analytics)
-// 🛑 Temporarily disabled until you get a real API key!
-// posthog.init("YOUR_POSTHOG_API_KEY", { api_host: "https://app.posthog.com" });
-
-// 👉 LAZY LOADED PAGES: These only download when the user clicks them!
+// 👉 LAZY LOADED PAGES
 const CreateDonation = lazy(() => import("./pages/CreateDonation"));
 const Landing = lazy(() => import("./pages/Landing"));
 const Login = lazy(() => import("./pages/Login"));
@@ -35,32 +24,49 @@ const BloodBank = lazy(() => import("./pages/BloodBank"));
 const Inbox = lazy(() => import("./pages/Inbox"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const BloodRadar = lazy(() => import("./pages/BloodRadar"));
-// 👉 NEW: Lazy load the 404 Page
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 function App() {
   return (
-    // 👉 WRAP THE ENTIRE APP IN HELMET FOR SEO METADATA
     <HelmetProvider>
       <AuthProvider>
         <Router>
-          <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
-
-          {/* 👉 GLOBAL ERROR BOUNDARY: Catches crashes so the app doesn't white-screen */}
-          <ErrorBoundary>
-            {/* 👉 SUSPENSE WRAPPER: Shows the glowing loader during page transitions */}
-            <Suspense
-              fallback={
-                <Loader fullScreen={true} text="Connecting to Network..." />
+          {/* TOASTER STYLED FOR LIGHT MODE TO AVOID FLASHES OF DARK */}
+          <Toaster 
+            position="top-right" 
+            toastOptions={{ 
+              duration: 3000,
+              style: {
+                background: '#ffffff',
+                color: '#29524a',
+                border: '1px solid #846b8a'
+              },
+              success: {
+                style: {
+                  background: '#ffffff',
+                  color: '#29524a',
+                  border: '1px solid #29524a'
+                }
+              },
+              error: {
+                style: {
+                  background: '#ffffff',
+                  color: '#ff4a1c',
+                  border: '1px solid #ff4a1c'
+                }
               }
-            >
+            }} 
+          />
+
+          <ErrorBoundary>
+            <Suspense fallback={<Loader fullScreen={true} text="Connecting to Sahayam..." />}>
               <Routes>
                 {/* Public & Auth Routes */}
                 <Route path="/" element={<Landing />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 
-                {/* 👉 THE FIX: Exact route match for the email reset link! */}
+                {/* Auth Recovery Routes */}
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password/:id/:token" element={<ResetPassword />} />
 
@@ -82,7 +88,7 @@ function App() {
                 {/* Admin Command Center */}
                 <Route path="/admin" element={<AdminDashboard />} />
                 
-                {/* 👉 404 CATCH-ALL ROUTE: Must be at the very bottom! */}
+                {/* 404 CATCH-ALL ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
