@@ -1,14 +1,14 @@
+// Developed by guruprasad and team
 import { lazy, Suspense } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./context/AuthContext";
 import { HelmetProvider } from "react-helmet-async";
 
-// 👉 IMPORT THE NEW MASTER LOADER & ERROR BOUNDARY
 import Loader from "./components/Loader";
 import ErrorBoundary from "./components/ErrorBoundary";
 
-// 👉 LAZY LOADED PAGES
+// LAZY LOADED PAGES
 const CreateDonation = lazy(() => import("./pages/CreateDonation"));
 const Landing = lazy(() => import("./pages/Landing"));
 const Login = lazy(() => import("./pages/Login"));
@@ -31,28 +31,41 @@ function App() {
     <HelmetProvider>
       <AuthProvider>
         <Router>
-          {/* TOASTER STYLED FOR LIGHT MODE TO AVOID FLASHES OF DARK */}
+          {/* 👉 PREMIUM SAHAYAM TOAST ALERTS */}
           <Toaster 
-            position="top-right" 
+            position="top-center" 
             toastOptions={{ 
-              duration: 3000,
+              duration: 4000,
+              className: 'font-sans font-black tracking-widest', // Forces Sahayam typography
               style: {
-                background: '#ffffff',
-                color: '#29524a',
-                border: '1px solid #846b8a'
+                background: 'rgba(255, 255, 255, 0.85)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                color: '#29524a', // Pine Teal text
+                border: '1px solid rgba(255, 255, 255, 0.5)',
+                borderRadius: '2rem', // Pill shape
+                padding: '16px 28px',
+                boxShadow: '0 20px 40px rgba(41, 82, 74, 0.12)',
+                fontSize: '11px',
+                textTransform: 'uppercase',
               },
               success: {
+                iconTheme: {
+                  primary: '#29524a', // Pine Teal
+                  secondary: '#ffffff',
+                },
                 style: {
-                  background: '#ffffff',
-                  color: '#29524a',
-                  border: '1px solid #29524a'
+                  border: '1px solid rgba(41, 82, 74, 0.2)',
                 }
               },
               error: {
+                iconTheme: {
+                  primary: '#ff4a1c', // Blazing Flame
+                  secondary: '#ffffff',
+                },
                 style: {
-                  background: '#ffffff',
+                  border: '1px solid rgba(255, 74, 28, 0.2)',
                   color: '#ff4a1c',
-                  border: '1px solid #ff4a1c'
                 }
               }
             }} 
