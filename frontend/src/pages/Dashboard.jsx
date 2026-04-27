@@ -1,3 +1,4 @@
+// Developed by guruprasad and team
 import { useState, useEffect, useContext } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -31,7 +32,8 @@ import toast from "react-hot-toast";
 
 import api from "../utils/api";
 
-const BACKEND_URL = "https://hopelink-api.onrender.com";
+const BACKEND_URL =
+  import.meta.env.VITE_BACKEND_URL || "https://hopelink-api.onrender.com";
 
 const optimizeImageUrl = (url) => {
   if (!url) return "";
@@ -41,20 +43,14 @@ const optimizeImageUrl = (url) => {
 };
 
 const SkeletonCard = () => (
-  <div className="relative overflow-hidden flex flex-col bg-white/70 backdrop-blur-lg border border-white rounded-[2.5rem] shadow-[0_20px_40px_rgba(41,82,74,0.08)] h-[350px]">
-    <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/50 to-transparent z-10" />
-    <div className="p-5 flex-1 flex flex-col">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 rounded-2xl bg-dusty-lavender/20 shrink-0"></div>
-        <div className="space-y-2 flex-1">
-          <div className="h-3 w-24 bg-dusty-lavender/20 rounded"></div>
-          <div className="h-2 w-16 bg-dusty-lavender/20 rounded"></div>
-        </div>
-      </div>
-      <div className="w-full h-32 rounded-2xl bg-dusty-lavender/10 mb-4"></div>
-      <div className="h-4 w-3/4 bg-dusty-lavender/20 rounded mb-2"></div>
-      <div className="h-3 w-full bg-dusty-lavender/10 rounded mb-2"></div>
-      <div className="h-3 w-5/6 bg-dusty-lavender/10 rounded mt-auto"></div>
+  <div className="relative overflow-hidden flex flex-col bg-white/80 backdrop-blur-xl border border-white rounded-[2.5rem] shadow-[0_20px_50px_rgba(41,82,74,0.05)] h-[380px]">
+    <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent z-10" />
+    <div className="w-full h-48 bg-dusty-lavender/10 rounded-t-[2.5rem]"></div>
+    <div className="p-5 flex-1 flex flex-col mt-2">
+      <div className="h-5 w-3/4 bg-dusty-lavender/20 rounded-full mb-3"></div>
+      <div className="h-3 w-full bg-dusty-lavender/10 rounded-full mb-2"></div>
+      <div className="h-3 w-4/5 bg-dusty-lavender/10 rounded-full mb-auto"></div>
+      <div className="h-12 w-full bg-dusty-lavender/10 rounded-2xl mt-4"></div>
     </div>
   </div>
 );
@@ -124,6 +120,7 @@ const Dashboard = () => {
   const [typingTimeout, setTypingTimeout] = useState(null);
 
   useEffect(() => {
+    console.log("System initialized. Developed by guruprasad and team.");
     if (Notification.permission === "default") Notification.requestPermission();
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
@@ -170,28 +167,12 @@ const Dashboard = () => {
 
     socket.on("donor_coming", (data) => {
       setResponders((prev) => [...prev, data]);
-      toast.success(`${data.donorName} is en route to help!`, {
-        duration: 8000,
-        style: {
-          background: "#ffffff",
-          color: "#29524a",
-          border: "1px solid #846b8a",
-          fontWeight: "bold",
-        },
-      });
+      toast.success(`${data.donorName} is en route to help!`);
     });
 
     socket.on("new_listing", (newDonation) => {
       setFeed((prev) => [newDonation, ...prev]);
-      if (newDonation.isEmergency)
-        toast.error("🚨 NEW SOS DETECTED!", {
-          duration: 6000,
-          style: {
-            background: "#ff4a1c",
-            color: "#ffffff",
-            fontWeight: "bold",
-          },
-        });
+      if (newDonation.isEmergency) toast.error("🚨 NEW SOS DETECTED!");
     });
 
     socket.on("listing_updated", (updatedItem) =>
@@ -207,15 +188,7 @@ const Dashboard = () => {
       if (!data) return;
       window.dispatchEvent(new CustomEvent("new_unread_message"));
       if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-      toast(`💬 ${data.senderName || "User"}: ${data.text || "New message"}`, {
-        duration: 5000,
-        style: {
-          background: "#ffffff",
-          color: "#29524a",
-          border: "1px solid #9f1164",
-          fontWeight: "bold",
-        },
-      });
+      toast(`💬 ${data.senderName || "User"}: ${data.text || "New message"}`);
     });
     return () => socket.disconnect();
   }, [user, navigate]);
@@ -243,31 +216,25 @@ const Dashboard = () => {
     }
   };
 
-  // OSM REVERSE GEOCODING
   const handleGetLocation = async (isEvent = false) => {
     if (!navigator.geolocation)
       return toast.error("Geolocation is not supported.");
     setIsFetchingLocation(true);
-    const toastId = toast.loading("Locking onto GPS...", {
-      style: { background: "#ffffff", color: "#29524a", fontWeight: "bold" },
-    });
+    const toastId = toast.loading("Locking onto GPS via Mapbox...");
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
+          const apiKey = import.meta.env.VITE_MAPBOX_TOKEN;
+          if (!apiKey) throw new Error("Mapbox Token Missing");
+
           const { data } = await axios.get(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
+            `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${apiKey}`,
           );
 
-          if (data && data.address) {
-            const cityString =
-              data.address.city ||
-              data.address.town ||
-              data.address.village ||
-              data.address.county ||
-              data.display_name.split(",")[0];
-
+          if (data && data.features && data.features.length > 0) {
+            const cityString = data.features[0].place_name.split(",")[0];
             if (isEvent)
               setEventData((prev) => ({
                 ...prev,
@@ -282,13 +249,12 @@ const Dashboard = () => {
                 lat: latitude,
                 lng: longitude,
               }));
-
             toast.success(`Coordinates locked: ${cityString}`, { id: toastId });
           } else {
             throw new Error("No location found");
           }
         } catch {
-          toast.error("Could not resolve address via OSM.", { id: toastId });
+          toast.error("Could not resolve address via Mapbox.", { id: toastId });
         } finally {
           setIsFetchingLocation(false);
         }
@@ -301,7 +267,6 @@ const Dashboard = () => {
     );
   };
 
-  // OSM AUTOCOMPLETE
   const handleLocationType = (e, isEvent = false) => {
     const val = e.target.value;
     if (isEvent)
@@ -318,22 +283,23 @@ const Dashboard = () => {
         lat: null,
         lng: null,
       }));
-
     if (typingTimeout) clearTimeout(typingTimeout);
-
     if (val.length > 2) {
       const timeoutId = setTimeout(async () => {
         try {
+          const apiKey = import.meta.env.VITE_MAPBOX_TOKEN;
+          if (!apiKey) return;
           const { data } = await axios.get(
-            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=5`,
+            `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(val)}.json?access_token=${apiKey}&autocomplete=true&limit=5&country=in`,
           );
-          if (data && data.length > 0) {
-            const formattedSuggestions = data.map((res) => ({
-              display_name: res.display_name,
-              lat: res.lat,
-              lon: res.lon,
-            }));
-            setSuggestions(formattedSuggestions);
+          if (data && data.features) {
+            setSuggestions(
+              data.features.map((f) => ({
+                display_name: f.place_name,
+                lat: f.center[1],
+                lon: f.center[0],
+              })),
+            );
           } else {
             setSuggestions([]);
           }
@@ -486,6 +452,7 @@ const Dashboard = () => {
   return (
     <Layout>
       <div className="max-w-6xl mx-auto px-4 pb-32 md:pb-24 relative min-h-screen text-pine-teal">
+        {/* HERO RESPONDER TICKER */}
         <div className="fixed top-20 right-4 md:top-24 md:right-8 z-[100] w-56 md:w-64 space-y-3 pointer-events-none">
           <AnimatePresence>
             {responders.map((res, i) => (
@@ -512,16 +479,17 @@ const Dashboard = () => {
           </AnimatePresence>
         </div>
 
+        {/* HEADER */}
         <header className="pt-6 pb-4 flex flex-col gap-4">
           <div className="flex justify-between items-end">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
             >
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-none text-pine-teal">
-                Dashboard
+              <h1 className="text-3xl sm:text-4xl font-black tracking-tight leading-none text-pine-teal uppercase italic">
+                Dashboard.
               </h1>
-              <p className="text-dusty-lavender text-[10px] sm:text-xs font-bold tracking-widest uppercase mt-1">
+              <p className="text-dusty-lavender text-[10px] sm:text-xs font-black tracking-widest uppercase mt-1">
                 Welcome back, {user?.name?.split(" ")[0]}
               </p>
             </motion.div>
@@ -559,9 +527,9 @@ const Dashboard = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={enableNotifications}
-                className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 bg-white border border-blazing-flame/40 text-blazing-flame rounded-xl flex items-center justify-center shadow-sm"
+                className="flex-shrink-0 w-10 h-10 bg-white border border-blazing-flame/40 text-blazing-flame rounded-xl flex items-center justify-center shadow-sm"
               >
-                <FaBell className="text-sm sm:text-base animate-pulse" />
+                <FaBell className="text-base animate-pulse" />
               </motion.button>
             )}
 
@@ -569,7 +537,7 @@ const Dashboard = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setShowSOS(true)}
-              className="flex-shrink-0 px-4 py-2.5 sm:px-5 sm:py-2.5 bg-blazing-flame rounded-xl flex items-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest text-white shadow-lg shadow-blazing-flame/30"
+              className="flex-shrink-0 px-5 py-2.5 bg-blazing-flame rounded-xl flex items-center gap-2 font-black text-xs uppercase tracking-widest text-white shadow-[0_10px_25px_rgba(255,74,28,0.3)] border border-blazing-flame"
             >
               <FaHeartbeat className="animate-pulse text-sm" /> Emergency SOS
             </motion.button>
@@ -579,7 +547,7 @@ const Dashboard = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => navigate("/donations")}
-                className="flex-shrink-0 px-4 py-2.5 sm:px-5 sm:py-2.5 bg-dark-raspberry rounded-xl flex items-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest text-white shadow-lg shadow-dark-raspberry/30"
+                className="flex-shrink-0 px-5 py-2.5 bg-dark-raspberry rounded-xl flex items-center gap-2 font-black text-xs uppercase tracking-widest text-white shadow-[0_10px_25px_rgba(159,17,100,0.3)] border border-dark-raspberry"
               >
                 {isDonor ? (
                   <>
@@ -595,34 +563,35 @@ const Dashboard = () => {
           </div>
         </header>
 
-        <div className="flex bg-white/50 backdrop-blur-md p-1 rounded-xl border border-dusty-lavender/30 mb-6 shadow-sm">
+        {/* FEED FILTERS */}
+        <div className="flex bg-white/60 backdrop-blur-md p-1.5 rounded-2xl border border-dusty-lavender/30 mb-6 shadow-sm">
           <button
             onClick={() => setViewMode("p2p")}
-            className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-[0.2em] transition-all ${viewMode === "p2p" ? "bg-white text-pine-teal shadow-sm border border-dusty-lavender/20" : "text-dusty-lavender hover:text-pine-teal"}`}
+            className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${viewMode === "p2p" ? "bg-white text-pine-teal shadow-md border border-white" : "text-dusty-lavender hover:text-pine-teal"}`}
           >
-            Community
+            Community Feed
           </button>
           <button
             onClick={() => setViewMode("events")}
-            className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-[0.2em] transition-all ${viewMode === "events" ? "bg-white text-pine-teal shadow-sm border border-dusty-lavender/20" : "text-dusty-lavender hover:text-pine-teal"}`}
+            className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${viewMode === "events" ? "bg-white text-pine-teal shadow-md border border-white" : "text-dusty-lavender hover:text-pine-teal"}`}
           >
-            Events
+            Events & Drives
           </button>
         </div>
 
         {viewMode === "p2p" && (
           <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.3 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
           >
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 bg-white/60 p-3 md:p-4 rounded-2xl md:rounded-[2rem] border border-dusty-lavender/30 shadow-sm">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
               <div className="flex gap-2 overflow-x-auto w-full md:w-auto no-scrollbar pb-1 md:pb-0 scroll-smooth">
                 {["All", "Blood", "Food", "Clothes", "Book"].map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setFilterCategory(cat)}
-                    className={`px-5 py-2 rounded-xl font-extrabold text-[10px] sm:text-[11px] whitespace-nowrap transition-colors ${filterCategory === cat ? "bg-pine-teal text-white shadow-md" : "bg-white text-dusty-lavender hover:text-pine-teal hover:bg-pearl-beige"}`}
+                    className={`px-5 py-2.5 rounded-xl font-black text-[10px] sm:text-[11px] uppercase tracking-widest whitespace-nowrap transition-all ${filterCategory === cat ? "bg-pine-teal text-white shadow-[0_10px_20px_rgba(41,82,74,0.3)]" : "bg-white/80 text-dusty-lavender hover:text-pine-teal hover:bg-white border border-dusty-lavender/20"}`}
                   >
                     {cat}
                   </button>
@@ -631,7 +600,7 @@ const Dashboard = () => {
               <select
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value)}
-                className="bg-white border border-dusty-lavender/40 rounded-lg px-3 py-2 text-pine-teal text-[10px] sm:text-[11px] font-bold outline-none cursor-pointer focus:border-dark-raspberry"
+                className="bg-white/80 backdrop-blur-md border border-dusty-lavender/30 rounded-xl px-4 py-2.5 text-pine-teal text-[10px] sm:text-[11px] uppercase tracking-widest font-black outline-none cursor-pointer focus:border-dark-raspberry shadow-sm"
               >
                 <option value="urgent">Urgent First</option>
                 <option value="newest">Newest First</option>
@@ -639,17 +608,17 @@ const Dashboard = () => {
             </div>
 
             {loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[1, 2, 3, 4, 5, 6].map((n) => (
                   <SkeletonCard key={n} />
                 ))}
               </div>
             ) : processedFeed.length === 0 ? (
-              <div className="text-center py-20 text-dusty-lavender font-medium text-sm">
-                No listings found.
+              <div className="text-center py-20 text-dusty-lavender font-black uppercase tracking-widest text-sm bg-white/50 rounded-[3rem] border border-dashed border-dusty-lavender/40">
+                No active signals found.
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <AnimatePresence mode="popLayout">
                   {processedFeed.map((item) => {
                     const isMine = item.donorId?._id === user._id;
@@ -658,120 +627,135 @@ const Dashboard = () => {
                     );
                     const isApprovedReceiver =
                       item.status === "pending" && item.receiverId === user._id;
+
                     return (
                       <motion.div
                         layout
                         key={item._id}
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        whileHover={{ y: -5 }}
-                        className={`relative overflow-hidden flex flex-col bg-white/70 backdrop-blur-lg border rounded-[2.5rem] shadow-[0_20px_40px_rgba(41,82,74,0.08)] transition-all ${item.isEmergency ? "border-blazing-flame ring-1 ring-blazing-flame/50 shadow-blazing-flame/10" : "border-white"}`}
+                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.9, y: -20 }}
+                        whileHover={{ y: -8 }}
+                        // 👉 PREMIUM UPGRADE: The Container
+                        className={`relative overflow-hidden flex flex-col bg-white/90 backdrop-blur-xl rounded-[2.5rem] transition-all duration-300 group ${item.isEmergency ? "border-2 border-blazing-flame shadow-[0_15px_40px_rgba(255,74,28,0.2)]" : "border border-white shadow-[0_20px_50px_rgba(41,82,74,0.06)] hover:shadow-[0_30px_60px_rgba(41,82,74,0.12)]"}`}
                       >
-                        <div className="p-5 flex-1 flex flex-col">
-                          <div className="flex justify-between items-start mb-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-2xl overflow-hidden border-2 border-white shadow-sm">
-                                <img
-                                  src={
-                                    item.donorId?.profilePic ||
-                                    `https://ui-avatars.com/api/?name=${item.donorId?.name}&background=e8dab2&color=29524a`
-                                  }
-                                  className="w-full h-full object-cover"
-                                  alt="User"
-                                />
-                              </div>
-                              <div>
-                                <p className="text-sm font-black text-pine-teal leading-none flex items-center gap-1.5">
-                                  {item.donorId?.name}{" "}
-                                  {item.donorId?.points >= 50 && (
-                                    <FaMedal className="text-blazing-flame text-sm drop-shadow-md" />
-                                  )}
-                                </p>
-                                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                                  {item.isEmergency ? (
-                                    <span className="px-1.5 py-0.5 bg-blazing-flame/10 text-blazing-flame border border-blazing-flame/20 rounded-[4px] text-[8px] font-black uppercase tracking-widest">
-                                      SOS Alert
-                                    </span>
-                                  ) : (
-                                    <span className="px-1.5 py-0.5 bg-dark-raspberry/10 text-dark-raspberry border border-dark-raspberry/20 rounded-[4px] text-[8px] font-black uppercase tracking-widest">
-                                      {item.listingType === "request"
-                                        ? "Requesting"
-                                        : "Offering"}
-                                    </span>
-                                  )}
-                                  <span className="text-[9px] font-black uppercase tracking-widest text-dusty-lavender">
-                                    • {item.category}{" "}
-                                    {item.bloodGroup && `• ${item.bloodGroup}`}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                            {isMine && (
-                              <button
-                                onClick={() => handleDeletePost(item._id)}
-                                className="w-8 h-8 rounded-xl bg-white border border-dusty-lavender/30 text-dusty-lavender hover:text-blazing-flame hover:border-blazing-flame flex items-center justify-center transition-all shadow-sm"
-                              >
-                                <FaTrash size={12} />
-                              </button>
-                            )}
-                          </div>
+                        {/* 👉 PREMIUM UPGRADE: Emergency Holographic Glow */}
+                        {item.isEmergency && (
+                          <div className="absolute inset-0 bg-gradient-to-b from-blazing-flame/20 to-transparent opacity-50 pointer-events-none" />
+                        )}
+
+                        {/* 👉 PREMIUM UPGRADE: Edge-to-Edge Image / Header Area */}
+                        <div className="relative w-full h-48 sm:h-52 bg-pearl-beige shrink-0 overflow-hidden">
                           {item.image ? (
-                            <div className="w-full h-40 rounded-2xl overflow-hidden mb-4 relative shrink-0 border border-dusty-lavender/20">
+                            <>
                               <img
                                 src={optimizeImageUrl(item.image)}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                                 alt="intel"
                               />
-                              {item.isEmergency && (
-                                <div className="absolute top-3 left-3 px-3 py-1 bg-blazing-flame rounded-lg text-[8px] font-black uppercase text-white shadow-xl">
-                                  SOS
-                                </div>
-                              )}
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
+                            </>
+                          ) : item.category === "blood" ? (
+                            <div
+                              className={`w-full h-full flex flex-col items-center justify-center ${item.isEmergency ? "bg-blazing-flame" : "bg-dark-raspberry"} text-white`}
+                            >
+                              <FaHeartbeat className="text-5xl mb-2 opacity-80" />
+                              <span className="text-4xl font-black">
+                                {item.bloodGroup}
+                              </span>
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                             </div>
                           ) : (
-                            item.category === "blood" && (
-                              <div className="w-full h-32 mb-4 rounded-2xl overflow-hidden border border-blazing-flame/30 bg-blazing-flame/5 flex flex-col items-center justify-center shrink-0">
-                                <FaHeartbeat className="text-4xl text-blazing-flame mb-2" />
-                                <span className="text-2xl font-black text-pine-teal">
-                                  {item.bloodGroup}
-                                </span>
-                              </div>
-                            )
+                            <div className="w-full h-full flex items-center justify-center bg-dusty-lavender/10 text-dusty-lavender/30">
+                              <FaBoxOpen className="text-6xl" />
+                            </div>
                           )}
-                          <h3 className="text-lg font-black text-pine-teal leading-tight mb-2 line-clamp-1">
-                            {item.title}
-                          </h3>
-                          <p className="text-pine-teal/70 text-xs leading-relaxed line-clamp-2 mb-4 flex-1">
-                            {item.description}
-                          </p>
-                          <div className="flex items-center justify-between mt-auto">
-                            <span className="flex items-center gap-2 text-dusty-lavender text-[10px] font-bold flex-1 pr-2">
-                              <FaMapMarkerAlt className="text-dark-raspberry" />
-                              <span className="truncate">
-                                {item.addressText || "Nearby"}
-                              </span>
-                            </span>
-                            <div className="flex items-center gap-2">
+
+                          {/* 👉 PREMIUM UPGRADE: Floating Top Badges */}
+                          <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-10">
+                            {/* User Pill */}
+                            <div className="bg-white/95 backdrop-blur-md px-1.5 py-1.5 pr-4 rounded-full flex items-center gap-2 shadow-lg max-w-[70%]">
+                              <img
+                                src={
+                                  item.donorId?.profilePic ||
+                                  `https://ui-avatars.com/api/?name=${item.donorId?.name}&background=e8dab2&color=29524a`
+                                }
+                                className="w-7 h-7 rounded-full object-cover"
+                                alt="User"
+                              />
+                              <p className="text-[10px] font-black text-pine-teal truncate flex items-center gap-1">
+                                {item.donorId?.name}{" "}
+                                {item.donorId?.points >= 50 && (
+                                  <FaMedal className="text-blazing-flame text-sm drop-shadow-md" />
+                                )}
+                              </p>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex gap-2">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleShare(item);
                                 }}
-                                className="w-8 h-8 rounded-full bg-white border border-dusty-lavender/30 text-dusty-lavender hover:text-pine-teal hover:shadow-md flex items-center justify-center shrink-0 transition-all active:scale-90"
+                                className="w-9 h-9 rounded-full bg-white/90 backdrop-blur-md text-pine-teal flex items-center justify-center shadow-lg active:scale-90 transition-all hover:bg-white"
                               >
                                 <FaShareAlt size={12} />
                               </button>
+                              {isMine && (
+                                <button
+                                  onClick={() => handleDeletePost(item._id)}
+                                  className="w-9 h-9 rounded-full bg-white/90 backdrop-blur-md text-blazing-flame flex items-center justify-center shadow-lg active:scale-90 transition-all hover:bg-white"
+                                >
+                                  <FaTrash size={12} />
+                                </button>
+                              )}
                             </div>
+                          </div>
+
+                          {/* 👉 PREMIUM UPGRADE: Floating Bottom Badges */}
+                          <div className="absolute bottom-4 left-4 flex gap-2 z-10">
+                            {item.isEmergency ? (
+                              <span className="px-3 py-1.5 bg-blazing-flame text-white rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1">
+                                <FaExclamationTriangle /> SOS ALERT
+                              </span>
+                            ) : (
+                              <span className="px-3 py-1.5 bg-white/95 backdrop-blur-md text-dark-raspberry rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg">
+                                {item.listingType === "request"
+                                  ? "Requesting"
+                                  : "Offering"}
+                              </span>
+                            )}
+                            <span className="px-3 py-1.5 bg-pine-teal/90 backdrop-blur-md text-white rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg">
+                              {item.category}
+                            </span>
                           </div>
                         </div>
 
-                        <div className="p-4 mt-2 bg-white/50 border-t border-white backdrop-blur-md">
+                        {/* Text Content */}
+                        <div className="p-5 flex-1 flex flex-col relative z-10 bg-white">
+                          <h3 className="text-xl font-black text-pine-teal leading-tight mb-2 line-clamp-1">
+                            {item.title}
+                          </h3>
+                          <p className="text-dusty-lavender font-medium text-sm leading-relaxed line-clamp-2 mb-4 flex-1">
+                            {item.description}
+                          </p>
+
+                          <div className="flex items-center gap-2 text-pine-teal text-[10px] font-bold mt-auto pt-4 border-t border-dusty-lavender/10">
+                            <FaMapMarkerAlt className="text-dark-raspberry text-sm" />
+                            <span className="truncate uppercase tracking-wider">
+                              {item.addressText || "Sector Location Unknown"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* 👉 PREMIUM UPGRADE: The Action Dock */}
+                        <div className="p-3 bg-pearl-beige/30 border-t border-dusty-lavender/10 z-10">
                           {isMine ? (
                             item.status === "fulfilled" ? (
                               <button
                                 disabled
-                                className="w-full py-3 rounded-xl flex items-center justify-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest bg-white text-green-600 border border-green-200"
+                                className="w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest bg-white text-pine-teal/50 border border-pine-teal/20"
                               >
                                 <FaCheckCircle /> Mission Accomplished
                               </button>
@@ -785,9 +769,10 @@ const Dashboard = () => {
                                     })
                                   }
                                   disabled={!item.requestedBy?.length}
-                                  className={`flex-1 py-3 rounded-xl flex items-center justify-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest transition-all ${item.requestedBy?.length > 0 ? "bg-dark-raspberry text-white shadow-md" : "bg-white text-dusty-lavender border border-dusty-lavender/30 cursor-not-allowed"}`}
+                                  className={`flex-1 py-4 rounded-2xl flex items-center justify-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest transition-all ${item.requestedBy?.length > 0 ? "bg-white text-pine-teal border border-pine-teal hover:bg-pine-teal hover:text-white shadow-sm" : "bg-white/50 text-dusty-lavender border border-dusty-lavender/30 cursor-not-allowed"}`}
                                 >
-                                  <FaUsers /> {item.requestedBy?.length || 0}
+                                  <FaUsers className="text-sm" />{" "}
+                                  {item.requestedBy?.length || 0}
                                 </button>
                                 {item.status === "pending" && (
                                   <button
@@ -799,9 +784,10 @@ const Dashboard = () => {
                                         rating: 5,
                                       })
                                     }
-                                    className="flex-[2] py-3 rounded-xl flex items-center justify-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest transition-all bg-blazing-flame text-white shadow-lg shadow-blazing-flame/30"
+                                    className="flex-[2] py-4 rounded-2xl flex items-center justify-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest transition-all bg-pine-teal text-white shadow-lg hover:bg-[#1a3630]"
                                   >
-                                    <FaCheckCircle /> Verify PIN
+                                    <FaCheckCircle className="text-sm" /> Verify
+                                    PIN
                                   </button>
                                 )}
                               </div>
@@ -809,7 +795,7 @@ const Dashboard = () => {
                           ) : item.status === "fulfilled" ? (
                             <button
                               disabled
-                              className="w-full py-3 rounded-xl flex items-center justify-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest bg-white text-dusty-lavender border border-dusty-lavender/30 cursor-not-allowed"
+                              className="w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest bg-white text-dusty-lavender border border-dusty-lavender/30 cursor-not-allowed"
                             >
                               <FaLock /> Fulfilled
                             </button>
@@ -818,23 +804,25 @@ const Dashboard = () => {
                               onClick={() =>
                                 navigate(`/chat/${item._id}_${user._id}`)
                               }
-                              className="w-full py-3 rounded-xl flex items-center justify-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest bg-dark-raspberry text-white shadow-md"
+                              className="w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest bg-dark-raspberry hover:bg-[#850e53] text-white shadow-[0_10px_25px_rgba(159,17,100,0.3)] transition-all active:scale-95"
                             >
-                              <FaCommentDots className="text-lg" /> Open Chat
+                              <FaCommentDots className="text-lg" /> Open Secure
+                              Chat
                             </button>
                           ) : alreadyReq ? (
                             <button
                               disabled
-                              className="w-full py-3 rounded-xl flex items-center justify-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest bg-white text-pine-teal border border-dusty-lavender/30"
+                              className="w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest bg-white text-pine-teal border border-dusty-lavender/30"
                             >
                               <FaCheck /> Awaiting Approval
                             </button>
                           ) : (
                             <button
                               onClick={() => handleRequestItem(item._id)}
-                              className="w-full py-4 rounded-2xl font-black text-white transition-all active:scale-95 shadow-[0_10px_25px_rgba(41,82,74,0.3)] flex items-center justify-center gap-2 text-[10px] sm:text-xs uppercase tracking-widest bg-pine-teal hover:bg-[#1a3630]"
+                              className={`w-full py-4 rounded-2xl font-black text-white transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2 text-[10px] sm:text-xs uppercase tracking-widest ${item.isEmergency ? "bg-blazing-flame hover:bg-[#e03a12] shadow-blazing-flame/30" : "bg-pine-teal hover:bg-[#1a3630] shadow-pine-teal/30"}`}
                             >
-                              <FaHandsHelping className="text-sm" /> Connect
+                              <FaHandsHelping className="text-sm" />{" "}
+                              {item.isEmergency ? "RESPOND TO SOS" : "Connect"}
                             </button>
                           )}
                         </div>
@@ -849,10 +837,10 @@ const Dashboard = () => {
                 <button
                   onClick={loadMoreListings}
                   disabled={loadingMore}
-                  className="px-8 py-3 bg-white border border-dusty-lavender/30 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] text-pine-teal hover:shadow-md transition-all flex items-center gap-3"
+                  className="px-8 py-4 bg-white border border-dusty-lavender/30 rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] text-pine-teal hover:shadow-md transition-all flex items-center gap-3 active:scale-95"
                 >
                   {loadingMore ? (
-                    <FaSpinner className="animate-spin" />
+                    <FaSpinner className="animate-spin text-lg" />
                   ) : (
                     "Request More Data"
                   )}
@@ -862,18 +850,19 @@ const Dashboard = () => {
           </motion.div>
         )}
 
+        {/* ... Event View Mode / Modals Remainder (Unchanged logic, just maintaining full file structure) ... */}
         {viewMode === "events" && (
           <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <div className="text-center py-20 bg-white/70 backdrop-blur-lg rounded-[2.5rem] border border-white shadow-[0_20px_40px_rgba(41,82,74,0.08)]">
+            <div className="text-center py-20 bg-white/90 backdrop-blur-xl rounded-[2.5rem] border border-white shadow-[0_20px_40px_rgba(41,82,74,0.06)]">
               <FaBullhorn className="text-6xl text-dark-raspberry/50 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-pine-teal mb-2">
+              <h3 className="text-xl font-black text-pine-teal mb-2 uppercase tracking-tight">
                 Events Integration
               </h3>
-              <p className="text-pine-teal/70 text-sm">
+              <p className="text-dusty-lavender text-sm font-medium">
                 Switch back to community feed to view active SOS and donation
                 cards.
               </p>
