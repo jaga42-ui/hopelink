@@ -1,24 +1,17 @@
 @import "tailwindcss";
 
 @theme {
-  /* THE SAHAYAM PREMIUM PALETTE */
+  /* YOUR EXISTING VARIABLES HERE */
   --color-pearl-beige: #e8dab2;
   --color-pine-teal: #29524a;
   --color-blazing-flame: #ff4a1c;
   --color-dark-raspberry: #9f1164;
   --color-dusty-lavender: #846b8a;
-
-  /* CUSTOM ANIMATIONS */
+  
   --animate-shimmer: shimmer 1.5s infinite;
-
-  @keyframes shimmer {
-    100% {
-      transform: translateX(100%);
-    }
-  }
+  @keyframes shimmer { 100% { transform: translateX(100%); } }
 }
 
-/* Base resets to enforce the light theme everywhere */
 html,
 body {
   margin: 0;
@@ -28,18 +21,31 @@ body {
   font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+
+  /* 👉 NATIVE UPGRADE: Kill Chrome Pull-to-Refresh & Bounce */
+  overscroll-behavior-y: none;
+  overscroll-behavior-x: none;
+  touch-action: pan-x pan-y;
+  
+  /* 👉 NATIVE UPGRADE: Remove Android's blue tap highlight */
+  -webkit-tap-highlight-color: transparent; 
 }
 
-/* Hide scrollbar for clean horizontal scrolls */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+/* 👉 NATIVE UPGRADE: Prevent accidental text highlighting on UI elements */
+*:not(input):not(textarea):not(select) {
+  user-select: none;
+  -webkit-user-select: none;
 }
 
-/* Custom Marker styling for Leaflet (if still used anywhere as a fallback) */
+/* Re-enable selection for actual forms */
+input, textarea, select {
+  user-select: auto;
+  -webkit-user-select: auto;
+}
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
 .custom-popup .leaflet-popup-content-wrapper {
   background: #ffffff;
   border: 1px solid rgba(132, 107, 138, 0.3);
