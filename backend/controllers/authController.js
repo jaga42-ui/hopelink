@@ -6,16 +6,13 @@ const { OAuth2Client } = require("google-auth-library");
 const nodemailer = require("nodemailer");
 const admin = require("firebase-admin");
 
-// 👉 IMPORT OUR NEW EMAIL UTILITY
 const { sendPostAlertEmail } = require("../utils/sendEmail");
 
-// 👉 Initialize the Google OAuth Client
 const client = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
 );
 
-// 👉 INITIALIZE FIREBASE USING RENDER ENVIRONMENT VARIABLE
 if (!admin.apps.length) {
   try {
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
@@ -38,8 +35,6 @@ const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "30d" });
 };
 
-// @desc    Register new user
-// @route   POST /api/auth/register
 const registerUser = asyncHandler(async (req, res) => {
   const { name, email, password, phone, activeRole, bloodGroup } = req.body;
 
@@ -64,10 +59,7 @@ const registerUser = asyncHandler(async (req, res) => {
     isAdmin: false,
     profilePic: "",
     addressText: "",
-    location: {
-      type: "Point",
-      coordinates: [0, 0], 
-    },
+    location: { type: "Point", coordinates: [0, 0] },
   });
 
   if (user) {
@@ -88,8 +80,6 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Authenticate a user
-// @route   POST /api/auth/login
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email });
@@ -113,9 +103,6 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Toggle Role (Donor <-> Receiver)
-// @route   PUT /api/auth/role
-// @access  Private
 const toggleRole = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user.id);
   if (!user) {
@@ -140,11 +127,8 @@ const toggleRole = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Authenticate via Google (Secure Authorization Code Flow)
-// @route   POST /api/auth/google
 const googleLogin = asyncHandler(async (req, res) => {
   const { code } = req.body;
-
   if (!code) {
     res.status(400);
     throw new Error("Authorization code not provided");
@@ -155,19 +139,18 @@ const googleLogin = asyncHandler(async (req, res) => {
       code,
       redirect_uri: "postmessage",
     });
-
     const ticket = await client.verifyIdToken({
       idToken: tokens.id_token,
       audience: process.env.GOOGLE_CLIENT_ID,
     });
-
     const payload = ticket.getPayload();
     const { email, name, picture, sub: googleId } = payload;
 
     let user = await User.findOne({ email });
 
     if (!user) {
-      const securePass = `HopeLink_${Math.random().toString(36).slice(-8)}!`;
+      // 👉 FIXED: Replaced "HopeLink" with "Sahayam"
+      const securePass = `Sahayam_${Math.random().toString(36).slice(-8)}!`;
       user = await User.create({
         name: name || "New Hero",
         email,
@@ -177,10 +160,7 @@ const googleLogin = asyncHandler(async (req, res) => {
         phone: "Not Provided",
         activeRole: "donor",
         points: 10,
-        location: {
-          type: "Point",
-          coordinates: [0, 0], 
-        },
+        location: { type: "Point", coordinates: [0, 0] },
       });
     } else {
       if (!user.profilePic && picture) {
@@ -209,9 +189,6 @@ const googleLogin = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Update user profile
-// @route   PUT /api/auth/profile
-// @access  Private
 const updateProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
 
@@ -240,16 +217,12 @@ const updateProfile = asyncHandler(async (req, res) => {
   }
 });
 
-// 👉 NEW: Save User's Firebase Web Push Token
-// @route   POST /api/auth/fcm-token
-// @access  Private
 const saveFCMToken = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
   if (!user) {
     res.status(404);
     throw new Error("User not found");
   }
-
   user.fcmToken = req.body.fcmToken;
   await user.save();
   res
@@ -257,21 +230,15 @@ const saveFCMToken = asyncHandler(async (req, res) => {
     .json({ message: "Device securely registered for lock-screen alerts." });
 });
 
-// @desc    Get current user profile
-// @route   GET /api/auth/profile
-// @access  Private
 const getMe = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id).select("-password");
-  if (user) {
-    res.json(user);
-  } else {
+  if (user) res.json(user);
+  else {
     res.status(404);
     throw new Error("User not found");
   }
 });
 
-// Update User's Live GPS Location
-// @route   PUT /api/auth/location
 const updateLocation = asyncHandler(async (req, res) => {
   const { lat, lng, addressText } = req.body;
   const user = await User.findById(req.user._id);
@@ -287,8 +254,6 @@ const updateLocation = asyncHandler(async (req, res) => {
   }
 });
 
-// The Blood Radar Search Engine
-// @route   GET /api/auth/nearby-donors
 const getNearbyDonors = asyncHandler(async (req, res) => {
   const { lat, lng, bloodGroup, distance = 15000 } = req.query;
   let query = {
@@ -309,8 +274,6 @@ const getNearbyDonors = asyncHandler(async (req, res) => {
   res.json(donors);
 });
 
-// 👉 UPGRADED: Send Emergency Blast to nearby donors using Firebase AND Email
-// @route   POST /api/auth/emergency-blast
 const sendEmergencyBlast = asyncHandler(async (req, res) => {
   const { lat, lng, message, bloodGroup } = req.body;
 
@@ -326,7 +289,6 @@ const sendEmergencyBlast = asyncHandler(async (req, res) => {
     location: { type: "Point", coordinates: [Number(lng), Number(lat)] },
   });
 
-  // Find users acting as donors within 20km
   const nearbyDonors = await User.find({
     location: {
       $near: {
@@ -338,11 +300,13 @@ const sendEmergencyBlast = asyncHandler(async (req, res) => {
     _id: { $ne: req.user._id },
   });
 
-  // Extract tokens and emails
-  const pushTokens = nearbyDonors.filter(donor => donor.fcmToken).map(donor => donor.fcmToken);
-  const emailAddresses = nearbyDonors.filter(donor => donor.email).map(donor => donor.email);
+  const pushTokens = nearbyDonors
+    .filter((donor) => donor.fcmToken)
+    .map((donor) => donor.fcmToken);
+  const emailAddresses = nearbyDonors
+    .filter((donor) => donor.email)
+    .map((donor) => donor.email);
 
-  // 1. FIREBASE PUSH BLAST (Async)
   if (pushTokens.length > 0) {
     const pushMessage = {
       notification: {
@@ -351,7 +315,6 @@ const sendEmergencyBlast = asyncHandler(async (req, res) => {
       },
       tokens: pushTokens,
     };
-
     admin
       .messaging()
       .sendEachForMulticast(pushMessage)
@@ -363,10 +326,12 @@ const sendEmergencyBlast = asyncHandler(async (req, res) => {
       .catch((error) => console.error("Firebase Blast Failed:", error));
   }
 
-  // 2. EMAIL ALERT BLAST (Async)
   if (emailAddresses.length > 0) {
-    // We fire this without 'await' so the user doesn't have to wait for SMTP!
-    sendPostAlertEmail(emailAddresses, { message, bloodGroup });
+    sendPostAlertEmail(emailAddresses, {
+      message,
+      bloodGroup,
+      isEmergency: true,
+    });
   }
 
   res
@@ -378,8 +343,6 @@ const sendEmergencyBlast = asyncHandler(async (req, res) => {
     });
 });
 
-// Respond to a Blast
-// @route   POST /api/auth/respond-blast/:id
 const respondToBlast = asyncHandler(async (req, res) => {
   const blast = await Blast.findById(req.params.id);
   if (!blast) {
@@ -409,9 +372,6 @@ const respondToBlast = asyncHandler(async (req, res) => {
   });
 });
 
-// Forgot Password (Send Email)
-// @route   POST /api/auth/forgotpassword
-// @access  Public
 const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
   const user = await User.findOne({ email });
@@ -425,37 +385,39 @@ const forgotPassword = asyncHandler(async (req, res) => {
   const token = jwt.sign({ email: user.email, id: user._id }, secret, {
     expiresIn: "15m",
   });
-
   const resetLink = `${process.env.FRONTEND_URL}/reset-password/${user._id}/${token}`;
 
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: process.env.SMTP_PORT,
     secure: false,
-    auth: {
-      user: process.env.SMTP_EMAIL,
-      pass: process.env.SMTP_PASSWORD,
-    },
+    auth: { user: process.env.SMTP_EMAIL, pass: process.env.SMTP_PASSWORD },
   });
 
+  // 👉 FIXED: Replaced HopeLink text and styling with Sahayam Light Theme
   const mailOptions = {
     from: `"${process.env.FROM_NAME}" <${process.env.FROM_EMAIL}>`,
     to: user.email,
-    subject: "HopeLink - Password Reset Request",
+    subject: "Sahayam - Security Clearance Reset",
     html: `
-      <h3>You requested a password reset</h3>
-      <p>Click the link below to securely set a new password. This link expires in 15 minutes.</p>
-      <a href="${resetLink}" style="padding: 10px 20px; background-color: #ef4444; color: white; text-decoration: none; border-radius: 5px;">Reset Password</a>
+      <div style="font-family: ui-sans-serif, system-ui, sans-serif; max-width: 600px; margin: 0 auto; background-color: #fdfbf7; padding: 40px; border-radius: 24px; color: #29524a; border: 1px solid rgba(132, 107, 138, 0.3);">
+        <h2 style="color: #29524a; margin-top: 0; font-weight: 900; font-style: italic;">PASSWORD RESET PROTOCOL</h2>
+        <p style="color: #846b8a; font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.1em;">You requested a security clearance update.</p>
+        
+        <p style="margin: 30px 0; font-size: 16px; font-weight: 500;">Click the button below to securely set a new password for your Sahayam account. This link will expire in exactly 15 minutes.</p>
+        
+        <a href="${resetLink}" style="display: inline-block; padding: 16px 32px; background-color: #ff4a1c; color: #ffffff; text-decoration: none; border-radius: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em;">Reset Password</a>
+        
+        <hr style="border: 0; border-top: 1px solid rgba(132, 107, 138, 0.2); margin: 40px 0 20px 0;" />
+        <p style="font-size: 10px; color: #846b8a; margin: 0; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em;">If you did not request this change, you may safely ignore this email.</p>
+      </div>
     `,
   };
 
   await transporter.sendMail(mailOptions);
-  res.json({ message: "Password reset link sent to your email." });
+  res.json({ message: "Security clearance link dispatched to your email." });
 });
 
-// Reset Password (Save new password)
-// @route   POST /api/auth/resetpassword/:id/:token
-// @access  Public
 const resetPassword = asyncHandler(async (req, res) => {
   const { id, token } = req.params;
   const { password } = req.body;
@@ -470,10 +432,8 @@ const resetPassword = asyncHandler(async (req, res) => {
 
   try {
     jwt.verify(token, secret);
-
     user.password = password;
     await user.save();
-
     res.json({
       message: "Password has been successfully reset. You can now log in.",
     });

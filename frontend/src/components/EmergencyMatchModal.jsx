@@ -1,3 +1,4 @@
+// Developed by guruprasad and team
 import {
   FaPhoneAlt,
   FaCommentDots,
@@ -16,12 +17,11 @@ const EmergencyMatchModal = ({ sosData, onClose }) => {
   const lng = sosData.location.coordinates[0];
   const lat = sosData.location.coordinates[1];
 
-  // Official Google Maps Universal Deep Link for routing directions
-  const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+  // 👉 FIXED: Official Google Maps Universal Deep Link for routing directions
+  const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=$${lat},${lng}`;
 
   return (
     <div className="fixed inset-0 z-[4000] flex items-end sm:items-center justify-center p-0 sm:p-4 font-sans">
-      {/* Blurred Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -30,7 +30,6 @@ const EmergencyMatchModal = ({ sosData, onClose }) => {
         onClick={onClose}
       />
 
-      {/* The Tactical Bottom Sheet / Modal */}
       <motion.div
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
@@ -38,10 +37,8 @@ const EmergencyMatchModal = ({ sosData, onClose }) => {
         transition={{ type: "spring", damping: 25, stiffness: 200 }}
         className="relative w-full max-w-md bg-white border-t sm:border border-blazing-flame/30 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-[0_20px_50px_rgba(255,74,28,0.15)] overflow-hidden"
       >
-        {/* Mobile Pull Tab */}
         <div className="w-12 h-1.5 bg-dusty-lavender/20 rounded-full mx-auto mb-5 sm:hidden" />
 
-        {/* Desktop Close Button */}
         <button
           onClick={onClose}
           className="hidden sm:block absolute top-6 right-6 text-dusty-lavender hover:text-dark-raspberry bg-pearl-beige hover:bg-pearl-beige/80 p-2 rounded-full transition-colors z-20"
@@ -49,7 +46,6 @@ const EmergencyMatchModal = ({ sosData, onClose }) => {
           <FaTimes className="text-sm" />
         </button>
 
-        {/* Glowing Radar Background Effect */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-blazing-flame/10 rounded-full blur-[80px] pointer-events-none animate-pulse"></div>
 
         <div className="relative z-10 text-center">
@@ -68,7 +64,6 @@ const EmergencyMatchModal = ({ sosData, onClose }) => {
           </p>
 
           <div className="space-y-3 sm:space-y-4">
-            {/* 👉 NATIVE PHONE CALL TRIGGER */}
             <a
               href={`tel:${sosData.donorId.phone}`}
               className="w-full py-4 sm:py-5 bg-blazing-flame hover:bg-[#e03a12] active:bg-[#c43212] text-white rounded-2xl font-black text-xs sm:text-sm uppercase tracking-widest transition-all shadow-[0_10px_25px_rgba(255,74,28,0.3)] active:scale-95 flex items-center justify-center gap-3"
@@ -77,7 +72,6 @@ const EmergencyMatchModal = ({ sosData, onClose }) => {
               {sosData.donorId.name.split(" ")[0]} Now
             </a>
 
-            {/* 👉 GOOGLE MAPS ROUTING */}
             <a
               href={mapsUrl}
               target="_blank"
@@ -87,7 +81,6 @@ const EmergencyMatchModal = ({ sosData, onClose }) => {
               <FaDirections className="text-lg text-pine-teal" /> GPS Routing
             </a>
 
-            {/* IN-APP CHAT FALLBACK */}
             <button
               onClick={() => {
                 onClose();

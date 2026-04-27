@@ -15,14 +15,14 @@ const sendPostAlertEmail = async (bccEmails, postDetails) => {
 
   const radarLink = `${process.env.FRONTEND_URL}/radar`;
 
-  // 👉 THE FIX: Dynamic styling based on whether it's an emergency!
+  // 👉 SAHAYAM LIGHT THEME DYNAMICS
   const isEmergency = postDetails.isEmergency || false;
   
   const theme = {
-    title: isEmergency ? "Emergency Alert in Your Sector" : "New Community Offer Nearby",
+    title: isEmergency ? "EMERGENCY ALERT IN YOUR SECTOR" : "NEW COMMUNITY OFFER NEARBY",
     subject: isEmergency ? `🚨 URGENT: ${postDetails.bloodGroup || 'Assistance'} Needed` : `📢 Local Update: New Item Available`,
-    color: isEmergency ? "#f87171" : "#2dd4bf", // Red for SOS, Teal for Donations
-    border: isEmergency ? "#ef4444" : "#0d9488",
+    color: isEmergency ? "#ff4a1c" : "#9f1164", // Blazing Flame for SOS, Dark Raspberry for Donations
+    border: isEmergency ? "#ff4a1c" : "#9f1164",
     messageLabel: isEmergency ? "Transmission Details" : "Item Details",
   };
 
@@ -31,22 +31,23 @@ const sendPostAlertEmail = async (bccEmails, postDetails) => {
     bcc: bccEmails, 
     subject: theme.subject,
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #0f172a; padding: 40px; border-radius: 16px; color: #f8fafc;">
-        <h2 style="color: ${theme.color}; margin-top: 0;">${theme.title}</h2>
-        <p style="color: #cbd5e1; font-size: 16px; line-height: 1.5;">A nearby HopeLink member has updated the grid.</p>
+      <div style="font-family: ui-sans-serif, system-ui, sans-serif; max-width: 600px; margin: 0 auto; background-color: #fdfbf7; padding: 40px; border-radius: 24px; color: #29524a; border: 1px solid rgba(132, 107, 138, 0.3); box-shadow: 0 20px 40px rgba(41, 82, 74, 0.08);">
         
-        <div style="background-color: #1e293b; padding: 20px; border-left: 4px solid ${theme.border}; border-radius: 8px; margin: 30px 0;">
-          <p style="margin: 0 0 10px 0; color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: bold;">${theme.messageLabel}</p>
-          <p style="margin: 0; font-size: 18px; font-weight: 500;">"${postDetails.message}"</p>
-          ${postDetails.bloodGroup ? `<p style="margin: 15px 0 0 0; color: ${theme.color}; font-weight: bold;">Required: ${postDetails.bloodGroup}</p>` : ''}
+        <h2 style="color: ${theme.color}; margin-top: 0; font-weight: 900; font-style: italic; letter-spacing: -0.05em;">${theme.title}</h2>
+        <p style="color: #846b8a; font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.1em;">A nearby Sahayam member has updated the grid.</p>
+        
+        <div style="background-color: #ffffff; padding: 24px; border-left: 4px solid ${theme.border}; border-radius: 16px; margin: 30px 0; box-shadow: 0 4px 6px rgba(132, 107, 138, 0.1);">
+          <p style="margin: 0 0 10px 0; color: #846b8a; font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; font-weight: 900;">${theme.messageLabel}</p>
+          <p style="margin: 0; font-size: 18px; font-weight: 700; color: #29524a;">"${postDetails.message}"</p>
+          ${postDetails.bloodGroup ? `<p style="margin: 15px 0 0 0; color: ${theme.color}; font-weight: 900; font-size: 14px; text-transform: uppercase; letter-spacing: 0.1em;">Required: ${postDetails.bloodGroup}</p>` : ''}
         </div>
 
-        <p style="color: #cbd5e1; margin-bottom: 30px;">Access the radar to view the exact location and connect.</p>
+        <p style="color: #29524a; margin-bottom: 30px; font-weight: 500;">Access the radar to view the exact location and establish contact.</p>
         
-        <a href="${radarLink}" style="display: inline-block; padding: 14px 28px; background-color: ${theme.border}; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em;">Open Radar</a>
+        <a href="${radarLink}" style="display: inline-block; padding: 16px 32px; background-color: ${theme.border}; color: #ffffff; text-decoration: none; border-radius: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; box-shadow: 0 10px 25px rgba(41, 82, 74, 0.2);">Open Radar</a>
         
-        <hr style="border: 0; border-top: 1px solid #334155; margin: 40px 0 20px 0;" />
-        <p style="font-size: 11px; color: #64748b; margin: 0;">You are receiving this communication because your HopeLink profile is set to an active radius near this event.</p>
+        <hr style="border: 0; border-top: 1px solid rgba(132, 107, 138, 0.2); margin: 40px 0 20px 0;" />
+        <p style="font-size: 10px; color: #846b8a; margin: 0; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em;">You are receiving this communication because your Sahayam profile is set to an active radius near this event.</p>
       </div>
     `,
   };

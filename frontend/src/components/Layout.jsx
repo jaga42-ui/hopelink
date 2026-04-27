@@ -1,3 +1,4 @@
+// Developed by guruprasad and team
 import { useState, useEffect, useContext } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -58,7 +59,8 @@ const Layout = ({ children }) => {
 
   // Global Alerts (Mission Control)
   useEffect(() => {
-    const socket = io("https://hopelink-api.onrender.com", {
+    // 👉 FIXED: Environment Variable logic for local testing vs live site
+    const socket = io(import.meta.env.VITE_BACKEND_URL || "https://hopelink-api.onrender.com", {
       transports: ["websocket", "polling"],
     });
     socket.on("global_alert", (data) => {

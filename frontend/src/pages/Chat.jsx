@@ -1,3 +1,4 @@
+// Developed by guruprasad and team
 import { useState, useEffect, useContext, useRef } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
@@ -21,7 +22,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import api from "../utils/api";
 
-const SOCKET_URL = "https://hopelink-api.onrender.com";
+// 👉 FIXED: Environment Variable logic for local testing vs live site
+const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || "https://hopelink-api.onrender.com";
 
 const Chat = () => {
   const { user } = useContext(AuthContext);
@@ -44,7 +46,6 @@ const Chat = () => {
   const messagesEndRef = useRef(null);
   const socketRef = useRef(null);
 
-  // 👉 PREMIUM LIGHT THEME CONFIG
   const localRole = user?.activeRole || "donor";
   const isDonor = localRole === "donor";
   const roleTheme = {
