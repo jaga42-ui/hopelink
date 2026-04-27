@@ -19,17 +19,12 @@ import {
   FaLock,
   FaUsers,
   FaRunning,
-  FaDownload,
   FaHandsHelping,
   FaBullhorn,
   FaCalendarPlus,
-  FaClock,
-  FaEdit,
-  FaKey,
   FaBell,
   FaShareAlt,
   FaMedal,
-  FaFlag,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -45,7 +40,6 @@ const optimizeImageUrl = (url) => {
   return url.replace("/upload/", "/upload/f_auto,q_auto,w_800/");
 };
 
-// Premium Light Theme Skeleton
 const SkeletonCard = () => (
   <div className="relative overflow-hidden flex flex-col bg-white/70 backdrop-blur-lg border border-white rounded-[2.5rem] shadow-[0_20px_40px_rgba(41,82,74,0.08)] h-[350px]">
     <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/50 to-transparent z-10" />
@@ -189,7 +183,7 @@ const Dashboard = () => {
 
     socket.on("new_listing", (newDonation) => {
       setFeed((prev) => [newDonation, ...prev]);
-      if (newDonation.isEmergency) {
+      if (newDonation.isEmergency)
         toast.error("🚨 NEW SOS DETECTED!", {
           duration: 6000,
           style: {
@@ -198,7 +192,6 @@ const Dashboard = () => {
             fontWeight: "bold",
           },
         });
-      }
     });
 
     socket.on("listing_updated", (updatedItem) =>
@@ -208,12 +201,6 @@ const Dashboard = () => {
     );
     socket.on("listing_deleted", (deletedId) =>
       setFeed((prev) => prev.filter((item) => item._id !== deletedId)),
-    );
-    socket.on("new_event", (newEvent) =>
-      setEventsFeed((prev) => [newEvent, ...prev]),
-    );
-    socket.on("event_deleted", (deletedId) =>
-      setEventsFeed((prev) => prev.filter((ev) => ev._id !== deletedId)),
     );
 
     socket.on("new_message_notification", (data) => {
@@ -229,17 +216,6 @@ const Dashboard = () => {
           fontWeight: "bold",
         },
       });
-
-      if (Notification.permission === "granted") {
-        try {
-          new Notification(`Sahayam: ${data.senderName || "User"}`, {
-            body: data.text || "New message",
-            icon: "/logo.png",
-          });
-        } catch (e) {
-          console.warn("OS Notification blocked.");
-        }
-      }
     });
     return () => socket.disconnect();
   }, [user, navigate]);
@@ -267,20 +243,12 @@ const Dashboard = () => {
     }
   };
 
-  const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === "accepted") setIsInstallable(false);
-    setDeferredPrompt(null);
-  };
-
-  // 👉 UPDATED TO GOOGLE MAPS GEOCODING
+  // OSM REVERSE GEOCODING
   const handleGetLocation = async (isEvent = false) => {
     if (!navigator.geolocation)
       return toast.error("Geolocation is not supported.");
     setIsFetchingLocation(true);
-    const toastId = toast.loading("Locking onto GPS via Google Satellite...", {
+    const toastId = toast.loading("Locking onto GPS...", {
       style: { background: "#ffffff", color: "#29524a", fontWeight: "bold" },
     });
 
@@ -288,21 +256,17 @@ const Dashboard = () => {
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
-          const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-
-          if (!apiKey) throw new Error("API Key Missing");
-
           const { data } = await axios.get(
-            `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`,
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
           );
 
-          if (data.results && data.results.length > 0) {
-            const cityComponent = data.results[0].address_components.find((c) =>
-              c.types.includes("locality"),
-            );
-            const cityString = cityComponent
-              ? cityComponent.long_name
-              : data.results[0].formatted_address.split(",")[0];
+          if (data && data.address) {
+            const cityString =
+              data.address.city ||
+              data.address.town ||
+              data.address.village ||
+              data.address.county ||
+              data.display_name.split(",")[0];
 
             if (isEvent)
               setEventData((prev) => ({
@@ -324,9 +288,7 @@ const Dashboard = () => {
             throw new Error("No location found");
           }
         } catch {
-          toast.error("Could not resolve address via Google Maps.", {
-            id: toastId,
-          });
+          toast.error("Could not resolve address via OSM.", { id: toastId });
         } finally {
           setIsFetchingLocation(false);
         }
@@ -339,38 +301,47 @@ const Dashboard = () => {
     );
   };
 
-  // 👉 UPDATED TO GOOGLE MAPS AUTOCOMPLETE
+  // OSM AUTOCOMPLETE
   const handleLocationType = (e, isEvent = false) => {
     const val = e.target.value;
-    if (isEvent) setEventData((prev) => ({ ...prev, addressText: val }));
-    else setSosData((prev) => ({ ...prev, addressText: val }));
+    if (isEvent)
+      setEventData((prev) => ({
+        ...prev,
+        addressText: val,
+        lat: null,
+        lng: null,
+      }));
+    else
+      setSosData((prev) => ({
+        ...prev,
+        addressText: val,
+        lat: null,
+        lng: null,
+      }));
 
     if (typingTimeout) clearTimeout(typingTimeout);
 
     if (val.length > 2) {
-      setTypingTimeout(
-        setTimeout(async () => {
-          try {
-            const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-            if (!apiKey) return;
-
-            const { data } = await axios.get(
-              `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(val)}&key=${apiKey}`,
-            );
-
-            if (data.status === "OK") {
-              const formattedSuggestions = data.results
-                .slice(0, 4)
-                .map((res) => ({
-                  display_name: res.formatted_address,
-                  lat: res.geometry.location.lat,
-                  lon: res.geometry.location.lng,
-                }));
-              setSuggestions(formattedSuggestions);
-            }
-          } catch {}
-        }, 600),
-      );
+      const timeoutId = setTimeout(async () => {
+        try {
+          const { data } = await axios.get(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=5`,
+          );
+          if (data && data.length > 0) {
+            const formattedSuggestions = data.map((res) => ({
+              display_name: res.display_name,
+              lat: res.lat,
+              lon: res.lon,
+            }));
+            setSuggestions(formattedSuggestions);
+          } else {
+            setSuggestions([]);
+          }
+        } catch (error) {
+          console.error("Autocomplete failed");
+        }
+      }, 600);
+      setTypingTimeout(timeoutId);
     } else {
       setSuggestions([]);
     }
@@ -433,71 +404,6 @@ const Dashboard = () => {
     }
   };
 
-  const openEditEventModal = (event) => {
-    setEditingEventId(event._id);
-    const formattedDate = new Date(event.eventDate).toISOString().split("T")[0];
-    setEventData({
-      title: event.title,
-      description: event.description,
-      category: event.category,
-      eventDate: formattedDate,
-      startTime: event.startTime,
-      endTime: event.endTime,
-      addressText: event.locationText,
-      lat: event.location?.coordinates[1] || null,
-      lng: event.location?.coordinates[0] || null,
-      image: null,
-    });
-    setShowEventModal(true);
-  };
-  const closeEventModal = () => {
-    setShowEventModal(false);
-    setEditingEventId(null);
-    setEventData({
-      title: "",
-      description: "",
-      category: "Blood Camp",
-      eventDate: "",
-      startTime: "",
-      endTime: "",
-      addressText: "",
-      lat: null,
-      lng: null,
-      image: null,
-    });
-  };
-
-  const handleEventSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    try {
-      const formData = new FormData();
-      formData.append("title", eventData.title);
-      formData.append("description", eventData.description);
-      formData.append("category", eventData.category);
-      formData.append("eventDate", eventData.eventDate);
-      formData.append("startTime", eventData.startTime);
-      formData.append("endTime", eventData.endTime);
-      formData.append("locationText", eventData.addressText);
-      if (eventData.lat) formData.append("lat", eventData.lat);
-      if (eventData.lng) formData.append("lng", eventData.lng);
-      if (eventData.image) formData.append("image", eventData.image);
-
-      if (editingEventId) {
-        await api.put(`/events/${editingEventId}`, formData);
-        toast.success("Event updated!");
-      } else {
-        await api.post("/events", formData);
-        toast.success("Event broadcasted!");
-      }
-      closeEventModal();
-    } catch {
-      toast.error("Action failed.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const handleDeletePost = async (id) => {
     if (window.confirm("Retract this transmission?")) {
       try {
@@ -535,23 +441,6 @@ const Dashboard = () => {
       toast.error("Approval failed");
     } finally {
       setApprovingId(null);
-    }
-  };
-
-  const handleFulfillSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    try {
-      await api.patch(`/donations/${fulfillModal.donationId}/fulfill`, {
-        pin: fulfillModal.pin,
-        rating: fulfillModal.rating,
-      });
-      toast.success("Handshake Verified!");
-      setFulfillModal({ isOpen: false, donationId: null, pin: "", rating: 5 });
-    } catch (error) {
-      toast.error("Incorrect Access PIN");
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -597,7 +486,6 @@ const Dashboard = () => {
   return (
     <Layout>
       <div className="max-w-6xl mx-auto px-4 pb-32 md:pb-24 relative min-h-screen text-pine-teal">
-        {/* RESPONDER HUD */}
         <div className="fixed top-20 right-4 md:top-24 md:right-8 z-[100] w-56 md:w-64 space-y-3 pointer-events-none">
           <AnimatePresence>
             {responders.map((res, i) => (
@@ -624,7 +512,6 @@ const Dashboard = () => {
           </AnimatePresence>
         </div>
 
-        {/* HEADER */}
         <header className="pt-6 pb-4 flex flex-col gap-4">
           <div className="flex justify-between items-end">
             <motion.div
@@ -705,24 +592,9 @@ const Dashboard = () => {
                 )}
               </motion.button>
             )}
-
-            {user?.isAdmin && viewMode === "events" && (
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => {
-                  setEditingEventId(null);
-                  setShowEventModal(true);
-                }}
-                className="flex-shrink-0 px-4 py-2.5 sm:px-5 sm:py-2.5 bg-pine-teal rounded-xl flex items-center gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest text-white shadow-lg"
-              >
-                <FaCalendarPlus className="text-sm" /> Post Drive
-              </motion.button>
-            )}
           </div>
         </header>
 
-        {/* FEED TOGGLE */}
         <div className="flex bg-white/50 backdrop-blur-md p-1 rounded-xl border border-dusty-lavender/30 mb-6 shadow-sm">
           <button
             onClick={() => setViewMode("p2p")}
@@ -738,7 +610,6 @@ const Dashboard = () => {
           </button>
         </div>
 
-        {/* FEED CONTENT - PEER TO PEER */}
         {viewMode === "p2p" && (
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -845,7 +716,6 @@ const Dashboard = () => {
                               </button>
                             )}
                           </div>
-
                           {item.image ? (
                             <div className="w-full h-40 rounded-2xl overflow-hidden mb-4 relative shrink-0 border border-dusty-lavender/20">
                               <img
@@ -869,14 +739,12 @@ const Dashboard = () => {
                               </div>
                             )
                           )}
-
                           <h3 className="text-lg font-black text-pine-teal leading-tight mb-2 line-clamp-1">
                             {item.title}
                           </h3>
                           <p className="text-pine-teal/70 text-xs leading-relaxed line-clamp-2 mb-4 flex-1">
                             {item.description}
                           </p>
-
                           <div className="flex items-center justify-between mt-auto">
                             <span className="flex items-center gap-2 text-dusty-lavender text-[10px] font-bold flex-1 pr-2">
                               <FaMapMarkerAlt className="text-dark-raspberry" />
@@ -994,7 +862,6 @@ const Dashboard = () => {
           </motion.div>
         )}
 
-        {/* FEED CONTENT - EVENTS */}
         {viewMode === "events" && (
           <motion.div
             initial={{ opacity: 0, x: 20 }}

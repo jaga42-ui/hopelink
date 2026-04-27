@@ -18,8 +18,7 @@ const CreateDonation = () => {
 
   const [formData, setFormData] = useState({
     listingType: user?.activeRole === "receiver" ? "request" : "donation",
-    category: "food",
-    title: "", description: "", quantity: "", addressText: user?.addressText || "",
+    category: "food", title: "", description: "", quantity: "", addressText: user?.addressText || "",
     condition: "Gently Used", foodType: "Veg", expiryDate: "", pickupTime: "", bookAuthor: "",
   });
 
@@ -30,66 +29,53 @@ const CreateDonation = () => {
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [typingTimeout, setTypingTimeout] = useState(null);
 
-  // 👉 PREMIUM LIGHT THEME VARIABLES
   const isRequest = formData.listingType === "request";
   const themeAccent = isRequest ? "text-dark-raspberry" : "text-blazing-flame";
   const themeBg = isRequest ? "bg-dark-raspberry hover:bg-[#850e53]" : "bg-blazing-flame hover:bg-[#e03a12]";
   const themeFocusBorder = isRequest ? "focus:border-dark-raspberry" : "focus:border-blazing-flame";
 
-  // 👉 GOOGLE MAPS REVERSE GEOCODING (GPS)
+  // OSM REVERSE GEOCODING (GPS)
   const handleGetLocation = () => {
     if (!navigator.geolocation) { toast.error("Geolocation is not supported by your browser"); return; }
     setIsFetchingLocation(true);
+    const toastId = toast.loading("Locking onto GPS...");
     
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
-          const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+          const { data } = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
           
-          if (!apiKey) throw new Error("API Key Missing");
-
-          const { data } = await axios.get(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`);
-          
-          if (data.results && data.results.length > 0) {
-            const cityComponent = data.results[0].address_components.find(c => c.types.includes("locality"));
-            const cityString = cityComponent ? cityComponent.long_name : data.results[0].formatted_address.split(",")[0];
-            
+          if (data && data.address) {
+            const cityString = data.address.city || data.address.town || data.address.village || data.address.county || data.display_name.split(",")[0];
             setFormData((prev) => ({ ...prev, addressText: cityString }));
-            toast.success(`Location locked: ${cityString}`);
-          } else {
-             throw new Error("No location found");
-          }
-        } catch (error) { toast.error("Could not resolve location address"); } finally { setIsFetchingLocation(false); }
+            toast.success(`Location locked: ${cityString}`, { id: toastId });
+          } else { throw new Error("No location found"); }
+        } catch (error) { toast.error("Could not resolve location address", { id: toastId }); } finally { setIsFetchingLocation(false); }
       },
-      () => { setIsFetchingLocation(false); toast.error("Please allow location permissions"); }
+      () => { setIsFetchingLocation(false); toast.error("Please allow location permissions", { id: toastId }); }
     );
   };
 
-  // 👉 GOOGLE MAPS AUTOCOMPLETE
+  // OSM AUTOCOMPLETE
   const handleLocationType = (e) => {
     const val = e.target.value;
     setFormData((prev) => ({ ...prev, addressText: val }));
     if (typingTimeout) clearTimeout(typingTimeout);
     
     if (val.length > 2) {
-      setTypingTimeout(setTimeout(async () => {
+      const timeoutId = setTimeout(async () => {
         try {
-          const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-          if (!apiKey) return;
-          
-          const { data } = await axios.get(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(val)}&key=${apiKey}`);
-          
-          if (data.status === "OK") {
-            const formattedSuggestions = data.results.slice(0, 4).map(res => ({
-              display_name: res.formatted_address,
-              lat: res.geometry.location.lat,
-              lon: res.geometry.location.lng
+          const { data } = await axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=5`);
+          if (data && data.length > 0) {
+            const formattedSuggestions = data.map(res => ({
+              display_name: res.display_name, lat: res.lat, lon: res.lon
             }));
             setSuggestions(formattedSuggestions);
-          }
+          } else { setSuggestions([]); }
         } catch (error) { console.error("Autocomplete failed"); }
-      }, 600));
+      }, 600);
+      setTypingTimeout(timeoutId);
     } else { setSuggestions([]); }
   };
 
@@ -114,8 +100,7 @@ const CreateDonation = () => {
       if (imageFile) submitData.append("image", imageFile);
 
       if (formData.category === "food" && !isRequest && !formData.expiryDate) {
-        setIsSubmitting(false);
-        return toast.error("Please provide an expiry/consume-by date for food safety.");
+        setIsSubmitting(false); return toast.error("Please provide an expiry/consume-by date for food safety.");
       }
 
       await api.post("/donations", submitData);
@@ -132,15 +117,12 @@ const CreateDonation = () => {
         <header className="mb-8 pt-4 text-center md:text-left flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
             <h1 className="text-3xl md:text-5xl font-black text-pine-teal tracking-tight uppercase transition-colors duration-500">
-              {isRequest ? "Request An " : "List An "}
-              <span className={themeAccent}>Item.</span>
+              {isRequest ? "Request An " : "List An "} <span className={themeAccent}>Item.</span>
             </h1>
             <p className="text-dusty-lavender font-bold uppercase tracking-[0.2em] md:tracking-[0.3em] text-[9px] md:text-[10px] mt-2">
               {isRequest ? "Ask the Sahayam community for help" : "Provide details to help the community"}
             </p>
           </div>
-
-          {/* Toggle Switch */}
           <div className="flex bg-white/50 backdrop-blur-md border border-dusty-lavender/30 rounded-full p-1 shadow-sm relative overflow-hidden w-full md:w-auto">
             <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-full transition-all duration-300 ease-out ${themeBg}`} style={{ left: !isRequest ? "4px" : "calc(50%)" }}></div>
             <button type="button" onClick={() => setFormData({ ...formData, listingType: "donation" })} className={`relative z-10 flex-1 px-2 sm:px-6 py-3.5 md:py-3 font-black text-[9px] sm:text-xs uppercase tracking-widest transition-colors ${!isRequest ? "text-white" : "text-dusty-lavender hover:text-blazing-flame"}`}>I Want To Donate</button>
@@ -149,7 +131,6 @@ const CreateDonation = () => {
         </header>
 
         <form onSubmit={handleSubmit} className={`bg-white/70 backdrop-blur-lg border rounded-3xl md:rounded-[2.5rem] p-5 md:p-10 shadow-[0_20px_40px_rgba(41,82,74,0.08)] space-y-8 transition-colors duration-500 border-white`}>
-          {/* BASIC INFO */}
           <div className="space-y-5 md:space-y-6">
             <h3 className="text-pine-teal text-sm md:text-base font-bold flex items-center gap-2 border-b border-dusty-lavender/20 pb-3">
               <FaInfoCircle className={themeAccent} /> Basic Information
@@ -158,9 +139,7 @@ const CreateDonation = () => {
               <div>
                 <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 block">Category</label>
                 <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className={`w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-5 py-3.5 md:py-4 text-pine-teal text-base font-bold outline-none transition-colors appearance-none cursor-pointer focus:bg-white ${themeFocusBorder}`}>
-                  <option value="food">🍔 Food & Groceries</option>
-                  <option value="clothes">👕 Clothes & Apparel</option>
-                  <option value="book">📘 Books & Education</option>
+                  <option value="food">🍔 Food & Groceries</option><option value="clothes">👕 Clothes & Apparel</option><option value="book">📘 Books & Education</option>
                 </select>
               </div>
               <div>
@@ -180,7 +159,6 @@ const CreateDonation = () => {
             </div>
           </div>
 
-          {/* SPECIFIC DETAILS */}
           <div className={`border rounded-2xl md:rounded-3xl p-5 md:p-6 space-y-5 md:space-y-6 transition-colors duration-500 bg-white/50 border-white shadow-sm`}>
             <h3 className="text-pine-teal text-sm md:text-base font-bold flex items-center gap-2 border-b border-dusty-lavender/20 pb-3">
               <FaTags className={themeAccent} /> Specific Details
@@ -223,7 +201,6 @@ const CreateDonation = () => {
             </AnimatePresence>
           </div>
 
-          {/* LOGISTICS & MEDIA */}
           <div className="space-y-5 md:space-y-6">
             <h3 className="text-pine-teal text-sm md:text-base font-bold flex items-center gap-2 border-b border-dusty-lavender/20 pb-3">
               <FaLocationArrow className={themeAccent} /> Logistics & Media
@@ -239,15 +216,13 @@ const CreateDonation = () => {
                 </div>
                 {suggestions.length > 0 && (
                   <div className="absolute z-[100] w-full mt-2 bg-white border border-dusty-lavender/30 rounded-xl overflow-y-auto max-h-48 shadow-2xl">
-                    {suggestions.map((s, index) => (
-                      <div key={index} onClick={() => handleSelectSuggestion(s.display_name)} className="px-5 py-3 text-sm text-pine-teal hover:text-white hover:bg-pine-teal cursor-pointer border-b border-dusty-lavender/20 last:border-0 truncate">{s.display_name}</div>
-                    ))}
+                    {suggestions.map((s, index) => (<div key={index} onClick={() => handleSelectSuggestion(s.display_name)} className="px-5 py-3 text-sm text-pine-teal hover:text-white hover:bg-pine-teal cursor-pointer border-b border-dusty-lavender/20 last:border-0 truncate">{s.display_name}</div>))}
                   </div>
                 )}
               </div>
               <div>
                 <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 flex items-center gap-2"><FaClock /> Preferred {isRequest ? "Meetup" : "Pickup"} Time</label>
-                <input required value={formData.pickupTime} onChange={(e) => setFormData({ ...formData, pickupTime: e.target.value })} placeholder="e.g. After 6 PM today, Weekends only" className={`w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-5 py-3.5 md:py-4 text-pine-teal text-base font-bold outline-none transition-colors focus:bg-white ${themeFocusBorder}`} />
+                <input required value={formData.pickupTime} onChange={(e) => setFormData({ ...formData, pickupTime: e.target.value })} placeholder="e.g. After 6 PM today" className={`w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-5 py-3.5 md:py-4 text-pine-teal text-base font-bold outline-none transition-colors focus:bg-white ${themeFocusBorder}`} />
               </div>
               <div>
                 <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 block">Reference Image {isRequest && "(Optional)"}</label>
@@ -259,7 +234,6 @@ const CreateDonation = () => {
                     <div className="text-center p-4">
                       <FaUpload className={`text-2xl md:text-3xl text-dusty-lavender mx-auto mb-2 md:mb-3 transition-colors group-hover:${themeAccent}`} />
                       <p className="text-pine-teal text-xs md:text-sm font-bold">{isRequest ? "Upload reference photo" : "Upload an image"}</p>
-                      <p className="text-dusty-lavender text-[9px] md:text-[10px] uppercase tracking-widest mt-1 px-4">{isRequest ? "Helps people know what you need" : "Clear photos get claimed faster"}</p>
                     </div>
                   )}
                 </div>

@@ -5,19 +5,8 @@ import imageCompression from "browser-image-compression";
 import AuthContext from "../context/AuthContext";
 import Layout from "../components/Layout";
 import {
-  FaBoxOpen,
-  FaUpload,
-  FaSpinner,
-  FaLeaf,
-  FaBook,
-  FaTags,
-  FaClock,
-  FaCalendarAlt,
-  FaLocationArrow,
-  FaHamburger,
-  FaTshirt,
-  FaCube,
-  FaHandHoldingHeart,
+  FaBoxOpen, FaUpload, FaSpinner, FaLeaf, FaBook, FaTags, FaClock,
+  FaCalendarAlt, FaLocationArrow, FaHamburger, FaTshirt, FaCube, FaHandHoldingHeart,
 } from "react-icons/fa";
 import toast from "react-hot-toast";
 
@@ -34,32 +23,21 @@ const Donations = () => {
 
   const [formData, setFormData] = useState({
     listingType: user?.activeRole === "donor" ? "donation" : "request",
-    category: "food",
-    title: "",
-    description: "",
-    quantity: "",
-    addressText: user?.addressText || "",
-    lat: null,
-    lng: null,
-    pickupTime: "",
-    condition: "New",
-    foodType: "Veg",
-    expiryDate: "",
-    bookAuthor: "",
-    image: null,
+    category: "food", title: "", description: "", quantity: "",
+    addressText: user?.addressText || "", lat: null, lng: null, pickupTime: "",
+    condition: "New", foodType: "Veg", expiryDate: "", bookAuthor: "", image: null,
   });
 
   const [suggestions, setSuggestions] = useState([]);
   const typingTimeoutRef = useRef(null);
 
-  // 👉 PREMIUM LIGHT THEME VARIABLES
   const isRequest = formData.listingType === "request";
   const themeAccent = isRequest ? "text-dark-raspberry" : "text-blazing-flame";
   const themeBg = isRequest ? "bg-dark-raspberry hover:bg-[#850e53]" : "bg-blazing-flame hover:bg-[#e03a12]";
   const themeFocusBorder = isRequest ? "focus:border-dark-raspberry" : "focus:border-blazing-flame";
   const themeContainerBorder = "border-white";
 
-  // 👉 GOOGLE MAPS AUTOCOMPLETE
+  // OSM AUTOCOMPLETE
   const handleLocationType = (e) => {
     const val = e.target.value;
     setFormData((prev) => ({ ...prev, addressText: val, lat: null, lng: null }));
@@ -68,19 +46,13 @@ const Donations = () => {
     if (val.length > 2) {
       typingTimeoutRef.current = setTimeout(async () => {
         try {
-          const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-          if (!apiKey) return;
-
-          const { data } = await axios.get(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(val)}&key=${apiKey}`);
-          
-          if (data.status === "OK") {
-            const formattedSuggestions = data.results.slice(0, 4).map(res => ({
-              display_name: res.formatted_address,
-              lat: res.geometry.location.lat,
-              lon: res.geometry.location.lng
+          const { data } = await axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=5`);
+          if (data && data.length > 0) {
+            const formattedSuggestions = data.map(res => ({
+              display_name: res.display_name, lat: res.lat, lon: res.lon
             }));
             setSuggestions(formattedSuggestions);
-          }
+          } else { setSuggestions([]); }
         } catch (error) { console.error("Autocomplete failed"); }
       }, 600);
     } else { setSuggestions([]); }
@@ -92,33 +64,26 @@ const Donations = () => {
     setSuggestions([]);
   };
 
-  // 👉 GOOGLE MAPS REVERSE GEOCODING (GPS)
+  // OSM REVERSE GEOCODING (GPS)
   const handleGetLocation = () => {
     if (!navigator.geolocation) return toast.error("GPS not supported");
     setIsFetchingLocation(true);
+    const toastId = toast.loading("Locking onto GPS...");
     
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
-          const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+          const { data } = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
           
-          if (!apiKey) throw new Error("API Key Missing");
-
-          const { data } = await axios.get(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`);
-          
-          if (data.results && data.results.length > 0) {
-            const cityComponent = data.results[0].address_components.find(c => c.types.includes("locality"));
-            const cityString = cityComponent ? cityComponent.long_name : data.results[0].formatted_address.split(",")[0];
-            
+          if (data && data.address) {
+            const cityString = data.address.city || data.address.town || data.address.village || data.address.county || data.display_name.split(",")[0];
             setFormData((prev) => ({ ...prev, addressText: cityString, lat: latitude, lng: longitude }));
-            toast.success(`Location locked: ${cityString} 📍`);
-          } else {
-            throw new Error("Location unresolvable");
-          }
-        } catch (error) { toast.error("Could not resolve location via Google Maps."); } finally { setIsFetchingLocation(false); }
+            toast.success(`Location locked: ${cityString} 📍`, { id: toastId });
+          } else { throw new Error("Location unresolvable"); }
+        } catch (error) { toast.error("Could not resolve location via OSM.", { id: toastId }); } finally { setIsFetchingLocation(false); }
       },
-      () => { setIsFetchingLocation(false); toast.error("Please allow location permissions."); },
+      () => { setIsFetchingLocation(false); toast.error("Please allow location permissions.", { id: toastId }); },
       { enableHighAccuracy: true },
     );
   };
@@ -169,40 +134,20 @@ const Donations = () => {
           <h1 className="text-3xl md:text-4xl font-black text-pine-teal tracking-tight uppercase">
             CREATE <span className={themeAccent}>LISTING.</span>
           </h1>
-          <p className="text-dusty-lavender text-[10px] md:text-sm font-bold mt-2 tracking-widest uppercase md:normal-case">
-            Share details to make a Sahayam impact.
-          </p>
+          <p className="text-dusty-lavender text-[10px] md:text-sm font-bold mt-2 tracking-widest uppercase md:normal-case">Share details to make a Sahayam impact.</p>
         </header>
 
         <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8">
-          {/* SECTION 1: Listing Type Toggle */}
           <div className="bg-white/50 backdrop-blur-md p-1.5 md:p-2 rounded-2xl border border-dusty-lavender/30 flex shadow-sm">
-            <button
-              type="button"
-              onClick={() => setFormData({ ...formData, listingType: "donation" })}
-              className={`flex-1 py-3 md:py-3.5 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest transition-all ${formData.listingType === "donation" ? "bg-blazing-flame text-white shadow-md" : "text-dusty-lavender hover:bg-white hover:text-blazing-flame"}`}
-            >
-              I am Donating
-            </button>
-            <button
-              type="button"
-              onClick={() => setFormData({ ...formData, listingType: "request" })}
-              className={`flex-1 py-3 md:py-3.5 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest transition-all ${formData.listingType === "request" ? "bg-dark-raspberry text-white shadow-md" : "text-dusty-lavender hover:bg-white hover:text-dark-raspberry"}`}
-            >
-              I am Requesting
-            </button>
+            <button type="button" onClick={() => setFormData({ ...formData, listingType: "donation" })} className={`flex-1 py-3 md:py-3.5 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest transition-all ${formData.listingType === "donation" ? "bg-blazing-flame text-white shadow-md" : "text-dusty-lavender hover:bg-white hover:text-blazing-flame"}`}>I am Donating</button>
+            <button type="button" onClick={() => setFormData({ ...formData, listingType: "request" })} className={`flex-1 py-3 md:py-3.5 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest transition-all ${formData.listingType === "request" ? "bg-dark-raspberry text-white shadow-md" : "text-dusty-lavender hover:bg-white hover:text-dark-raspberry"}`}>I am Requesting</button>
           </div>
 
-          {/* SECTION 2: Interactive Category Cards */}
           <div>
             <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 mb-2 block">1. Select Category</label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
               {categories.map((cat) => (
-                <div
-                  key={cat.id}
-                  onClick={() => setFormData({ ...formData, category: cat.id })}
-                  className={`cursor-pointer flex flex-col items-center justify-center p-4 md:p-6 rounded-2xl md:rounded-3xl border transition-all duration-300 active:scale-95 ${formData.category === cat.id ? cat.active : `bg-white/60 border-white/50 ${cat.inactive}`}`}
-                >
+                <div key={cat.id} onClick={() => setFormData({ ...formData, category: cat.id })} className={`cursor-pointer flex flex-col items-center justify-center p-4 md:p-6 rounded-2xl md:rounded-3xl border transition-all duration-300 active:scale-95 ${formData.category === cat.id ? cat.active : `bg-white/60 border-white/50 ${cat.inactive}`}`}>
                   <div className="text-2xl md:text-3xl mb-2">{cat.icon}</div>
                   <span className="font-bold text-[10px] md:text-xs tracking-wider uppercase">{cat.label}</span>
                 </div>
@@ -210,10 +155,7 @@ const Donations = () => {
             </div>
           </div>
 
-          {/* MAIN FORM WRAPPER */}
           <div className={`bg-white/70 backdrop-blur-lg border rounded-3xl md:rounded-[2.5rem] p-5 md:p-8 shadow-[0_20px_40px_rgba(41,82,74,0.08)] space-y-6 md:space-y-8 transition-colors duration-500 ${themeContainerBorder}`}>
-            
-            {/* SECTION 3: Main Details */}
             <div className="space-y-5 md:space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6">
                 <div className="md:col-span-2">
@@ -231,15 +173,13 @@ const Donations = () => {
               </div>
             </div>
 
-            {/* SECTION 4: Category Specific Data */}
             <div className="bg-white/60 p-5 md:p-6 rounded-3xl border border-white shadow-sm grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
               {formData.category === "food" && (
                 <>
                   <div>
                     <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 flex items-center gap-2"><FaLeaf className={themeAccent} /> Food Type</label>
                     <select value={formData.foodType} onChange={(e) => setFormData({ ...formData, foodType: e.target.value })} className={`w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-6 py-3.5 md:py-4 text-pine-teal text-base md:text-sm font-bold outline-none cursor-pointer appearance-none focus:bg-white ${themeFocusBorder}`}>
-                      <option value="Veg">Vegetarian</option>
-                      <option value="Non-Veg">Non-Vegetarian</option>
+                      <option value="Veg">Vegetarian</option><option value="Non-Veg">Non-Vegetarian</option>
                     </select>
                   </div>
                   <div>
@@ -260,9 +200,7 @@ const Donations = () => {
                 <div>
                   <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 flex items-center gap-2"><FaTags className={themeAccent} /> Condition</label>
                   <select value={formData.condition} onChange={(e) => setFormData({ ...formData, condition: e.target.value })} className={`w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-6 py-3.5 md:py-4 text-pine-teal text-base md:text-sm font-bold outline-none cursor-pointer appearance-none focus:bg-white ${themeFocusBorder}`}>
-                    <option value="New">Brand New</option>
-                    <option value="Good">Gently Used</option>
-                    <option value="Fair">Fair</option>
+                    <option value="New">Brand New</option><option value="Good">Gently Used</option><option value="Fair">Fair</option>
                   </select>
                 </div>
               )}
@@ -273,7 +211,6 @@ const Donations = () => {
               </div>
             </div>
 
-            {/* SECTION 5: Location & Image */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6 items-end">
               <div className="relative">
                 <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 block">Location *</label>
@@ -285,9 +222,7 @@ const Donations = () => {
                 </div>
                 {suggestions.length > 0 && (
                   <div className="absolute z-[100] w-full mt-2 bg-white border border-dusty-lavender/30 rounded-xl overflow-y-auto max-h-48 shadow-2xl">
-                    {suggestions.map((s, index) => (
-                      <div key={index} onClick={() => handleSelectSuggestion(s)} className="px-5 py-3 text-sm text-pine-teal hover:text-white hover:bg-pine-teal cursor-pointer border-b border-dusty-lavender/20 last:border-0 truncate">{s.display_name}</div>
-                    ))}
+                    {suggestions.map((s, index) => (<div key={index} onClick={() => handleSelectSuggestion(s)} className="px-5 py-3 text-sm text-pine-teal hover:text-white hover:bg-pine-teal cursor-pointer border-b border-dusty-lavender/20 last:border-0 truncate">{s.display_name}</div>))}
                   </div>
                 )}
               </div>
@@ -302,10 +237,7 @@ const Donations = () => {
                       <span className="relative z-10 font-bold text-[10px] md:text-xs uppercase tracking-widest text-pine-teal drop-shadow-md flex flex-col md:flex-row items-center gap-1 md:gap-2"><FaUpload /> Change Image</span>
                     </>
                   ) : (
-                    <>
-                      <FaUpload className={`text-2xl md:text-lg transition-colors group-hover:${themeAccent}`} /> 
-                      <span className="font-bold text-[10px] md:text-xs uppercase tracking-widest text-center mt-1 md:mt-0">Select Image</span>
-                    </>
+                    <><FaUpload className={`text-2xl md:text-lg transition-colors group-hover:${themeAccent}`} /> <span className="font-bold text-[10px] md:text-xs uppercase tracking-widest text-center mt-1 md:mt-0">Select Image</span></>
                   )}
                 </div>
               </div>
