@@ -1,3 +1,4 @@
+// Developed by guruprasad and team
 import { useState, useEffect, useContext } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -63,11 +64,14 @@ const BloodRadar = () => {
         
         try {
           await api.put("/auth/location", { lat: latitude, lng: longitude });
-          // OPENSTREETMAP GEOCODING
-          const { data } = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-          if (data && data.address) {
-            const cityString = data.address.city || data.address.town || data.address.village || data.address.county || "Unknown Location";
-            setMyAddressText(cityString);
+          // 👉 MAPBOX REVERSE GEOCODING FOR INITIAL LOAD
+          const apiKey = import.meta.env.VITE_MAPBOX_TOKEN;
+          if(apiKey) {
+            const { data } = await axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${apiKey}`);
+            if (data && data.features && data.features.length > 0) {
+              const cityString = data.features[0].place_name.split(",")[0];
+              setMyAddressText(cityString);
+            }
           }
         } catch (e) { console.error("Location update failed"); }
       },
@@ -124,7 +128,6 @@ const BloodRadar = () => {
     <Layout>
       <div className="relative w-full h-[calc(100dvh-70px)] md:h-[85vh] md:max-w-6xl md:mx-auto md:mt-4 md:rounded-[2rem] overflow-hidden text-pine-teal bg-pearl-beige font-sans">
         
-        {/* FLOATING TOP BAR */}
         <div className="absolute top-4 left-4 right-4 z-[400] flex flex-wrap items-center justify-between gap-2 pointer-events-none">
           <div className="bg-white/80 backdrop-blur-md border border-white px-4 py-2.5 rounded-2xl flex items-center gap-3 shadow-[0_10px_30px_rgba(41,82,74,0.1)] pointer-events-auto">
             <div className={`w-2.5 h-2.5 rounded-full ${loading ? "bg-blazing-flame animate-pulse" : "bg-pine-teal animate-pulse shadow-[0_0_10px_rgba(41,82,74,0.5)]"}`} />
@@ -142,7 +145,6 @@ const BloodRadar = () => {
           </div>
         </div>
 
-        {/* MISSION DETECTED BANNER */}
         <AnimatePresence>
           {blastId && (
             <motion.div initial={{ y: -100, x: "-50%", opacity: 0 }} animate={{ y: 80, x: "-50%", opacity: 1 }} exit={{ y: -100, x: "-50%", opacity: 0 }} className="absolute top-0 left-1/2 z-[401] bg-white border-2 border-blazing-flame p-4 rounded-2xl shadow-[0_20px_50px_rgba(255,74,28,0.3)] flex flex-col sm:flex-row items-center gap-4 w-[90%] max-w-lg pointer-events-auto">
@@ -158,7 +160,6 @@ const BloodRadar = () => {
           )}
         </AnimatePresence>
 
-        {/* THE LEAFLET MAP */}
         <div className="absolute inset-0 z-0 bg-pearl-beige">
           {!myLocation ? (
             <div className="h-full w-full flex flex-col items-center justify-center space-y-4 text-dusty-lavender">
@@ -193,7 +194,6 @@ const BloodRadar = () => {
           )}
         </div>
 
-        {/* FLOATING SOS BUTTON & MODAL */}
         <div className="absolute bottom-24 md:bottom-8 left-0 right-0 z-[400] flex justify-center pointer-events-none">
           <button onClick={() => setShowBlastModal(true)} className="group relative flex items-center justify-center pointer-events-auto">
             <div className="absolute inset-0 bg-blazing-flame rounded-full animate-ping opacity-30" />

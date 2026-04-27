@@ -1,3 +1,4 @@
+// Developed by guruprasad and team
 import { useState, useContext } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -34,54 +35,64 @@ const CreateDonation = () => {
   const themeBg = isRequest ? "bg-dark-raspberry hover:bg-[#850e53]" : "bg-blazing-flame hover:bg-[#e03a12]";
   const themeFocusBorder = isRequest ? "focus:border-dark-raspberry" : "focus:border-blazing-flame";
 
-  // OSM REVERSE GEOCODING (GPS)
-  const handleGetLocation = () => {
-    if (!navigator.geolocation) { toast.error("Geolocation is not supported by your browser"); return; }
+  // 👉 MAPBOX REVERSE GEOCODING (GPS)
+  const handleGetLocation = async () => {
+    if (!navigator.geolocation) return toast.error("Geolocation is not supported.");
     setIsFetchingLocation(true);
-    const toastId = toast.loading("Locking onto GPS...");
+    const toastId = toast.loading("Locking onto GPS via Mapbox...", { style: { background: "#ffffff", color: "#29524a", fontWeight: "bold" } });
     
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
-          const { data } = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+          const apiKey = import.meta.env.VITE_MAPBOX_TOKEN;
+          if (!apiKey) throw new Error("Mapbox token missing");
+
+          const { data } = await axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${apiKey}`);
           
-          if (data && data.address) {
-            const cityString = data.address.city || data.address.town || data.address.village || data.address.county || data.display_name.split(",")[0];
-            setFormData((prev) => ({ ...prev, addressText: cityString }));
-            toast.success(`Location locked: ${cityString}`, { id: toastId });
+          if (data && data.features && data.features.length > 0) {
+            const cityString = data.features[0].place_name.split(",")[0];
+            setFormData((prev) => ({ ...prev, addressText: cityString, lat: latitude, lng: longitude }));
+            toast.success(`Coordinates locked: ${cityString}`, { id: toastId });
           } else { throw new Error("No location found"); }
-        } catch (error) { toast.error("Could not resolve location address", { id: toastId }); } finally { setIsFetchingLocation(false); }
+        } catch { toast.error("Could not resolve address via Mapbox.", { id: toastId }); } finally { setIsFetchingLocation(false); }
       },
-      () => { setIsFetchingLocation(false); toast.error("Please allow location permissions", { id: toastId }); }
+      () => { setIsFetchingLocation(false); toast.error("Failed to acquire location.", { id: toastId }); },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
     );
   };
 
-  // OSM AUTOCOMPLETE
+  // 👉 MAPBOX AUTOCOMPLETE
   const handleLocationType = (e) => {
     const val = e.target.value;
-    setFormData((prev) => ({ ...prev, addressText: val }));
+    setFormData((prev) => ({ ...prev, addressText: val, lat: null, lng: null }));
     if (typingTimeout) clearTimeout(typingTimeout);
     
     if (val.length > 2) {
       const timeoutId = setTimeout(async () => {
         try {
-          const { data } = await axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=5`);
-          if (data && data.length > 0) {
-            const formattedSuggestions = data.map(res => ({
-              display_name: res.display_name, lat: res.lat, lon: res.lon
+          const apiKey = import.meta.env.VITE_MAPBOX_TOKEN;
+          if (!apiKey) return;
+          
+          const { data } = await axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(val)}.json?access_token=${apiKey}&autocomplete=true&limit=5&country=in`);
+          
+          if (data && data.features) {
+            const formattedSuggestions = data.features.map(f => ({
+              display_name: f.place_name,
+              lat: f.center[1], 
+              lon: f.center[0]
             }));
             setSuggestions(formattedSuggestions);
           } else { setSuggestions([]); }
-        } catch (error) { console.error("Autocomplete failed"); }
+        } catch (error) { console.error("Mapbox Autocomplete failed"); }
       }, 600);
       setTypingTimeout(timeoutId);
     } else { setSuggestions([]); }
   };
 
-  const handleSelectSuggestion = (locationName) => {
-    const cleanName = locationName.split(",")[0];
-    setFormData((prev) => ({ ...prev, addressText: cleanName }));
+  const handleSelectSuggestion = (locationObj) => {
+    const cleanName = locationObj.display_name.split(",")[0];
+    setFormData((prev) => ({ ...prev, addressText: cleanName, lat: locationObj.lat, lng: locationObj.lon }));
     setSuggestions([]);
   };
 
@@ -216,13 +227,13 @@ const CreateDonation = () => {
                 </div>
                 {suggestions.length > 0 && (
                   <div className="absolute z-[100] w-full mt-2 bg-white border border-dusty-lavender/30 rounded-xl overflow-y-auto max-h-48 shadow-2xl">
-                    {suggestions.map((s, index) => (<div key={index} onClick={() => handleSelectSuggestion(s.display_name)} className="px-5 py-3 text-sm text-pine-teal hover:text-white hover:bg-pine-teal cursor-pointer border-b border-dusty-lavender/20 last:border-0 truncate">{s.display_name}</div>))}
+                    {suggestions.map((s, index) => (<div key={index} onClick={() => handleSelectSuggestion(s)} className="px-5 py-3 text-sm text-pine-teal hover:text-white hover:bg-pine-teal cursor-pointer border-b border-dusty-lavender/20 last:border-0 truncate">{s.display_name}</div>))}
                   </div>
                 )}
               </div>
               <div>
                 <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 flex items-center gap-2"><FaClock /> Preferred {isRequest ? "Meetup" : "Pickup"} Time</label>
-                <input required value={formData.pickupTime} onChange={(e) => setFormData({ ...formData, pickupTime: e.target.value })} placeholder="e.g. After 6 PM today" className={`w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-5 py-3.5 md:py-4 text-pine-teal text-base font-bold outline-none transition-colors focus:bg-white ${themeFocusBorder}`} />
+                <input required value={formData.pickupTime} onChange={(e) => setFormData({ ...formData, pickupTime: e.target.value })} placeholder="e.g. After 6 PM today, Weekends only" className={`w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-5 py-3.5 md:py-4 text-pine-teal text-base font-bold outline-none transition-colors focus:bg-white ${themeFocusBorder}`} />
               </div>
               <div>
                 <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 block">Reference Image {isRequest && "(Optional)"}</label>
@@ -234,6 +245,7 @@ const CreateDonation = () => {
                     <div className="text-center p-4">
                       <FaUpload className={`text-2xl md:text-3xl text-dusty-lavender mx-auto mb-2 md:mb-3 transition-colors group-hover:${themeAccent}`} />
                       <p className="text-pine-teal text-xs md:text-sm font-bold">{isRequest ? "Upload reference photo" : "Upload an image"}</p>
+                      <p className="text-dusty-lavender text-[9px] md:text-[10px] uppercase tracking-widest mt-1 px-4">{isRequest ? "Helps people know what you need" : "Clear photos get claimed faster"}</p>
                     </div>
                   )}
                 </div>

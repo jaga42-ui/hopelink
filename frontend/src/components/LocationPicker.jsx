@@ -3,12 +3,14 @@ import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-lea
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
+// 👉 Custom Tactical Marker for Sahayam
 const tacticalIcon = new L.Icon({
   iconUrl: 'https://cdn-icons-png.flaticon.com/512/8155/8155451.png', 
   iconSize: [35, 35],
   iconAnchor: [17, 35],
 });
 
+// Component to smoothly fly the map to the user's location
 const RecenterMap = ({ position }) => {
   const map = useMap();
   useEffect(() => {
@@ -17,6 +19,7 @@ const RecenterMap = ({ position }) => {
   return null;
 };
 
+// Component to handle user clicking on the map
 const LocationMarker = ({ onSelect }) => {
   const [position, setPos] = useState(null);
   
@@ -41,7 +44,7 @@ const LocationPicker = ({ onLocationSelect, initialPos = [20.2961, 85.8245] }) =
           setCenter(currentLoc);
           onLocationSelect({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         },
-        () => console.log("Using default center"),
+        () => console.log("Using default center. Waiting for manual pin drop."),
         { enableHighAccuracy: true }
       );
     }
@@ -50,6 +53,8 @@ const LocationPicker = ({ onLocationSelect, initialPos = [20.2961, 85.8245] }) =
   return (
     <div className="w-full space-y-2 font-sans">
       <div className="h-64 w-full rounded-2xl overflow-hidden border border-dusty-lavender/30 shadow-md relative group">
+        
+        {/* LEAFLET MAP CONTAINER */}
         <MapContainer 
           center={center} 
           zoom={14} 
@@ -57,15 +62,17 @@ const LocationPicker = ({ onLocationSelect, initialPos = [20.2961, 85.8245] }) =
           style={{ height: '100%', width: '100%', background: '#fdfbf7' }}
           zoomControl={false}
         >
-          {/* Sahayam Light Theme OSM Tiles */}
+          {/* 👉 PREMIUM SAHAYAM LIGHT THEME TILES (CARTO) */}
           <TileLayer 
             url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" 
             attribution='&copy; <a href="https://carto.com/">CARTO</a>'
           />
+          
           <RecenterMap position={center} />
           <LocationMarker onSelect={onLocationSelect} />
         </MapContainer>
 
+        {/* Overlay Instruction */}
         <div className="absolute top-3 left-3 z-[400] pointer-events-none">
           <div className="bg-white/90 backdrop-blur-md border border-dusty-lavender/30 px-3 py-1.5 rounded-lg shadow-sm">
             <p className="text-[9px] font-black text-blazing-flame uppercase tracking-widest leading-none">

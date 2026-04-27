@@ -1,3 +1,4 @@
+// Developed by guruprasad and team
 import { useState, useEffect, useContext } from 'react';
 import axios from 'axios'; 
 import AuthContext from '../context/AuthContext';
@@ -5,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  FaEnvelope, FaMapMarkerAlt, FaTint, FaBoxOpen, 
+  FaUser, FaEnvelope, FaMapMarkerAlt, FaTint, FaBoxOpen, 
   FaAward, FaHistory, FaEdit, FaSave, FaTimes, FaPhone, 
   FaLocationArrow, FaSpinner, FaStar, FaShieldAlt, FaSignOutAlt 
 } from 'react-icons/fa';
@@ -50,26 +51,33 @@ const Profile = () => {
     fetchImpactStats();
   }, [user]);
 
-  // OSM REVERSE GEOCODING (GPS)
-  const handleGetLocation = () => {
+  // 👉 MAPBOX REVERSE GEOCODING (GPS)
+  const handleGetLocation = async () => {
     if (!navigator.geolocation) return toast.error('Geolocation not supported');
     setIsFetchingLocation(true);
-    const toastId = toast.loading("Locking onto GPS...");
+    const toastId = toast.loading("Locking onto GPS via Mapbox...");
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
-          const { data } = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+          const apiKey = import.meta.env.VITE_MAPBOX_TOKEN;
+          if (!apiKey) throw new Error("Mapbox Token Missing");
+
+          const { data } = await axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${apiKey}`);
           
-          if (data && data.address) {
-            const cityString = data.address.city || data.address.town || data.address.village || data.address.county || data.display_name.split(",")[0];
+          if (data && data.features && data.features.length > 0) {
+            const cityString = data.features[0].place_name.split(",")[0];
             setFormData({ ...formData, addressText: cityString });
             toast.success(`Location locked: ${cityString}`, { id: toastId });
           } else { throw new Error("Location unresolvable"); }
-        } catch (error) { toast.error("Could not resolve location via OSM", { id: toastId }); } finally { setIsFetchingLocation(false); }
+        } catch (error) { toast.error("Could not resolve location via Mapbox", { id: toastId }); } 
+        finally { setIsFetchingLocation(false); }
       },
-      () => { setIsFetchingLocation(false); toast.error('Please allow location permissions', { id: toastId }); }
+      () => {
+        setIsFetchingLocation(false);
+        toast.error('Please allow location permissions', { id: toastId });
+      }
     );
   };
 
@@ -193,7 +201,10 @@ const Profile = () => {
                       <label className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 block">Sector / Base</label>
                       <div className="flex gap-2">
                         <input value={formData.addressText} onChange={(e) => setFormData({...formData, addressText: e.target.value})} placeholder="e.g. Bhubaneswar" className={`flex-1 w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-xl md:rounded-2xl px-4 py-3.5 text-pine-teal text-base md:text-sm outline-none transition-all shadow-inner placeholder-dusty-lavender/70 focus:bg-white ${themeFocusBorder}`} />
-                        <button type="button" onClick={handleGetLocation} disabled={isFetchingLocation} className="px-4 bg-white text-blazing-flame border border-dusty-lavender/40 rounded-xl md:rounded-2xl active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center shrink-0 shadow-sm hover:shadow-md">
+                        <button 
+                          type="button" onClick={handleGetLocation} disabled={isFetchingLocation}
+                          className="px-4 bg-white text-blazing-flame border border-dusty-lavender/40 rounded-xl md:rounded-2xl active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center shrink-0 shadow-sm hover:shadow-md"
+                        >
                           {isFetchingLocation ? <FaSpinner className="animate-spin text-lg" /> : <FaLocationArrow className="text-lg" />}
                         </button>
                       </div>
@@ -214,6 +225,7 @@ const Profile = () => {
           </div>
 
           <div className="lg:col-span-8 space-y-5 md:space-y-6">
+            
             <div className="bg-white/70 backdrop-blur-lg border border-white rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 relative overflow-hidden group shadow-[0_20px_40px_rgba(41,82,74,0.08)]">
               <div className="absolute -right-8 -bottom-8 md:-right-10 md:-bottom-10 text-8xl md:text-9xl text-blazing-flame/10 pointer-events-none">
                 <FaAward />
@@ -237,20 +249,31 @@ const Profile = () => {
               <div className="bg-white/70 backdrop-blur-lg border border-white rounded-2xl md:rounded-[2.5rem] p-5 md:p-8 relative overflow-hidden group shadow-[0_10px_30px_rgba(41,82,74,0.05)]">
                 <div className="absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-gradient-to-bl from-pearl-beige to-transparent rounded-bl-[80px] md:rounded-bl-[100px]"></div>
                 <div className={`text-3xl md:text-4xl mb-4 md:mb-6 opacity-90 ${themeAccent}`}><FaBoxOpen /></div>
-                {loading ? <div className="h-10 md:h-14 w-16 md:w-24 bg-dusty-lavender/20 animate-pulse rounded-lg md:rounded-xl"></div> : <h3 className="text-4xl md:text-5xl font-black text-pine-teal">{user.donationsCount || stats.totalDonations}</h3>}
+                {loading ? (
+                  <div className="h-10 md:h-14 w-16 md:w-24 bg-dusty-lavender/20 animate-pulse rounded-lg md:rounded-xl"></div>
+                ) : (
+                  <h3 className="text-4xl md:text-5xl font-black text-pine-teal">{user.donationsCount || stats.totalDonations}</h3>
+                )}
                 <p className="text-dusty-lavender text-[9px] md:text-[10px] uppercase font-black tracking-widest mt-2 md:mt-3 leading-tight">Missions Completed</p>
               </div>
 
               <div className="bg-white/70 backdrop-blur-lg border border-white rounded-2xl md:rounded-[2.5rem] p-5 md:p-8 relative overflow-hidden group shadow-[0_10px_30px_rgba(41,82,74,0.05)]">
                 <div className="absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-gradient-to-bl from-pearl-beige to-transparent rounded-bl-[80px] md:rounded-bl-[100px]"></div>
                 <div className={`text-3xl md:text-4xl mb-4 md:mb-6 opacity-90 ${themeAccent}`}><FaHistory /></div>
-                {loading ? <div className="h-10 md:h-14 w-16 md:w-24 bg-dusty-lavender/20 animate-pulse rounded-lg md:rounded-xl"></div> : <h3 className="text-4xl md:text-5xl font-black text-pine-teal">{stats.activeListings}</h3>}
+                {loading ? (
+                  <div className="h-10 md:h-14 w-16 md:w-24 bg-dusty-lavender/20 animate-pulse rounded-lg md:rounded-xl"></div>
+                ) : (
+                  <h3 className="text-4xl md:text-5xl font-black text-pine-teal">{stats.activeListings}</h3>
+                )}
                 <p className="text-dusty-lavender text-[9px] md:text-[10px] uppercase font-black tracking-widest mt-2 md:mt-3 leading-tight">Active Field Ops</p>
               </div>
             </div>
 
             <div className="md:hidden mt-8 pt-6 border-t border-dusty-lavender/30">
-              <button onClick={handleMobileLogout} className="w-full py-4 bg-white hover:bg-pearl-beige text-dark-raspberry border border-dark-raspberry/30 rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-xs flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm">
+              <button 
+                onClick={handleMobileLogout} 
+                className="w-full py-4 bg-white hover:bg-pearl-beige text-dark-raspberry border border-dark-raspberry/30 rounded-2xl font-black uppercase tracking-widest text-[10px] sm:text-xs flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm"
+              >
                 <FaSignOutAlt className="text-lg" /> Secure Logout
               </button>
             </div>

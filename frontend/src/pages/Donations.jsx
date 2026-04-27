@@ -37,7 +37,7 @@ const Donations = () => {
   const themeFocusBorder = isRequest ? "focus:border-dark-raspberry" : "focus:border-blazing-flame";
   const themeContainerBorder = "border-white";
 
-  // OSM AUTOCOMPLETE
+  // 👉 MAPBOX AUTOCOMPLETE (Optimized for India)
   const handleLocationType = (e) => {
     const val = e.target.value;
     setFormData((prev) => ({ ...prev, addressText: val, lat: null, lng: null }));
@@ -46,14 +46,18 @@ const Donations = () => {
     if (val.length > 2) {
       typingTimeoutRef.current = setTimeout(async () => {
         try {
-          const { data } = await axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=5`);
-          if (data && data.length > 0) {
-            const formattedSuggestions = data.map(res => ({
-              display_name: res.display_name, lat: res.lat, lon: res.lon
+          const apiKey = import.meta.env.VITE_MAPBOX_TOKEN;
+          if (!apiKey) return;
+          // Note: added country=in to force high accuracy for Indian addresses
+          const { data } = await axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(val)}.json?access_token=${apiKey}&autocomplete=true&limit=5&country=in`);
+          
+          if (data && data.features) {
+            const formattedSuggestions = data.features.map(f => ({
+              display_name: f.place_name, lat: f.center[1], lon: f.center[0] // Mapbox returns [lng, lat]
             }));
             setSuggestions(formattedSuggestions);
           } else { setSuggestions([]); }
-        } catch (error) { console.error("Autocomplete failed"); }
+        } catch (error) { console.error("Mapbox Autocomplete failed"); }
       }, 600);
     } else { setSuggestions([]); }
   };
@@ -64,24 +68,27 @@ const Donations = () => {
     setSuggestions([]);
   };
 
-  // OSM REVERSE GEOCODING (GPS)
+  // 👉 MAPBOX REVERSE GEOCODING (GPS)
   const handleGetLocation = () => {
     if (!navigator.geolocation) return toast.error("GPS not supported");
     setIsFetchingLocation(true);
-    const toastId = toast.loading("Locking onto GPS...");
+    const toastId = toast.loading("Locking onto GPS via Mapbox...");
     
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
-          const { data } = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+          const apiKey = import.meta.env.VITE_MAPBOX_TOKEN;
+          if (!apiKey) throw new Error("Mapbox Token Missing");
+
+          const { data } = await axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${apiKey}`);
           
-          if (data && data.address) {
-            const cityString = data.address.city || data.address.town || data.address.village || data.address.county || data.display_name.split(",")[0];
+          if (data && data.features && data.features.length > 0) {
+            const cityString = data.features[0].place_name.split(",")[0];
             setFormData((prev) => ({ ...prev, addressText: cityString, lat: latitude, lng: longitude }));
             toast.success(`Location locked: ${cityString} 📍`, { id: toastId });
           } else { throw new Error("Location unresolvable"); }
-        } catch (error) { toast.error("Could not resolve location via OSM.", { id: toastId }); } finally { setIsFetchingLocation(false); }
+        } catch (error) { toast.error("Could not resolve location via Mapbox.", { id: toastId }); } finally { setIsFetchingLocation(false); }
       },
       () => { setIsFetchingLocation(false); toast.error("Please allow location permissions.", { id: toastId }); },
       { enableHighAccuracy: true },
@@ -188,14 +195,12 @@ const Donations = () => {
                   </div>
                 </>
               )}
-
               {formData.category === "book" && (
                 <div className="md:col-span-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 flex items-center gap-2"><FaBook className={themeAccent} /> Author</label>
                   <input type="text" placeholder="Author name" value={formData.bookAuthor} onChange={(e) => setFormData({ ...formData, bookAuthor: e.target.value })} className={`w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-6 py-3.5 md:py-4 text-pine-teal text-base md:text-sm font-bold outline-none placeholder-dusty-lavender/70 focus:bg-white ${themeFocusBorder}`} />
                 </div>
               )}
-
               {(formData.category === "clothes" || formData.category === "book" || formData.category === "general") && (
                 <div>
                   <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 flex items-center gap-2"><FaTags className={themeAccent} /> Condition</label>
@@ -204,7 +209,6 @@ const Donations = () => {
                   </select>
                 </div>
               )}
-
               <div>
                 <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 flex items-center gap-2"><FaClock className={themeAccent} /> Preferred Time</label>
                 <input type="time" value={formData.pickupTime} onChange={(e) => setFormData({ ...formData, pickupTime: e.target.value })} className={`w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-6 py-3.5 md:py-4 text-pine-teal text-base md:text-sm font-bold outline-none cursor-pointer focus:bg-white ${themeFocusBorder}`} />
