@@ -1,15 +1,19 @@
+import { useState, useContext } from 'react'; // 👉 Imported useState
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FaHome, FaBoxOpen, FaUser, FaSignOutAlt, FaTrophy, FaMapMarkerAlt, FaShieldAlt, FaExchangeAlt, FaEnvelope } from 'react-icons/fa'; 
-import { useContext } from 'react';
+import { FaHome, FaBoxOpen, FaUser, FaSignOutAlt, FaTrophy, FaMapMarkerAlt, FaShieldAlt, FaExchangeAlt, FaEnvelope, FaCommentAlt } from 'react-icons/fa'; // 👉 Imported FaCommentAlt
 import AuthContext from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
 import logo from '../assets/logo.png'; 
+import FeedbackModal from './FeedbackModal'; // 👉 Imported the Modal
 
 const Sidebar = () => {
   const { user, logout, switchRole } = useContext(AuthContext);
   const location = useLocation();
   const navigate = useNavigate();
+
+  // 👉 THE FIX: Added Feedback State
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -19,7 +23,6 @@ const Sidebar = () => {
     navigate('/login');
   };
 
-  // 👉 DYNAMIC THEME BASED ON ROLE
   const isDonor = user?.activeRole === 'donor';
   const themeAccent = isDonor ? 'text-blazing-flame' : 'text-dark-raspberry';
   const themeBg = isDonor ? 'bg-blazing-flame shadow-blazing-flame/30' : 'bg-dark-raspberry shadow-dark-raspberry/30';
@@ -120,6 +123,15 @@ const Sidebar = () => {
           </div>
         </div>
 
+        {/* 👉 THE FIX: Added Feedback Button */}
+        <button 
+          onClick={() => setIsFeedbackOpen(true)} 
+          className="group flex items-center gap-3 w-full px-5 py-4 text-dusty-lavender hover:text-pine-teal transition-all rounded-2xl hover:bg-white font-black uppercase tracking-widest text-[10px] mb-2"
+        >
+          <FaCommentAlt className="text-lg group-hover:-translate-y-1 transition-transform" /> 
+          <span>Send Feedback</span>
+        </button>
+
         <button 
           onClick={handleLogout} 
           className="group flex items-center gap-3 w-full px-5 py-4 text-dusty-lavender hover:text-dark-raspberry transition-all rounded-2xl hover:bg-white font-black uppercase tracking-widest text-[10px]"
@@ -128,6 +140,9 @@ const Sidebar = () => {
           <span>End Session</span>
         </button>
       </div>
+
+      {/* 👉 THE FIX: Added Feedback Modal Component */}
+      <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
     </div>
   );
 };

@@ -18,9 +18,11 @@ import {
   FaWifi,
   FaExclamationTriangle,
   FaTimes,
+  FaCommentAlt, // 👉 Imported Feedback Icon
 } from "react-icons/fa";
 
 import logo from "../assets/logo.png";
+import FeedbackModal from "./FeedbackModal"; // 👉 Imported the Modal
 
 const Layout = ({ children }) => {
   const { user, logout, switchRole } = useContext(AuthContext);
@@ -29,8 +31,10 @@ const Layout = ({ children }) => {
 
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [hasUnread, setHasUnread] = useState(false);
+  
+  // 👉 THE FIX: Added Feedback State
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
-  // Connection monitoring
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
@@ -42,7 +46,6 @@ const Layout = ({ children }) => {
     };
   }, []);
 
-  // Notification badge logic
   useEffect(() => {
     const handleNewMessage = () => {
       if (!location.pathname.includes("/chat")) setHasUnread(true);
@@ -52,14 +55,11 @@ const Layout = ({ children }) => {
       window.removeEventListener("new_unread_message", handleNewMessage);
   }, [location.pathname]);
 
-  // Clear badge when inbox is opened
   useEffect(() => {
     if (location.pathname.includes("/chat")) setHasUnread(false);
   }, [location.pathname]);
 
-  // Global Alerts (Mission Control)
   useEffect(() => {
-    // 👉 FIXED: Environment Variable logic for local testing vs live site
     const socket = io(import.meta.env.VITE_BACKEND_URL || "https://hopelink-api.onrender.com", {
       transports: ["websocket", "polling"],
     });
@@ -145,7 +145,6 @@ const Layout = ({ children }) => {
 
   return (
     <div className="h-screen bg-pearl-beige flex flex-col md:flex-row font-sans selection:bg-dark-raspberry selection:text-white overflow-hidden">
-      {/* Global Offline Banner */}
       <AnimatePresence>
         {isOffline && (
           <motion.div
@@ -182,15 +181,25 @@ const Layout = ({ children }) => {
           </span>
         </Link>
 
-        {user && !user.isAdmin && (
+        {/* 👉 THE FIX: Added Feedback Button to Mobile Header */}
+        <div className="flex items-center gap-2">
+          {user && !user.isAdmin && (
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={switchRole}
+              className="p-2.5 rounded-xl bg-pearl-beige border border-dusty-lavender/30 text-pine-teal hover:text-dark-raspberry transition-all shadow-sm"
+            >
+              <FaExchangeAlt className="text-xs" />
+            </motion.button>
+          )}
           <motion.button
             whileTap={{ scale: 0.9 }}
-            onClick={switchRole}
-            className="p-2.5 rounded-xl bg-pearl-beige border border-dusty-lavender/30 text-pine-teal hover:text-dark-raspberry transition-all shadow-sm"
+            onClick={() => setIsFeedbackOpen(true)}
+            className="p-2.5 rounded-xl bg-pearl-beige border border-dusty-lavender/30 text-pine-teal hover:text-pine-teal transition-all shadow-sm"
           >
-            <FaExchangeAlt className="text-xs" />
+            <FaCommentAlt className="text-xs" />
           </motion.button>
-        )}
+        </div>
       </div>
 
       {/* ---------------- DESKTOP SIDEBAR ---------------- */}
@@ -306,9 +315,17 @@ const Layout = ({ children }) => {
             })}
           </nav>
 
+          {/* 👉 THE FIX: Added Feedback Button to Desktop Sidebar */}
+          <button
+            onClick={() => setIsFeedbackOpen(true)}
+            className="mt-auto flex items-center gap-4 px-5 py-3 mb-2 rounded-2xl font-bold text-dusty-lavender hover:bg-white hover:text-pine-teal transition-all"
+          >
+            <FaCommentAlt /> Feedback
+          </button>
+
           <button
             onClick={handleLogout}
-            className="mt-auto flex items-center gap-4 px-5 py-4 rounded-2xl font-bold text-dusty-lavender hover:bg-white hover:text-blazing-flame transition-all"
+            className="flex items-center gap-4 px-5 py-4 rounded-2xl font-bold text-dusty-lavender hover:bg-white hover:text-blazing-flame transition-all"
           >
             <FaSignOutAlt /> Logout
           </button>
@@ -410,6 +427,9 @@ const Layout = ({ children }) => {
           )}
         </nav>
       </div>
+
+      {/* 👉 THE FIX: Added Feedback Modal Component */}
+      <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
     </div>
   );
 };

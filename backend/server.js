@@ -16,6 +16,10 @@ const hpp = require("hpp");
 const cron = require("node-cron");
 const Donation = require("./models/Donation");
 
+// 👉 THE FIX: Import the Feedback model and Auth Middleware
+const Feedback = require("./models/Feedback"); 
+const { protect } = require("./middleware/authMiddleware");
+
 dotenv.config();
 
 const app = express();
@@ -114,6 +118,20 @@ app.use("/api/donations", require("./routes/donationRoutes"));
 app.use("/api/chat", require("./routes/chatRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
 app.use("/api/events", require("./routes/events"));
+
+// 👉 THE FIX: Simple inline route for MVP feedback
+app.post("/api/feedback", protect, async (req, res) => {
+  try {
+    const feedback = await Feedback.create({
+      user: req.user._id,
+      rating: req.body.rating,
+      message: req.body.message
+    });
+    res.status(201).json(feedback);
+  } catch (error) {
+    res.status(400).json({ message: "Failed to submit feedback" });
+  }
+});
 
 io.on("connection", (socket) => {
   socket.on("setup", (userId) => {
