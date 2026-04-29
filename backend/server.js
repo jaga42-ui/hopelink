@@ -15,8 +15,6 @@ const hpp = require("hpp");
 
 const cron = require("node-cron");
 const Donation = require("./models/Donation");
-
-// 👉 THE FIX: Import the Feedback model and Auth Middleware
 const Feedback = require("./models/Feedback"); 
 const { protect } = require("./middleware/authMiddleware");
 
@@ -113,13 +111,18 @@ app.use("/api/events", (req, res, next) => {
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+// Standard Routes
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/donations", require("./routes/donationRoutes"));
 app.use("/api/chat", require("./routes/chatRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
 app.use("/api/events", require("./routes/events"));
 
-// 👉 THE FIX: Simple inline route for MVP feedback
+// ==========================================
+// 👉 FEEDBACK ROUTES (Inline MVP implementation)
+// ==========================================
+
+// 1. Users submitting feedback
 app.post("/api/feedback", protect, async (req, res) => {
   try {
     const feedback = await Feedback.create({
@@ -132,6 +135,23 @@ app.post("/api/feedback", protect, async (req, res) => {
     res.status(400).json({ message: "Failed to submit feedback" });
   }
 });
+
+// 2. Admins retrieving feedback for the Command Center
+app.get("/api/admin/feedback", protect, async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(401).json({ message: "Not authorized as an admin" });
+    }
+    const feedbacks = await Feedback.find({})
+      .populate("user", "name email profilePic")
+      .sort({ createdAt: -1 });
+    
+    res.json(feedbacks);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch feedback" });
+  }
+});
+// ==========================================
 
 io.on("connection", (socket) => {
   socket.on("setup", (userId) => {

@@ -19,6 +19,8 @@ import {
   FaFlag,
   FaCheck,
   FaCheckCircle,
+  FaCommentAlt, // 👉 Added icon for feedback
+  FaStar, // 👉 Added icon for ratings
 } from "react-icons/fa";
 import {
   XAxis,
@@ -45,14 +47,13 @@ const Admin = () => {
   const [usersList, setUsersList] = useState([]);
   const [listings, setListings] = useState([]);
   const [eventsList, setEventsList] = useState([]);
+  const [feedbacks, setFeedbacks] = useState([]); // 👉 Added state for feedback
   const [loading, setLoading] = useState(true);
 
-  // MISSION CONTROL STATES
   const [broadcastMsg, setBroadcastMsg] = useState("");
   const [broadcastLevel, setBroadcastLevel] = useState("info");
   const [isBroadcasting, setIsBroadcasting] = useState(false);
 
-  // Security Check
   useEffect(() => {
     if (user && !user.isAdmin) {
       toast.error("Unauthorized Area", {
@@ -70,16 +71,20 @@ const Admin = () => {
     if (!user?.isAdmin) return;
     const fetchAdminData = async () => {
       try {
-        const [statsRes, usersRes, listingsRes, eventsRes] = await Promise.all([
-          api.get("/admin/stats"),
-          api.get("/admin/users"),
-          api.get("/admin/listings"),
-          api.get("/events"),
-        ]);
+        // 👉 Added the feedback endpoint to the initial data fetch
+        const [statsRes, usersRes, listingsRes, eventsRes, feedbackRes] =
+          await Promise.all([
+            api.get("/admin/stats"),
+            api.get("/admin/users"),
+            api.get("/admin/listings"),
+            api.get("/events"),
+            api.get("/admin/feedback"),
+          ]);
         setStats(statsRes.data);
         setUsersList(usersRes.data);
         setListings(listingsRes.data);
         setEventsList(eventsRes.data);
+        setFeedbacks(feedbackRes.data);
         setLoading(false);
       } catch (error) {
         toast.error("Failed to load admin data");
@@ -89,7 +94,6 @@ const Admin = () => {
     fetchAdminData();
   }, [user]);
 
-  // Global Broadcast
   const handleBroadcast = async (e) => {
     e.preventDefault();
     if (!broadcastMsg.trim()) return;
@@ -108,7 +112,6 @@ const Admin = () => {
     }
   };
 
-  // Moderation Action
   const handleReportAction = async (id, action) => {
     try {
       await api.patch(`/admin/resolve-report/${id}`, { action });
@@ -186,7 +189,6 @@ const Admin = () => {
 
   if (!user || !user.isAdmin) return null;
 
-  // PREMIUM SAHAYAM PIE CHART COLORS
   const COLORS = ["#29524a", "#9f1164", "#ff4a1c"];
   const pieData = stats
     ? [
@@ -199,9 +201,8 @@ const Admin = () => {
   return (
     <Layout>
       <div className="max-w-6xl mx-auto px-4 pb-32 min-h-screen text-pine-teal relative">
-        {/* HEADER */}
-        <header className="mb-8 border-b border-dusty-lavender/30 pt-6 pb-6 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-4 text-dark-raspberry w-full md:w-auto justify-center md:justify-start">
+        <header className="mb-8 border-b border-dusty-lavender/30 pt-6 pb-6 flex flex-col xl:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-4 text-dark-raspberry w-full xl:w-auto justify-center xl:justify-start shrink-0">
             <FaShieldAlt className="text-4xl md:text-5xl drop-shadow-[0_0_15px_rgba(159,17,100,0.3)]" />
             <div>
               <h1 className="text-2xl md:text-3xl font-black text-pine-teal tracking-tighter drop-shadow-sm uppercase">
@@ -213,8 +214,7 @@ const Admin = () => {
             </div>
           </div>
 
-          {/* NAVIGATION TABS */}
-          <div className="w-full md:w-auto overflow-x-auto no-scrollbar">
+          <div className="w-full xl:w-auto overflow-x-auto no-scrollbar pb-2 xl:pb-0">
             <div className="flex bg-white/50 backdrop-blur-md p-1.5 rounded-2xl border border-dusty-lavender/30 min-w-max shadow-sm">
               {[
                 { id: "overview", label: "Overview", icon: <FaChartPie /> },
@@ -222,11 +222,12 @@ const Admin = () => {
                 { id: "listings", label: "Content", icon: <FaBoxOpen /> },
                 { id: "events", label: "Events", icon: <FaCalendarAlt /> },
                 { id: "moderation", label: "Moderation", icon: <FaFlag /> },
+                { id: "feedback", label: "Feedback", icon: <FaCommentAlt /> }, // 👉 Added Feedback Tab
               ].map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`px-6 py-3 md:py-2.5 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 flex-1 md:flex-none ${
+                  className={`px-5 py-3 md:py-2.5 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 flex-1 md:flex-none ${
                     activeTab === tab.id
                       ? "bg-dark-raspberry text-white shadow-md"
                       : "text-dusty-lavender hover:text-pine-teal hover:bg-white"
@@ -294,7 +295,6 @@ const Admin = () => {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-                  {/* Left: Graphs */}
                   <div className="lg:col-span-2 space-y-6">
                     <div className="bg-white/70 backdrop-blur-lg border border-white rounded-[2rem] p-6 shadow-[0_10px_30px_rgba(41,82,74,0.08)] h-[350px] flex flex-col">
                       <h3 className="text-sm font-black uppercase tracking-widest text-pine-teal mb-6 drop-shadow-sm">
@@ -376,7 +376,6 @@ const Admin = () => {
                     </div>
                   </div>
 
-                  {/* Right: The Red Button & Pie Chart */}
                   <div className="space-y-6">
                     <div className="bg-white/70 backdrop-blur-lg border border-blazing-flame/30 rounded-[2rem] p-6 shadow-[0_10px_40px_rgba(255,74,28,0.1)] relative overflow-hidden">
                       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blazing-flame to-dark-raspberry" />
@@ -509,7 +508,6 @@ const Admin = () => {
                               {post.description}
                             </p>
                           </div>
-
                           <div className="flex w-full md:w-auto gap-3 shrink-0 mt-2 md:mt-0">
                             <button
                               onClick={() =>
@@ -533,6 +531,75 @@ const Admin = () => {
                     </AnimatePresence>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* 👉 NEW FEEDBACK TAB */}
+            {activeTab === "feedback" && (
+              <div className="bg-white/70 backdrop-blur-lg border border-white rounded-[2rem] p-6 md:p-8 shadow-[0_20px_40px_rgba(41,82,74,0.08)] min-h-[60vh]">
+                <div className="flex items-center justify-between mb-8 border-b border-dusty-lavender/30 pb-4">
+                  <h2 className="text-sm font-black uppercase tracking-widest text-pine-teal flex items-center gap-2">
+                    <FaCommentAlt /> User Feedback
+                  </h2>
+                  <span className="bg-pine-teal/10 text-pine-teal px-3 py-1 rounded-lg text-xs font-bold border border-pine-teal/20">
+                    {feedbacks.length} Submissions
+                  </span>
+                </div>
+
+                {feedbacks.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-20 text-dusty-lavender opacity-80">
+                    <FaCommentAlt className="text-6xl mb-4 text-pine-teal/50" />
+                    <p className="font-bold tracking-widest uppercase text-xs">
+                      No feedback received yet.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {feedbacks.map((fb) => (
+                      <div
+                        key={fb._id}
+                        className="bg-white border border-dusty-lavender/30 p-5 rounded-3xl flex flex-col gap-3 shadow-sm hover:shadow-md transition-all"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-center gap-3">
+                            {fb.user?.profilePic ? (
+                              <img
+                                src={fb.user.profilePic}
+                                alt="User"
+                                className="w-10 h-10 rounded-xl object-cover border border-dusty-lavender/30"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 bg-pine-teal/10 text-pine-teal border border-pine-teal/20 rounded-xl flex items-center justify-center font-black uppercase">
+                                {fb.user?.name?.charAt(0) || "?"}
+                              </div>
+                            )}
+                            <div>
+                              <p className="font-bold text-pine-teal leading-tight">
+                                {fb.user?.name || "Unknown User"}
+                              </p>
+                              <p className="text-[10px] text-dusty-lavender uppercase tracking-widest font-bold mt-0.5">
+                                {new Date(fb.createdAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex gap-1">
+                            {[...Array(5)].map((_, i) => (
+                              <FaStar
+                                key={i}
+                                className={`text-sm ${i < fb.rating ? "text-[#f59e0b]" : "text-dusty-lavender/30"}`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        <div className="bg-pearl-beige/50 p-4 rounded-2xl border border-dusty-lavender/20 mt-2">
+                          <p className="text-pine-teal/90 text-sm leading-relaxed italic">
+                            "{fb.message}"
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -618,7 +685,6 @@ const Admin = () => {
                   </table>
                 </div>
 
-                {/* Mobile Cards */}
                 <div className="grid grid-cols-1 gap-4 md:hidden">
                   {usersList.map((u) => (
                     <div
