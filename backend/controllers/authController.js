@@ -36,7 +36,9 @@ const generateToken = (id) => {
 };
 
 const registerUser = asyncHandler(async (req, res) => {
-  const { name, email, password, phone, activeRole, bloodGroup } = req.body;
+  const { name, password, phone, activeRole, bloodGroup } = req.body;
+  // 👉 THE FIX: Normalize email to prevent duplicate accounts
+  const email = req.body.email.toLowerCase().trim();
 
   if (!name || !email || !password || !phone) {
     res.status(400);
@@ -81,7 +83,10 @@ const registerUser = asyncHandler(async (req, res) => {
 });
 
 const loginUser = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
+  // 👉 THE FIX: Normalize email before querying DB
+  const email = req.body.email.toLowerCase().trim();
+  const password = req.body.password;
+  
   const user = await User.findOne({ email });
 
   if (user && (await user.matchPassword(password))) {
@@ -144,12 +149,14 @@ const googleLogin = asyncHandler(async (req, res) => {
       audience: process.env.GOOGLE_CLIENT_ID,
     });
     const payload = ticket.getPayload();
-    const { email, name, picture, sub: googleId } = payload;
+    
+    // 👉 THE FIX: Ensure Google emails are also normalized
+    const email = payload.email.toLowerCase().trim();
+    const { name, picture, sub: googleId } = payload;
 
     let user = await User.findOne({ email });
 
     if (!user) {
-      // 👉 FIXED: Replaced "HopeLink" with "Sahayam"
       const securePass = `Sahayam_${Math.random().toString(36).slice(-8)}!`;
       user = await User.create({
         name: name || "New Hero",
@@ -225,9 +232,7 @@ const saveFCMToken = asyncHandler(async (req, res) => {
   }
   user.fcmToken = req.body.fcmToken;
   await user.save();
-  res
-    .status(200)
-    .json({ message: "Device securely registered for lock-screen alerts." });
+  res.status(200).json({ message: "Device securely registered for lock-screen alerts." });
 });
 
 const getMe = asyncHandler(async (req, res) => {
@@ -268,9 +273,12 @@ const getNearbyDonors = asyncHandler(async (req, res) => {
   };
 
   if (bloodGroup && bloodGroup !== "All") query.bloodGroup = bloodGroup;
-  const donors = await User.find(query).select(
-    "name profilePic bloodGroup addressText phone location rank rating",
-  );
+  
+  // 👉 THE FIX: Added .limit(200) to prevent OOM crash
+  const donors = await User.find(query)
+    .select("name profilePic bloodGroup addressText phone location rank rating")
+    .limit(200); 
+    
   res.json(donors);
 });
 
@@ -289,6 +297,7 @@ const sendEmergencyBlast = asyncHandler(async (req, res) => {
     location: { type: "Point", coordinates: [Number(lng), Number(lat)] },
   });
 
+  // 👉 THE FIX: Added .limit(1000) to prevent server locking on massive broadcasts
   const nearbyDonors = await User.find({
     location: {
       $near: {
@@ -298,7 +307,7 @@ const sendEmergencyBlast = asyncHandler(async (req, res) => {
     },
     activeRole: "donor",
     _id: { $ne: req.user._id },
-  });
+  }).limit(1000);
 
   const pushTokens = nearbyDonors
     .filter((donor) => donor.fcmToken)
@@ -319,9 +328,7 @@ const sendEmergencyBlast = asyncHandler(async (req, res) => {
       .messaging()
       .sendEachForMulticast(pushMessage)
       .then((response) =>
-        console.log(
-          `🔥 Firebase Blast: Sent to ${response.successCount} devices.`,
-        ),
+        console.log(`🔥 Firebase Blast: Sent to ${response.successCount} devices.`),
       )
       .catch((error) => console.error("Firebase Blast Failed:", error));
   }
@@ -334,13 +341,11 @@ const sendEmergencyBlast = asyncHandler(async (req, res) => {
     });
   }
 
-  res
-    .status(200)
-    .json({
-      success: true,
-      blastId: blast._id,
-      recipients: nearbyDonors.length,
-    });
+  res.status(200).json({
+    success: true,
+    blastId: blast._id,
+    recipients: nearbyDonors.length,
+  });
 });
 
 const respondToBlast = asyncHandler(async (req, res) => {
@@ -373,7 +378,8 @@ const respondToBlast = asyncHandler(async (req, res) => {
 });
 
 const forgotPassword = asyncHandler(async (req, res) => {
-  const { email } = req.body;
+  // 👉 THE FIX: Normalize email
+  const email = req.body.email.toLowerCase().trim();
   const user = await User.findOne({ email });
 
   if (!user) {
@@ -394,7 +400,6 @@ const forgotPassword = asyncHandler(async (req, res) => {
     auth: { user: process.env.SMTP_EMAIL, pass: process.env.SMTP_PASSWORD },
   });
 
-  // 👉 FIXED: Replaced HopeLink text and styling with Sahayam Light Theme
   const mailOptions = {
     from: `"${process.env.FROM_NAME}" <${process.env.FROM_EMAIL}>`,
     to: user.email,
@@ -414,7 +419,9 @@ const forgotPassword = asyncHandler(async (req, res) => {
     `,
   };
 
-  await transporter.sendMail(mailOptions);
+  // 👉 THE FIX: Removed await to unblock the Event Loop. Fires in background.
+  transporter.sendMail(mailOptions).catch(err => console.error("SMTP Error:", err));
+  
   res.json({ message: "Security clearance link dispatched to your email." });
 });
 

@@ -1,9 +1,9 @@
 const asyncHandler = require("express-async-handler");
+const mongoose = require("mongoose");
 const Message = require("../models/Message");
 const User = require("../models/User");
 const admin = require("firebase-admin");
 
-// 👉 INITIALIZE FIREBASE USING RENDER ENVIRONMENT VARIABLE
 if (!admin.apps.length) {
   try {
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
@@ -27,51 +27,85 @@ if (!admin.apps.length) {
 const getInbox = asyncHandler(async (req, res) => {
   const myId = req.user._id;
 
-  const messages = await Message.find({
-    $or: [{ sender: myId }, { receiver: myId }],
-  })
-    .populate("sender", "name profilePic")
-    .populate("receiver", "name profilePic")
-    .populate("donationId", "title image")
-    .sort({ createdAt: -1 });
-
-  const conversations = [];
-  const seen = new Set();
-
-  messages.forEach((msg) => {
-    if (!msg.donationId || !msg.sender || !msg.receiver) return;
-
-    const isMeSender = msg.sender._id.toString() === myId.toString();
-    const otherUser = isMeSender ? msg.receiver : msg.sender;
-
-    // 👉 Group chats uniquely by both the Item AND the User
-    const convoKey = `${msg.donationId._id.toString()}_${otherUser._id.toString()}`;
-
-    if (!seen.has(convoKey)) {
-      seen.add(convoKey);
-      conversations.push({
-        // Return the composite ID so the frontend opens the exact isolated room
-        chatRoomId: `${msg.donationId._id.toString()}_${otherUser._id.toString()}`,
-        donationId: msg.donationId._id,
-        donationTitle: msg.donationId.title,
-        otherUserId: otherUser._id,
-        otherUserName: otherUser.name,
-        otherUserProfilePic: otherUser.profilePic,
-        latestMessage: msg.content.startsWith("[AUDIO]")
-          ? "🎤 Voice message"
-          : msg.content,
-        updatedAt: msg.createdAt,
-        unreadCount: !msg.read && !isMeSender ? 1 : 0,
-      });
-    } else {
-      if (!msg.read && !isMeSender) {
-        const convo = conversations.find((c) => c.chatRoomId === convoKey);
-        if (convo) convo.unreadCount += 1;
+  // 👉 THE FIX: MongoDB Aggregation. This fetches only the exact latest message per conversation
+  // instead of pulling 10,000+ messages into Node.js RAM.
+  const inboxData = await Message.aggregate([
+    { 
+      $match: { 
+        $or: [
+          { sender: new mongoose.Types.ObjectId(myId) }, 
+          { receiver: new mongoose.Types.ObjectId(myId) }
+        ] 
+      } 
+    },
+    { $sort: { createdAt: -1 } }, // Ensure latest message is first before grouping
+    {
+      $group: {
+        _id: {
+          donationId: "$donationId",
+          otherUser: { 
+            $cond: [
+              { $eq: ["$sender", new mongoose.Types.ObjectId(myId)] }, 
+              "$receiver", 
+              "$sender"
+            ] 
+          }
+        },
+        latestMessage: { $first: "$content" },
+        updatedAt: { $first: "$createdAt" },
+        unreadCount: {
+          $sum: {
+            $cond: [
+              { $and: [
+                { $eq: ["$read", false] }, 
+                { $ne: ["$sender", new mongoose.Types.ObjectId(myId)] }
+              ]},
+              1,
+              0
+            ]
+          }
+        }
       }
-    }
-  });
+    },
+    // Join with Donation details
+    { 
+      $lookup: { 
+        from: "donations", 
+        localField: "_id.donationId", 
+        foreignField: "_id", 
+        as: "donation" 
+      } 
+    },
+    { $unwind: "$donation" },
+    // Join with User details
+    { 
+      $lookup: { 
+        from: "users", 
+        localField: "_id.otherUser", 
+        foreignField: "_id", 
+        as: "otherUserDetails" 
+      } 
+    },
+    { $unwind: "$otherUserDetails" },
+    { $sort: { updatedAt: -1 } } // Final sort to put latest conversations at the top
+  ]);
 
-  res.json(conversations);
+  // Format the output exactly as the React frontend expects it
+  const formattedConversations = inboxData.map((convo) => ({
+    chatRoomId: `${convo.donation._id.toString()}_${convo.otherUserDetails._id.toString()}`,
+    donationId: convo.donation._id,
+    donationTitle: convo.donation.title,
+    otherUserId: convo.otherUserDetails._id,
+    otherUserName: convo.otherUserDetails.name,
+    otherUserProfilePic: convo.otherUserDetails.profilePic,
+    latestMessage: convo.latestMessage.startsWith("[AUDIO]")
+      ? "🎤 Voice message"
+      : convo.latestMessage,
+    updatedAt: convo.updatedAt,
+    unreadCount: convo.unreadCount,
+  }));
+
+  res.json(formattedConversations);
 });
 
 // @desc    Get chat history
@@ -80,29 +114,24 @@ const getChatHistory = asyncHandler(async (req, res) => {
   const rawId = req.params.donationId;
   const parts = rawId.split("_");
   const actualDonationId = parts[0];
-  const chatReceiverId = parts[1]; // The specific person requesting the item
+  const chatReceiverId = parts[1];
 
   const myId = req.user._id;
 
   let query = { donationId: actualDonationId };
 
-  // 👉 THE OPEN GRID FIX: Isolate the chat room!
   if (chatReceiverId) {
-    const otherUserId =
-      myId.toString() === chatReceiverId ? null : chatReceiverId;
+    const otherUserId = myId.toString() === chatReceiverId ? null : chatReceiverId;
 
     if (otherUserId) {
-      // If I am the Donor, only show messages between me and THIS specific receiver
       query.$or = [
         { sender: myId, receiver: otherUserId },
         { sender: otherUserId, receiver: myId },
       ];
     } else {
-      // If I am the Receiver, just show messages involving me
       query.$or = [{ sender: myId }, { receiver: myId }];
     }
   } else {
-    // Fallback just in case
     query.$or = [{ sender: myId }, { receiver: myId }];
   }
 
@@ -125,7 +154,6 @@ const sendMessage = asyncHandler(async (req, res) => {
     ? donationId.split("_")[0]
     : donationId;
 
-  // 1. Create and save the message
   const message = await Message.create({
     sender: req.user._id,
     receiver: receiverId,
@@ -133,17 +161,14 @@ const sendMessage = asyncHandler(async (req, res) => {
     content,
   });
 
-  // 2. Emit real-time Socket event to increment the layout badge!
   const io = req.app.get("io");
   if (io) {
     io.to(receiverId.toString()).emit("new_message_notification");
   }
 
-  // 3. FIREBASE PUSH NOTIFICATION (WITH DEBUG LOGS)
   try {
     const receiver = await User.findById(receiverId);
 
-    // 👉 THIS IS THE TRACKER: It will tell us if the database has their phone token
     console.log(`[PUSH TEST] Checking receiver: ${receiver?.name}. Token exists? ${!!receiver?.fcmToken}`);
 
     if (receiver && receiver.fcmToken) {
@@ -223,9 +248,7 @@ const markMessagesAsRead = asyncHandler(async (req, res) => {
     read: false,
   };
 
-  // 👉 THE OPEN GRID FIX: Ensure Donors don't mark EVERYONE'S messages as read!
   if (chatReceiverId && req.user._id.toString() !== chatReceiverId) {
-    // If I am the Donor, only mark messages from THIS specific receiver as read.
     query.sender = chatReceiverId;
   }
 

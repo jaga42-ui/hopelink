@@ -3,7 +3,6 @@ const Donation = require("../models/Donation");
 const User = require("../models/User");
 const admin = require("firebase-admin");
 
-// 👉 THE FIX: Import your new smart email utility
 const { sendPostAlertEmail } = require("../utils/sendEmail");
 
 if (!admin.apps.length) {
@@ -83,14 +82,20 @@ const createDonation = asyncHandler(async (req, res) => {
     io.emit("new_listing", populatedDonation);
   }
 
-  // 👉 1. FIREBASE PUSH NOTIFICATIONS (For Emergencies Only)
   if (isCriticalEmergency) {
     try {
+      // 👉 THE FIX: Added Geospatial filter and strict limit to prevent spamming millions globally
       const potentialSaviors = await User.find({
         activeRole: "donor",
         _id: { $ne: req.user._id },
         fcmToken: { $exists: true, $ne: null },
-      });
+        location: {
+          $near: {
+            $geometry: { type: "Point", coordinates: [parsedLng, parsedLat] },
+            $maxDistance: 50000, // 50km radius only!
+          },
+        },
+      }).limit(500); 
 
       const tokens = potentialSaviors.map((u) => u.fcmToken);
 
@@ -118,11 +123,9 @@ const createDonation = asyncHandler(async (req, res) => {
     }
   }
 
-  // 👉 2. SMART EMAIL NOTIFICATIONS (For All Posts)
   try {
     let bccEmails = [];
     
-    // Find users within 50km to notify them, excluding the person who posted it
     if (parsedLat && parsedLng) {
       const nearbyUsers = await User.find({
         _id: { $ne: req.user._id }, 
@@ -130,16 +133,15 @@ const createDonation = asyncHandler(async (req, res) => {
         location: {
           $near: {
             $geometry: { type: "Point", coordinates: [parsedLng, parsedLat] },
-            $maxDistance: 50000, // 50km radius
+            $maxDistance: 50000, 
           },
         },
-      }).limit(100); // Limit to 100 to prevent SMTP throttling/spam blocks
+      }).limit(100); 
 
       bccEmails = nearbyUsers.map((u) => u.email);
     }
 
     if (bccEmails.length > 0) {
-      // Fire the email in the background (no await) so it doesn't slow down the UI
       sendPostAlertEmail(bccEmails, {
         title: title,
         message: description || title,
@@ -171,15 +173,16 @@ const getDonations = asyncHandler(async (req, res) => {
     };
   }
 
-  const donations = await Donation.find(query)
+  // 👉 THE FIX: Over-fetch by 1 item to determine 'hasMore' without slow countDocuments()
+  let donations = await Donation.find(query)
     .populate("donorId", "name profilePic addressText phone")
     .populate("requestedBy", "name profilePic")
     .sort({ createdAt: -1 })
     .skip(skip)
-    .limit(limit);
+    .limit(limit + 1); 
 
-  const total = await Donation.countDocuments(query);
-  const hasMore = total > skip + donations.length;
+  const hasMore = donations.length > limit;
+  if (hasMore) donations.pop(); // Remove the extra item
 
   res.json({ donations, hasMore });
 });
@@ -189,7 +192,8 @@ const getNearbyFeed = asyncHandler(async (req, res) => {
   const limit = Number(req.query.limit) || 12;
   const skip = (page - 1) * limit;
 
-  const donations = await Donation.find({
+  // 👉 THE FIX: Removed countDocuments() here as well
+  let donations = await Donation.find({
     status: { $nin: ["fulfilled", "hidden"] },
   })
     .populate(
@@ -199,12 +203,10 @@ const getNearbyFeed = asyncHandler(async (req, res) => {
     .populate("requestedBy", "name profilePic")
     .sort({ createdAt: -1 })
     .skip(skip)
-    .limit(limit);
+    .limit(limit + 1);
 
-  const total = await Donation.countDocuments({
-    status: { $nin: ["fulfilled", "hidden"] },
-  });
-  const hasMore = total > skip + donations.length;
+  const hasMore = donations.length > limit;
+  if (hasMore) donations.pop();
 
   res.json({ donations, hasMore });
 });
