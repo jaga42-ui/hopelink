@@ -1,25 +1,20 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useContext } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { io } from "socket.io-client";
 import {
   FaPaperPlane, FaTimes, FaShieldAlt, FaLock, FaCheckDouble, FaCheck, FaSpinner,
 } from "react-icons/fa";
 import toast from "react-hot-toast";
+import AuthContext from "../context/AuthContext";
 import api from "../utils/api";
 
-const SOCKET_URL = import.meta.env.VITE_BACKEND_URL 
-  ? import.meta.env.VITE_BACKEND_URL.replace('/api', '') 
-  : "https://hopelink-api.onrender.com";
-
-// 👉 THE FIX: donationId is now required so backend can index the chat correctly
 const ChatDrawer = ({ isOpen, onClose, currentUser, chatPartner, donationId }) => {
+  const { socket } = useContext(AuthContext);
+  
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
-  const socketRef = useRef(null);
 
-  // 👉 THE FIX: Chat room properly aligns with the Grid's 1-to-1 specific connection
   const chatRoomId = (chatPartner && donationId) ? `${donationId}_${chatPartner._id}` : null;
 
   const scrollToBottom = () => {
@@ -27,9 +22,8 @@ const ChatDrawer = ({ isOpen, onClose, currentUser, chatPartner, donationId }) =
   };
 
   useEffect(() => {
-    if (isOpen && chatPartner && chatRoomId) {
-      socketRef.current = io(SOCKET_URL, { transports: ["websocket", "polling"] });
-      socketRef.current.emit("join_chat", { userId: currentUser._id, donationId: chatRoomId });
+    if (isOpen && chatPartner && chatRoomId && socket) {
+      socket.emit("join_chat", { userId: currentUser._id, donationId: chatRoomId });
 
       const fetchMessages = async () => {
         setLoading(true);
@@ -37,36 +31,38 @@ const ChatDrawer = ({ isOpen, onClose, currentUser, chatPartner, donationId }) =
           const { data } = await api.get(`/chat/${chatRoomId}`);
           setMessages(Array.isArray(data) ? data : []);
           await api.put(`/chat/${chatRoomId}/read`);
-          socketRef.current.emit("mark_as_read", { donationId: chatRoomId, readerId: currentUser._id });
+          socket.emit("mark_as_read", { donationId: chatRoomId, readerId: currentUser._id });
           scrollToBottom();
         } catch (error) { setMessages([]); } finally { setLoading(false); }
       };
 
       fetchMessages();
 
-      socketRef.current.on("receive_message", (msg) => {
+      socket.on("receive_message", (msg) => {
         setMessages((prev) => {
           if (Array.isArray(prev) && prev.some((m) => m._id === msg._id)) return prev;
           return [...(Array.isArray(prev) ? prev : []), msg];
         });
-        if (msg.sender !== currentUser._id) socketRef.current.emit("mark_as_read", { donationId: chatRoomId, readerId: currentUser._id });
+        if (msg.sender !== currentUser._id) socket.emit("mark_as_read", { donationId: chatRoomId, readerId: currentUser._id });
         scrollToBottom();
       });
 
-      socketRef.current.on("messages_read", ({ readerId }) => {
+      socket.on("messages_read", ({ readerId }) => {
         if (readerId !== currentUser._id) {
           setMessages((prev) => prev.map((msg) => (msg.sender === currentUser._id ? { ...msg, read: true } : msg)));
         }
       });
+
+      return () => { 
+        socket.off("receive_message");
+        socket.off("messages_read");
+      };
     }
-
-    return () => { if (socketRef.current) socketRef.current.disconnect(); };
-  }, [isOpen, chatPartner, chatRoomId, currentUser]);
-
+  }, [isOpen, chatPartner, chatRoomId, currentUser, socket]);
 
   const handleSend = async (e) => {
     e?.preventDefault();
-    if (!newMessage.trim() || !chatRoomId) return;
+    if (!newMessage.trim() || !chatRoomId || !socket) return;
 
     const messageContent = newMessage.trim();
     setNewMessage("");
@@ -81,7 +77,7 @@ const ChatDrawer = ({ isOpen, onClose, currentUser, chatPartner, donationId }) =
       const messageData = { receiverId: chatPartner._id, content: messageContent, donationId: chatRoomId };
       const { data } = await api.post("/chat", messageData);
 
-      socketRef.current.emit("send_message", { ...data, donationId: chatRoomId, receiver: chatPartner._id, senderName: currentUser.name });
+      socket.emit("send_message", { ...data, donationId: chatRoomId, receiver: chatPartner._id, senderName: currentUser.name });
       setMessages((prev) => prev.map((msg) => (msg._id === tempId ? data : msg)));
     } catch (error) {
       toast.error("Transmission failed. Check connection.");

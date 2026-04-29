@@ -6,7 +6,6 @@ import { requestFirebaseToken } from "../firebase";
 
 const AuthContext = createContext();
 
-// 👉 THE FIX: Dynamically pull the WebSocket URL, removing '/api' if present in the env variable
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL 
   ? import.meta.env.VITE_BACKEND_URL.replace('/api', '') 
   : "https://hopelink-api.onrender.com";
@@ -18,11 +17,10 @@ export const AuthProvider = ({ children }) => {
   });
 
   const [unreadCount, setUnreadCount] = useState(0);
+  const [socket, setSocket] = useState(null);
 
   useEffect(() => {
     if (!user) return;
-
-    let socket;
 
     api.get("/chat/inbox")
       .then((res) => {
@@ -33,19 +31,16 @@ export const AuthProvider = ({ children }) => {
       })
       .catch(console.error);
 
-    socket = io(BACKEND_URL, {
+    const newSocket = io(BACKEND_URL, {
       transports: ["websocket", "polling"], 
     });
 
-    socket.emit("setup", user._id);
+    setSocket(newSocket);
+    newSocket.emit("setup", user._id);
 
-    // 👉 GLOBAL LISTENER
-    socket.on("new_message_notification", () => {
+    newSocket.on("new_message_notification", () => {
       setUnreadCount((prev) => prev + 1);
-      
-      // 👉 THE INBOX FIX: This event instantly triggers Inbox.jsx to re-fetch without a page reload
       window.dispatchEvent(new Event("new_unread_message"));
-
       toast("💬 Secure Transmission Received!", {
         style: { background: "#ffffff", color: "#29524a", border: "1px solid #846b8a" },
       });
@@ -69,14 +64,12 @@ export const AuthProvider = ({ children }) => {
       }
     };
 
-    socket.on("role_updated", handleRoleUpdate);
+    newSocket.on("role_updated", handleRoleUpdate);
 
     return () => {
-      if (socket) {
-        socket.off("role_updated", handleRoleUpdate);
-        socket.off("new_message_notification");
-        socket.disconnect();
-      }
+      newSocket.off("role_updated", handleRoleUpdate);
+      newSocket.off("new_message_notification");
+      newSocket.disconnect();
     };
   }, [user]);
 
@@ -130,11 +123,12 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setUser(null);
     setUnreadCount(0);
+    setSocket(null);
     localStorage.removeItem("user");
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, switchRole, setUser, unreadCount, setUnreadCount, enableNotifications }}>
+    <AuthContext.Provider value={{ user, login, logout, switchRole, setUser, unreadCount, setUnreadCount, enableNotifications, socket }}>
       {children}
     </AuthContext.Provider>
   );

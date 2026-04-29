@@ -1,6 +1,5 @@
 import { useState, useEffect, useContext, useRef } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
-import { io } from "socket.io-client";
 import AuthContext from "../context/AuthContext";
 import Layout from "../components/Layout";
 import EmojiPicker from "emoji-picker-react";
@@ -21,12 +20,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import api from "../utils/api";
 
-const SOCKET_URL = import.meta.env.VITE_BACKEND_URL 
-  ? import.meta.env.VITE_BACKEND_URL.replace('/api', '') 
-  : "https://hopelink-api.onrender.com";
-
 const Chat = () => {
-  const { user } = useContext(AuthContext);
+  const { user, socket } = useContext(AuthContext);
   const { donationId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -44,7 +39,6 @@ const Chat = () => {
   const [dropdownOpen, setDropdownOpen] = useState(null);
 
   const messagesEndRef = useRef(null);
-  const socketRef = useRef(null);
 
   const localRole = user?.activeRole || "donor";
   const isDonor = localRole === "donor";
@@ -72,15 +66,13 @@ const Chat = () => {
   };
 
   useEffect(() => {
-    if (!user || !otherUserId) {
+    if (!user || !otherUserId || !socket) {
+      if (!socket) return;
       navigate("/dashboard");
       return;
     }
 
-    socketRef.current = io(SOCKET_URL, {
-      transports: ["websocket", "polling"],
-    });
-    socketRef.current.emit("join_chat", { userId: user._id, donationId });
+    socket.emit("join_chat", { userId: user._id, donationId });
 
     const fetchHistoryAndMarkRead = async () => {
       try {
@@ -88,7 +80,7 @@ const Chat = () => {
         setMessages(Array.isArray(data) ? data : []);
         setLoading(false);
         await api.put(`/chat/${donationId}/read`);
-        socketRef.current.emit("mark_as_read", {
+        socket.emit("mark_as_read", {
           donationId,
           readerId: user._id,
         });
@@ -101,21 +93,21 @@ const Chat = () => {
 
     fetchHistoryAndMarkRead();
 
-    socketRef.current.on("receive_message", (message) => {
+    socket.on("receive_message", (message) => {
       setMessages((prev) => {
         if (Array.isArray(prev) && prev.some((m) => m._id === message._id))
           return prev;
         return [...(Array.isArray(prev) ? prev : []), message];
       });
       if (message.sender !== user._id)
-        socketRef.current.emit("mark_as_read", {
+        socket.emit("mark_as_read", {
           donationId,
           readerId: user._id,
         });
       scrollToBottom();
     });
 
-    socketRef.current.on("messages_read", ({ readerId }) => {
+    socket.on("messages_read", ({ readerId }) => {
       if (readerId !== user._id) {
         setMessages((prev) =>
           prev.map((msg) =>
@@ -125,17 +117,17 @@ const Chat = () => {
       }
     });
 
-    socketRef.current.on("message_edited", (updatedMsg) => {
+    socket.on("message_edited", (updatedMsg) => {
       setMessages((prev) =>
         prev.map((msg) => (msg._id === updatedMsg._id ? updatedMsg : msg)),
       );
     });
 
-    socketRef.current.on("message_deleted", (deletedId) => {
+    socket.on("message_deleted", (deletedId) => {
       setMessages((prev) => prev.filter((msg) => msg._id !== deletedId));
     });
 
-    socketRef.current.on("chat_terminated", (data) => {
+    socket.on("chat_terminated", (data) => {
       toast.success(
         data.message || "Transaction verified. Channel closing...",
         {
@@ -157,9 +149,13 @@ const Chat = () => {
     });
 
     return () => {
-      if (socketRef.current) socketRef.current.disconnect();
+      socket.off("receive_message");
+      socket.off("messages_read");
+      socket.off("message_edited");
+      socket.off("message_deleted");
+      socket.off("chat_terminated");
     };
-  }, [user, donationId, otherUserId, navigate]);
+  }, [user, donationId, otherUserId, navigate, socket]);
 
   const onEmojiClick = (emojiObject) => {
     setNewMessage((prevInput) => prevInput + emojiObject.emoji);
@@ -167,7 +163,7 @@ const Chat = () => {
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || !socket) return;
 
     const messageContent = newMessage.trim();
     setNewMessage("");
@@ -186,7 +182,7 @@ const Chat = () => {
         const { data } = await api.put(`/chat/${editingMessage._id}`, {
           content: messageContent,
         });
-        socketRef.current.emit("edit_message", data);
+        socket.emit("edit_message", data);
         setMessages((prev) =>
           prev.map((msg) => (msg._id === data._id ? data : msg)),
         );
@@ -215,7 +211,7 @@ const Chat = () => {
           content: messageContent,
         };
         const { data } = await api.post("/chat", messageData);
-        socketRef.current.emit("send_message", {
+        socket.emit("send_message", {
           ...data,
           donationId,
           receiver: otherUserId,
@@ -236,7 +232,7 @@ const Chat = () => {
       setMessages((prev) => prev.filter((msg) => msg._id !== msgId));
       try {
         await api.delete(`/chat/${msgId}`);
-        socketRef.current.emit("delete_message", { id: msgId, donationId });
+        socket.emit("delete_message", { id: msgId, donationId });
       } catch (error) {
         toast.error("Failed to delete message");
       }
