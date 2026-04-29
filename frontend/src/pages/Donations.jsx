@@ -37,7 +37,6 @@ const Donations = () => {
   const themeFocusBorder = isRequest ? "focus:border-dark-raspberry" : "focus:border-blazing-flame";
   const themeContainerBorder = "border-white";
 
-  // 👉 MAPBOX AUTOCOMPLETE (Optimized for India)
   const handleLocationType = (e) => {
     const val = e.target.value;
     setFormData((prev) => ({ ...prev, addressText: val, lat: null, lng: null }));
@@ -48,12 +47,11 @@ const Donations = () => {
         try {
           const apiKey = import.meta.env.VITE_MAPBOX_TOKEN;
           if (!apiKey) return;
-          // Note: added country=in to force high accuracy for Indian addresses
           const { data } = await axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(val)}.json?access_token=${apiKey}&autocomplete=true&limit=5&country=in`);
           
           if (data && data.features) {
             const formattedSuggestions = data.features.map(f => ({
-              display_name: f.place_name, lat: f.center[1], lon: f.center[0] // Mapbox returns [lng, lat]
+              display_name: f.place_name, lat: f.center[1], lon: f.center[0]
             }));
             setSuggestions(formattedSuggestions);
           } else { setSuggestions([]); }
@@ -68,7 +66,6 @@ const Donations = () => {
     setSuggestions([]);
   };
 
-  // 👉 MAPBOX REVERSE GEOCODING (GPS)
   const handleGetLocation = () => {
     if (!navigator.geolocation) return toast.error("GPS not supported");
     setIsFetchingLocation(true);
@@ -86,7 +83,7 @@ const Donations = () => {
           if (data && data.features && data.features.length > 0) {
             const cityString = data.features[0].place_name.split(",")[0];
             setFormData((prev) => ({ ...prev, addressText: cityString, lat: latitude, lng: longitude }));
-            toast.success(`Location locked: ${cityString} 📍`, { id: toastId });
+            toast.success(`Location locked: ${cityString} 🚀`, { id: toastId });
           } else { throw new Error("Location unresolvable"); }
         } catch (error) { toast.error("Could not resolve location via Mapbox.", { id: toastId }); } finally { setIsFetchingLocation(false); }
       },
@@ -117,7 +114,7 @@ const Donations = () => {
       const submitData = new FormData();
       Object.keys(formData).forEach((key) => { if (formData[key]) submitData.append(key, formData[key]); });
       await api.post("/donations", submitData);
-      toast.success(formData.listingType === "donation" ? "Item posted for donation! 🎉" : "Request broadcasted! 📡");
+      toast.success(formData.listingType === "donation" ? "Item posted for donation! 🎉" : "Request broadcasted! 🚨");
       navigate("/dashboard");
     } catch (error) { toast.error(error.response?.data?.message || "Failed to post item."); } finally { setIsSubmitting(false); }
   };
@@ -133,7 +130,7 @@ const Donations = () => {
 
   return (
     <Layout>
-      <div className="max-w-3xl mx-auto px-4 pb-32 md:pb-24 relative text-pine-teal min-h-screen">
+      <div className="max-w-3xl mx-auto px-4 pb-32 md:pb-24 relative text-pine-teal min-h-screen font-sans">
         <header className="mb-6 md:mb-8 text-center pt-6">
           <div className="w-16 h-16 md:w-20 md:h-20 bg-white/80 border border-white rounded-2xl flex items-center justify-center text-3xl md:text-4xl text-pine-teal mx-auto mb-4 shadow-[0_10px_30px_rgba(41,82,74,0.05)] backdrop-blur-md">
             {formData.listingType === "donation" ? <FaHandHoldingHeart className="text-blazing-flame" /> : <FaBoxOpen className="text-dark-raspberry" />}
@@ -189,10 +186,13 @@ const Donations = () => {
                       <option value="Veg">Vegetarian</option><option value="Non-Veg">Non-Vegetarian</option>
                     </select>
                   </div>
-                  <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 flex items-center gap-2"><FaCalendarAlt className={themeAccent} /> Expiry</label>
-                    <input type="date" value={formData.expiryDate} onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })} className={`w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-6 py-3.5 md:py-4 text-pine-teal text-base md:text-sm font-bold outline-none focus:bg-white ${themeFocusBorder}`} />
-                  </div>
+                  {/* 👉 THE FIX: Requesters don't set expiration dates for items they don't own */}
+                  {!isRequest && (
+                    <div>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 flex items-center gap-2"><FaCalendarAlt className={themeAccent} /> Expiry</label>
+                      <input type="date" value={formData.expiryDate} onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })} className={`w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-6 py-3.5 md:py-4 text-pine-teal text-base md:text-sm font-bold outline-none focus:bg-white ${themeFocusBorder}`} />
+                    </div>
+                  )}
                 </>
               )}
               {formData.category === "book" && (
@@ -201,7 +201,8 @@ const Donations = () => {
                   <input type="text" placeholder="Author name" value={formData.bookAuthor} onChange={(e) => setFormData({ ...formData, bookAuthor: e.target.value })} className={`w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-6 py-3.5 md:py-4 text-pine-teal text-base md:text-sm font-bold outline-none placeholder-dusty-lavender/70 focus:bg-white ${themeFocusBorder}`} />
                 </div>
               )}
-              {(formData.category === "clothes" || formData.category === "book" || formData.category === "general") && (
+              {/* 👉 THE FIX: Requesters don't set conditions for items they don't own */}
+              {!isRequest && (formData.category === "clothes" || formData.category === "book" || formData.category === "general") && (
                 <div>
                   <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 flex items-center gap-2"><FaTags className={themeAccent} /> Condition</label>
                   <select value={formData.condition} onChange={(e) => setFormData({ ...formData, condition: e.target.value })} className={`w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-6 py-3.5 md:py-4 text-pine-teal text-base md:text-sm font-bold outline-none cursor-pointer appearance-none focus:bg-white ${themeFocusBorder}`}>

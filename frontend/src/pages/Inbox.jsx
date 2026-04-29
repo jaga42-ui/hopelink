@@ -14,7 +14,6 @@ const Inbox = () => {
   const [inboxChats, setInboxChats] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // 👉 PREMIUM LIGHT THEME DYNAMIC ROLE CONFIG
   const localRole = user?.activeRole || "donor";
   const isDonor = localRole === "donor";
   const roleTheme = {
@@ -40,6 +39,7 @@ const Inbox = () => {
 
     fetchInbox();
 
+    // 👉 THE INBOX FIX IN ACTION: Instantly re-fetch data upon background push notification 
     const handleRealTimeUpdate = () => fetchInbox(true);
     window.addEventListener("new_unread_message", handleRealTimeUpdate);
     
@@ -51,7 +51,6 @@ const Inbox = () => {
   return (
     <Layout>
       <main className="max-w-3xl mx-auto md:px-4 pb-32 md:pb-24 font-sans">
-        {/* HEADER */}
         <header className="mb-6 md:mb-8 pt-6 px-4 md:px-0 flex items-center gap-4">
           <button onClick={() => navigate("/dashboard")} className="text-dusty-lavender hover:text-pine-teal transition-colors bg-white hover:bg-pearl-beige p-3 md:p-3.5 rounded-full border border-dusty-lavender/30 active:scale-90 shadow-sm">
             <FaArrowLeft className="text-lg md:text-sm" />
@@ -63,7 +62,6 @@ const Inbox = () => {
           </div>
         </header>
 
-        {/* LIST CONTAINER */}
         <section className="bg-white/70 backdrop-blur-lg border-y md:border border-white md:rounded-[2.5rem] overflow-hidden shadow-[0_20px_40px_rgba(41,82,74,0.08)] min-h-[60vh] relative">
           <div className="relative z-10">
             {loading ? (
@@ -95,14 +93,12 @@ const Inbox = () => {
                       })}
                       className="flex items-center gap-4 p-4 md:p-6 cursor-pointer hover:bg-white/90 active:bg-pearl-beige transition-colors group"
                     >
-                      {/* Avatar */}
                       <div className={`w-14 h-14 md:w-16 md:h-16 rounded-2xl flex-shrink-0 flex items-center justify-center font-black text-xl overflow-hidden uppercase border ${roleTheme.avatarBg} group-hover:scale-105 transition-transform shadow-sm`}>
                         {chat.otherUserProfilePic ? (
                           <img src={chat.otherUserProfilePic} alt="User" className="w-full h-full object-cover" />
                         ) : ( chat.otherUserName.charAt(0) )}
                       </div>
 
-                      {/* Message Preview */}
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start mb-1">
                           <h3 className="text-pine-teal font-black text-[15px] md:text-lg truncate pr-2 leading-tight">
@@ -123,7 +119,6 @@ const Inbox = () => {
                             </p>
                           </div>
 
-                          {/* Dynamic Unread Badge */}
                           {chat.unreadCount > 0 && (
                             <span className={`${roleTheme.bg} text-white text-[10px] md:text-[11px] font-black min-w-[24px] h-6 px-1.5 rounded-full flex items-center justify-center flex-shrink-0 ${roleTheme.shadow}`}>
                               {chat.unreadCount}

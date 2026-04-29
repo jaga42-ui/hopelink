@@ -1,6 +1,6 @@
-// Developed by guruprasad and team
 import { useState, useEffect, useContext } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from "react-leaflet";
+import MarkerClusterGroup from "react-leaflet-cluster"; // 👉 THE FIX: Spatial Clustering
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import AuthContext from "../context/AuthContext";
@@ -64,7 +64,6 @@ const BloodRadar = () => {
         
         try {
           await api.put("/auth/location", { lat: latitude, lng: longitude });
-          // 👉 MAPBOX REVERSE GEOCODING FOR INITIAL LOAD
           const apiKey = import.meta.env.VITE_MAPBOX_TOKEN;
           if(apiKey) {
             const { data } = await axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${apiKey}`);
@@ -98,8 +97,10 @@ const BloodRadar = () => {
     setIsBlasting(true);
     try {
       const selectedBloodGroup = user.bloodGroup || "Blood";
+      
+      // 👉 THE FIX: Radius is now transmitted to the server's routing engine
       const { data } = await api.post("/auth/emergency-blast", {
-        lat: myLocation.lat, lng: myLocation.lng, message: emotionalMessage, bloodGroup: selectedBloodGroup,
+        lat: myLocation.lat, lng: myLocation.lng, message: emotionalMessage, bloodGroup: selectedBloodGroup, radius: radius
       });
 
       const formData = new FormData();
@@ -175,21 +176,24 @@ const BloodRadar = () => {
               
               <Marker position={[myLocation.lat, myLocation.lng]} icon={myIcon} />
 
-              {donors.map((donor) => (
-                <Marker key={donor._id} position={[donor.location.coordinates[1], donor.location.coordinates[0]]} icon={donorIcon}>
-                  <Popup className="custom-popup">
-                    <div className="text-center w-40 text-pine-teal font-sans">
-                      <img src={donor.profilePic || `https://ui-avatars.com/api/?name=${donor.name}&background=e8dab2&color=29524a`} className="w-12 h-12 rounded-full mx-auto mb-2 object-cover border-2 border-white shadow-sm" />
-                      <h3 className="font-black text-pine-teal truncate text-sm leading-tight">{donor.name}</h3>
-                      <div className="flex justify-center items-center gap-1 mt-1 mb-3">
-                        <FaHeartbeat className="text-blazing-flame text-[10px]" />
-                        <span className="bg-blazing-flame/10 text-blazing-flame font-black px-1.5 py-0.5 rounded text-[9px]">{donor.bloodGroup}</span>
+              {/* 👉 THE FIX: Algorithm-driven DOM clustering protects the mobile thread */}
+              <MarkerClusterGroup chunkedLoading maxClusterRadius={60}>
+                {donors.map((donor) => (
+                  <Marker key={donor._id} position={[donor.location.coordinates[1], donor.location.coordinates[0]]} icon={donorIcon}>
+                    <Popup className="custom-popup">
+                      <div className="text-center w-40 text-pine-teal font-sans">
+                        <img src={donor.profilePic || `https://ui-avatars.com/api/?name=${donor.name}&background=e8dab2&color=29524a`} className="w-12 h-12 rounded-full mx-auto mb-2 object-cover border-2 border-white shadow-sm" />
+                        <h3 className="font-black text-pine-teal truncate text-sm leading-tight">{donor.name}</h3>
+                        <div className="flex justify-center items-center gap-1 mt-1 mb-3">
+                          <FaHeartbeat className="text-blazing-flame text-[10px]" />
+                          <span className="bg-blazing-flame/10 text-blazing-flame font-black px-1.5 py-0.5 rounded text-[9px]">{donor.bloodGroup}</span>
+                        </div>
+                        <button onClick={() => navigate(`/chat/direct_${donor._id}`, { state: { otherUserId: donor._id, otherUserName: donor.name } })} className="w-full py-2 bg-pine-teal hover:bg-[#1a3630] text-white rounded-xl text-[10px] font-black tracking-wider transition-colors shadow-md">MESSAGE</button>
                       </div>
-                      <button onClick={() => navigate(`/chat/direct_${donor._id}`, { state: { otherUserId: donor._id, otherUserName: donor.name } })} className="w-full py-2 bg-pine-teal hover:bg-[#1a3630] text-white rounded-xl text-[10px] font-black tracking-wider transition-colors shadow-md">MESSAGE</button>
-                    </div>
-                  </Popup>
-                </Marker>
-              ))}
+                    </Popup>
+                  </Marker>
+                ))}
+              </MarkerClusterGroup>
             </MapContainer>
           )}
         </div>

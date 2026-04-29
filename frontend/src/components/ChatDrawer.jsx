@@ -7,16 +7,20 @@ import {
 import toast from "react-hot-toast";
 import api from "../utils/api";
 
-const SOCKET_URL = "https://hopelink-api.onrender.com";
+const SOCKET_URL = import.meta.env.VITE_BACKEND_URL 
+  ? import.meta.env.VITE_BACKEND_URL.replace('/api', '') 
+  : "https://hopelink-api.onrender.com";
 
-const ChatDrawer = ({ isOpen, onClose, currentUser, chatPartner }) => {
+// 👉 THE FIX: donationId is now required so backend can index the chat correctly
+const ChatDrawer = ({ isOpen, onClose, currentUser, chatPartner, donationId }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
   const socketRef = useRef(null);
 
-  const chatRoomId = chatPartner ? [currentUser._id, chatPartner._id].sort().join("_") : null;
+  // 👉 THE FIX: Chat room properly aligns with the Grid's 1-to-1 specific connection
+  const chatRoomId = (chatPartner && donationId) ? `${donationId}_${chatPartner._id}` : null;
 
   const scrollToBottom = () => {
     setTimeout(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, 50);
@@ -89,13 +93,10 @@ const ChatDrawer = ({ isOpen, onClose, currentUser, chatPartner }) => {
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop Overlay */}
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 bg-pine-teal/60 backdrop-blur-sm z-[100]" />
 
-          {/* Drawer Panel */}
           <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="fixed right-0 top-0 h-[100dvh] w-full max-w-md bg-pearl-beige border-l border-white z-[101] shadow-2xl flex flex-col font-sans">
             
-            {/* HEADER */}
             <div className="p-4 bg-white/80 backdrop-blur-md border-b border-white flex justify-between items-center shrink-0 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="relative">
@@ -122,7 +123,6 @@ const ChatDrawer = ({ isOpen, onClose, currentUser, chatPartner }) => {
               </button>
             </div>
 
-            {/* MESSAGES AREA */}
             <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-pearl-beige/30 space-y-5 relative no-scrollbar">
               {loading ? (
                 <div className="h-full flex items-center justify-center">
@@ -158,7 +158,6 @@ const ChatDrawer = ({ isOpen, onClose, currentUser, chatPartner }) => {
               <div ref={messagesEndRef} className="h-2" />
             </div>
 
-            {/* INPUT AREA */}
             <div className="bg-white/80 backdrop-blur-md px-3 py-3 md:p-4 z-20 border-t border-white shrink-0 pb-6 md:pb-4">
               <form onSubmit={handleSend} className="max-w-3xl mx-auto flex items-end gap-2 bg-white border border-dusty-lavender/30 rounded-3xl p-1.5 shadow-sm transition-all focus-within:border-pine-teal focus-within:ring-1 focus-within:ring-pine-teal/30">
                 <textarea value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Type a message..." rows={1} className="flex-1 bg-transparent py-3.5 px-4 text-pine-teal text-[14px] outline-none placeholder-dusty-lavender resize-none max-h-32 overflow-y-auto" onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(e); } }} />

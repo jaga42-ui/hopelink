@@ -1,4 +1,3 @@
-// Developed by guruprasad and team
 import { useState, useEffect, useContext, useRef } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
@@ -22,8 +21,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import api from "../utils/api";
 
-// 👉 FIXED: Environment Variable logic for local testing vs live site
-const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || "https://hopelink-api.onrender.com";
+const SOCKET_URL = import.meta.env.VITE_BACKEND_URL 
+  ? import.meta.env.VITE_BACKEND_URL.replace('/api', '') 
+  : "https://hopelink-api.onrender.com";
 
 const Chat = () => {
   const { user } = useContext(AuthContext);
