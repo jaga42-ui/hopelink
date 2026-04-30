@@ -174,10 +174,15 @@ const getDonations = asyncHandler(async (req, res) => {
   }
 
   // 👉 THE FIX: Over-fetch by 1 item to determine 'hasMore' without slow countDocuments()
-  let donations = await Donation.find(query)
+  let dbQuery = Donation.find(query)
     .populate("donorId", "name profilePic addressText phone")
-    .populate("requestedBy", "name profilePic")
-    .sort({ createdAt: -1 })
+    .populate("requestedBy", "name profilePic");
+
+  if (!lat || !lng) {
+    dbQuery = dbQuery.sort({ createdAt: -1 });
+  }
+
+  let donations = await dbQuery
     .skip(skip)
     .limit(limit + 1); 
 
@@ -228,7 +233,7 @@ const requestItem = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error("You cannot request your own item");
   }
-  if (donation.requestedBy.includes(req.user._id)) {
+  if (donation.requestedBy.some(id => id.toString() === req.user._id.toString())) {
     res.status(400);
     throw new Error("You have already requested this item");
   }
@@ -275,7 +280,7 @@ const approveRequest = asyncHandler(async (req, res) => {
     throw new Error("This mission has already been completed.");
   }
 
-  if (!donation.requestedBy.includes(receiverId)) {
+  if (!donation.requestedBy.some(id => id.toString() === receiverId.toString())) {
     res.status(400);
     throw new Error("This user is not on the request list");
   }
@@ -337,7 +342,7 @@ const acceptSOS = asyncHandler(async (req, res) => {
     throw new Error("You cannot respond to your own SOS");
   }
 
-  if (!sosRequest.requestedBy.includes(heroId)) {
+  if (!sosRequest.requestedBy.some(id => id.toString() === heroId.toString())) {
     sosRequest.requestedBy.push(heroId);
   }
 

@@ -38,7 +38,7 @@ const generateToken = (id) => {
 const registerUser = asyncHandler(async (req, res) => {
   const { name, password, phone, activeRole, bloodGroup } = req.body;
   // 👉 THE FIX: Normalize email to prevent duplicate accounts
-  const email = req.body.email.toLowerCase().trim();
+  const email = req.body.email ? req.body.email.toLowerCase().trim() : "";
 
   if (!name || !email || !password || !phone) {
     res.status(400);
@@ -84,7 +84,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
 const loginUser = asyncHandler(async (req, res) => {
   // 👉 THE FIX: Normalize email before querying DB
-  const email = req.body.email.toLowerCase().trim();
+  const email = req.body.email ? req.body.email.toLowerCase().trim() : "";
   const password = req.body.password;
   
   const user = await User.findOne({ email });
@@ -151,7 +151,7 @@ const googleLogin = asyncHandler(async (req, res) => {
     const payload = ticket.getPayload();
     
     // 👉 THE FIX: Ensure Google emails are also normalized
-    const email = payload.email.toLowerCase().trim();
+    const email = payload.email ? payload.email.toLowerCase().trim() : "";
     const { name, picture, sub: googleId } = payload;
 
     let user = await User.findOne({ email });
@@ -379,7 +379,7 @@ const respondToBlast = asyncHandler(async (req, res) => {
 
 const forgotPassword = asyncHandler(async (req, res) => {
   // 👉 THE FIX: Normalize email
-  const email = req.body.email.toLowerCase().trim();
+  const email = req.body.email ? req.body.email.toLowerCase().trim() : "";
   const user = await User.findOne({ email });
 
   if (!user) {
