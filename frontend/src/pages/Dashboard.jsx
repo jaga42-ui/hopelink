@@ -536,9 +536,8 @@ const Dashboard = () => {
     <Layout>
       <div className="dashboard-shell relative min-h-screen overflow-hidden bg-pearl-beige font-sans text-pine-teal">
         <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-          <div className="dashboard-grid absolute inset-0 opacity-80" />
-          <div className="dashboard-sheen absolute -top-24 left-[-25%] h-80 w-[150%] opacity-80" />
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-pine-teal/25 to-transparent" />
+          <div className="dashboard-grid absolute inset-0 opacity-30 md:opacity-60" />
+          <div className="dashboard-sheen absolute -top-24 left-[-25%] hidden h-80 w-[150%] opacity-60 md:block" />
         </div>
 
         <div className="relative z-10 mx-auto max-w-6xl px-4 pb-32 md:pb-24">
@@ -563,13 +562,13 @@ const Dashboard = () => {
             </AnimatePresence>
           </div>
 
-          <header className="border-b border-white/60 pb-7 pt-8 md:pt-10">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <header className="border-b border-dusty-lavender/30 pb-4 pt-5 md:pb-7 md:pt-10">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <MotionDiv
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mb-3 inline-flex items-center gap-2 rounded-full border border-pine-teal/15 bg-white/65 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-pine-teal shadow-sm backdrop-blur-xl"
+                  className="mb-3 hidden items-center gap-2 rounded-full border border-pine-teal/15 bg-white/60 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-pine-teal shadow-sm backdrop-blur-xl sm:inline-flex"
                 >
                   <span className="h-2 w-2 rounded-full bg-blazing-flame shadow-[0_0_14px_rgba(255,74,28,0.8)]" />
                   Live Community Feed
@@ -578,16 +577,18 @@ const Dashboard = () => {
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.04 }}
-                  className="text-4xl font-black leading-tight tracking-tight text-pine-teal md:text-6xl"
+                  className="text-2xl font-black leading-tight tracking-tight text-pine-teal sm:text-4xl md:text-6xl"
                 >
-                  Welcome, <br className="sm:hidden" />
+                  <span className="sm:hidden">Hi, </span>
+                  <span className="hidden sm:inline">Welcome, </span>
+                  <br className="hidden sm:block md:hidden" />
                   {user?.name?.split(" ")[0] || "Friend"}.
                 </MotionH1>
                 <MotionP
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 }}
-                  className="mt-3 max-w-2xl text-sm font-bold leading-relaxed text-pine-teal/70 md:text-base"
+                  className="mt-3 hidden max-w-2xl text-sm font-bold leading-relaxed text-pine-teal/70 sm:block md:text-base"
                 >
                   {isDonor
                     ? "Share supplies, answer requests, and keep urgent posts visible."
@@ -599,13 +600,13 @@ const Dashboard = () => {
                 initial={{ opacity: 0, scale: 0.96 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.12, type: "spring", stiffness: 220 }}
-                className="grid w-full grid-cols-2 gap-2 rounded-[1.5rem] border border-white/70 bg-white/65 p-2 shadow-[0_18px_45px_rgba(41,82,74,0.1)] backdrop-blur-2xl sm:flex sm:w-auto"
+                className="grid w-full grid-cols-2 gap-2 rounded-2xl border border-dusty-lavender/30 bg-white/50 p-1.5 shadow-sm backdrop-blur-xl sm:flex sm:w-auto sm:rounded-[1.5rem] sm:border-white/70 sm:bg-white/65 sm:p-2 sm:shadow-[0_18px_45px_rgba(41,82,74,0.1)]"
               >
                 <MotionButton
                   whileHover={{ y: -2 }}
                   whileTap={{ scale: 0.96 }}
                   onClick={() => navigate("/donations")}
-                  className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg transition-all md:px-5 ${
+                  className={`flex min-h-10 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white shadow-md transition-all sm:min-h-12 sm:rounded-2xl sm:py-3 sm:shadow-lg md:px-5 ${
                     isDonor
                       ? "bg-pine-teal shadow-pine-teal/25"
                       : "bg-dark-raspberry shadow-dark-raspberry/25"
@@ -620,7 +621,7 @@ const Dashboard = () => {
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.96 }}
                     onClick={switchRole}
-                    className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-dusty-lavender/20 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-widest text-pine-teal shadow-sm transition-all hover:border-pine-teal/30 md:px-5"
+                    className="hidden min-h-12 items-center justify-center gap-2 rounded-2xl border border-dusty-lavender/20 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-widest text-pine-teal shadow-sm transition-all hover:border-pine-teal/30 sm:flex md:px-5"
                   >
                     <FaUsers className="text-sm text-dark-raspberry" />
                     {isDonor ? "Receiver" : "Donor"}
@@ -631,7 +632,7 @@ const Dashboard = () => {
                   whileHover={{ y: -2 }}
                   whileTap={{ scale: 0.96 }}
                   onClick={enableNotifications}
-                  className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-dusty-lavender/20 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-widest text-pine-teal shadow-sm transition-all hover:border-blazing-flame/30 md:px-5"
+                  className="hidden min-h-12 items-center justify-center gap-2 rounded-2xl border border-dusty-lavender/20 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-widest text-pine-teal shadow-sm transition-all hover:border-blazing-flame/30 sm:flex md:px-5"
                 >
                   <FaBell className="text-sm text-blazing-flame" />
                   Alerts
@@ -641,7 +642,7 @@ const Dashboard = () => {
                   whileHover={{ y: -2 }}
                   whileTap={{ scale: 0.96 }}
                   onClick={() => setShowSOS(true)}
-                  className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-blazing-flame px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-blazing-flame/25 transition-all md:px-5"
+                  className="flex min-h-10 items-center justify-center gap-2 rounded-xl bg-blazing-flame px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white shadow-md shadow-blazing-flame/20 transition-all sm:min-h-12 sm:rounded-2xl sm:py-3 sm:shadow-lg sm:shadow-blazing-flame/25 md:px-5"
                 >
                   <FaHeartbeat className="text-sm" />
                   SOS
@@ -657,7 +658,7 @@ const Dashboard = () => {
               hidden: {},
               show: { transition: { staggerChildren: 0.06 } },
             }}
-            className="grid grid-cols-2 gap-3 py-6 lg:grid-cols-4"
+            className="hidden grid-cols-2 gap-3 py-6 sm:grid lg:grid-cols-4"
           >
             {dashboardStats.map((stat) => {
               const StatIcon = stat.icon;
@@ -691,7 +692,7 @@ const Dashboard = () => {
             })}
           </MotionSection>
 
-          <div className="sticky top-0 z-30 -mx-4 mb-6 border-y border-white/60 bg-pearl-beige/80 px-4 py-3 backdrop-blur-2xl md:static md:mx-0 md:rounded-[1.5rem] md:border md:bg-white/50">
+          <div className="sticky top-0 z-30 -mx-4 mb-5 border-y border-dusty-lavender/30 bg-pearl-beige/95 px-4 py-2.5 backdrop-blur-xl sm:mb-6 md:static md:mx-0 md:rounded-[1.5rem] md:border md:bg-white/50">
             <div className="flex gap-2 overflow-x-auto no-scrollbar">
               {FILTER_OPTIONS.map((option) => {
                 const FilterIcon = option.icon;
@@ -703,13 +704,13 @@ const Dashboard = () => {
                     whileTap={{ scale: 0.96 }}
                     key={option.label}
                     onClick={() => setFilterCategory(option.label)}
-                    className={`flex shrink-0 items-center gap-2 rounded-2xl border px-4 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all ${
+                    className={`flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-all sm:gap-2 sm:rounded-2xl sm:px-4 sm:py-2.5 sm:text-[10px] ${
                       isActive
                         ? "border-pine-teal bg-pine-teal text-white shadow-lg shadow-pine-teal/20"
-                        : "border-white/70 bg-white/65 text-dusty-lavender shadow-sm hover:border-pine-teal/20 hover:text-pine-teal"
+                        : "border-dusty-lavender/20 bg-white/50 text-dusty-lavender shadow-sm hover:border-pine-teal/20 hover:text-pine-teal sm:border-white/70 sm:bg-white/65"
                     }`}
                   >
-                    <FilterIcon className="text-sm" />
+                    <FilterIcon className="text-xs sm:text-sm" />
                     {option.label}
                   </MotionButton>
                 );
@@ -1252,4 +1253,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-
