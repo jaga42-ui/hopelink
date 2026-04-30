@@ -1,8 +1,7 @@
-// Developed by guruprasad and team
-import { useState, useEffect, useContext } from "react";
+﻿// Developed by guruprasad and team
+import { useState, useEffect, useContext, useMemo } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { io } from "socket.io-client";
 import AuthContext from "../context/AuthContext";
 import Layout from "../components/Layout";
 import {
@@ -23,6 +22,10 @@ import {
   FaHandsHelping,
   FaShareAlt,
   FaMedal,
+  FaUtensils,
+  FaTshirt,
+  FaBook,
+  FaBell,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -33,28 +36,99 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
   ? import.meta.env.VITE_BACKEND_URL.replace("/api", "")
   : "https://hopelink-api.onrender.com";
 
+const FILTER_OPTIONS = [
+  { label: "All", icon: FaBoxOpen },
+  { label: "Blood", icon: FaHeartbeat },
+  { label: "Food", icon: FaUtensils },
+  { label: "Clothes", icon: FaTshirt },
+  { label: "Book", icon: FaBook },
+  { label: "General", icon: FaHandsHelping },
+];
+
+const CATEGORY_META = {
+  blood: {
+    label: "Blood",
+    icon: FaHeartbeat,
+    panel:
+      "bg-blazing-flame/10 text-blazing-flame border-blazing-flame/20",
+  },
+  food: {
+    label: "Food",
+    icon: FaUtensils,
+    panel: "bg-pine-teal/10 text-pine-teal border-pine-teal/20",
+  },
+  clothes: {
+    label: "Clothes",
+    icon: FaTshirt,
+    panel:
+      "bg-dark-raspberry/10 text-dark-raspberry border-dark-raspberry/20",
+  },
+  book: {
+    label: "Book",
+    icon: FaBook,
+    panel:
+      "bg-dusty-lavender/10 text-dusty-lavender border-dusty-lavender/20",
+  },
+  general: {
+    label: "General",
+    icon: FaHandsHelping,
+    panel: "bg-pearl-beige/60 text-pine-teal border-dusty-lavender/20",
+  },
+};
+
+const MotionDiv = motion.div;
+const MotionSection = motion.section;
+const MotionArticle = motion.article;
+const MotionButton = motion.button;
+const MotionH1 = motion.h1;
+const MotionP = motion.p;
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 28, scale: 0.98 },
+  show: (index) => ({
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      type: "spring",
+      stiffness: 260,
+      damping: 24,
+      delay: Math.min(index * 0.035, 0.22),
+    },
+  }),
+  exit: { opacity: 0, y: -16, scale: 0.97, transition: { duration: 0.18 } },
+};
+
 const optimizeImageUrl = (url) => {
   if (!url) return "";
-  if (!url.includes("cloudinary.com"))
+  if (!url.includes("cloudinary.com")) {
     return url.startsWith("http") ? url : `${BACKEND_URL}${url}`;
+  }
   return url.replace("/upload/", "/upload/f_auto,q_auto,w_800/");
 };
 
+const getCategoryMeta = (category) =>
+  CATEGORY_META[category?.toLowerCase()] || CATEGORY_META.general;
+
 const SkeletonCard = () => (
-  <div className="bg-white/40 backdrop-blur-2xl rounded-[2.5rem] p-5 shadow-lg border border-white/50 flex flex-col gap-4 animate-pulse h-[380px]">
-    <div className="flex items-center gap-3">
-      <div className="w-10 h-10 bg-white/60 rounded-full"></div>
-      <div className="flex-1">
-        <div className="h-3 w-1/3 bg-white/60 rounded-full mb-2"></div>
-        <div className="h-2 w-1/4 bg-white/60 rounded-full"></div>
+  <div className="relative h-[430px] overflow-hidden rounded-[2rem] border border-white/60 bg-white/55 p-5 shadow-[0_18px_50px_rgba(41,82,74,0.08)] backdrop-blur-2xl">
+    <div className="dashboard-card-sheen absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-white/70 to-transparent" />
+    <div className="flex animate-pulse flex-col gap-4">
+      <div className="flex items-center gap-3">
+        <div className="h-11 w-11 rounded-2xl bg-white/70" />
+        <div className="flex-1">
+          <div className="mb-2 h-3 w-1/2 rounded-full bg-white/70" />
+          <div className="h-2 w-1/3 rounded-full bg-white/60" />
+        </div>
       </div>
+      <div className="h-44 w-full rounded-[1.5rem] bg-white/60" />
+      <div className="space-y-3">
+        <div className="h-4 w-4/5 rounded-full bg-white/70" />
+        <div className="h-3 w-full rounded-full bg-white/60" />
+        <div className="h-3 w-2/3 rounded-full bg-white/60" />
+      </div>
+      <div className="mt-7 h-12 w-full rounded-2xl bg-white/60" />
     </div>
-    <div className="w-full h-40 bg-white/50 rounded-[1.5rem]"></div>
-    <div className="space-y-2 mt-2">
-      <div className="h-4 w-3/4 bg-white/60 rounded-full"></div>
-      <div className="h-3 w-full bg-white/60 rounded-full"></div>
-    </div>
-    <div className="mt-auto h-12 w-full bg-white/50 rounded-2xl"></div>
   </div>
 );
 
@@ -103,57 +177,127 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (!user?.token) return;
+
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
         const { data } = await api.get("/donations/feed?page=1&limit=12");
         setFeed(data.donations || (Array.isArray(data) ? data : []));
         setHasMore(data.hasMore || false);
-      } catch (error) {
+        setPage(1);
+      } catch {
         toast.error("Failed to load feed");
       } finally {
         setLoading(false);
       }
     };
+
     fetchDashboardData();
   }, [user]);
 
   useEffect(() => {
     if (!user || !socket) return;
-    socket.on("donor_coming", (data) => {
+
+    const handleDonorComing = (data) => {
       setResponders((prev) => [...prev, data]);
       toast.success(`${data.donorName} is en route to help!`);
       setTimeout(
         () =>
           setResponders((prev) =>
-            prev.filter((r) => r.blastId !== data.blastId),
+            prev.filter((responder) => responder.blastId !== data.blastId),
           ),
         10000,
       );
-    });
-    socket.on("new_listing", (newDonation) =>
-      setFeed((prev) => [newDonation, ...prev]),
-    );
-    socket.on("listing_updated", (updatedItem) =>
+    };
+
+    const handleNewListing = (newDonation) =>
+      setFeed((prev) => [newDonation, ...prev]);
+    const handleListingUpdated = (updatedItem) =>
       setFeed((prev) =>
         prev.map((item) => (item._id === updatedItem._id ? updatedItem : item)),
-      ),
-    );
-    socket.on("listing_deleted", (deletedId) =>
-      setFeed((prev) => prev.filter((item) => item._id !== deletedId)),
-    );
+      );
+    const handleListingDeleted = (deletedId) =>
+      setFeed((prev) => prev.filter((item) => item._id !== deletedId));
+
+    socket.on("donor_coming", handleDonorComing);
+    socket.on("new_listing", handleNewListing);
+    socket.on("listing_updated", handleListingUpdated);
+    socket.on("listing_deleted", handleListingDeleted);
 
     return () => {
-      socket.off("donor_coming");
-      socket.off("new_listing");
-      socket.off("listing_updated");
-      socket.off("listing_deleted");
+      socket.off("donor_coming", handleDonorComing);
+      socket.off("new_listing", handleNewListing);
+      socket.off("listing_updated", handleListingUpdated);
+      socket.off("listing_deleted", handleListingDeleted);
     };
   }, [user, socket]);
+
+  useEffect(() => {
+    return () => {
+      if (typingTimeout) clearTimeout(typingTimeout);
+    };
+  }, [typingTimeout]);
+
+  const processedFeed = useMemo(
+    () =>
+      feed.filter(
+        (item) =>
+          filterCategory === "All" ||
+          item.category?.toLowerCase() === filterCategory.toLowerCase(),
+      ),
+    [feed, filterCategory],
+  );
+
+  const dashboardStats = useMemo(() => {
+    const emergencyCount = feed.filter((item) => item.isEmergency).length;
+    const responderCount = feed.reduce(
+      (total, item) => total + (item.requestedBy?.length || 0),
+      0,
+    );
+    const fulfilledCount = feed.filter(
+      (item) => item.status === "fulfilled",
+    ).length;
+
+    return [
+      {
+        label: filterCategory === "All" ? "Active Signals" : "Showing",
+        value: processedFeed.length,
+        icon: FaBoxOpen,
+        tone: "text-pine-teal",
+        bg: "bg-pine-teal/10",
+        border: "border-pine-teal/15",
+      },
+      {
+        label: "SOS Alerts",
+        value: emergencyCount,
+        icon: FaExclamationTriangle,
+        tone: "text-blazing-flame",
+        bg: "bg-blazing-flame/10",
+        border: "border-blazing-flame/20",
+      },
+      {
+        label: "Responders",
+        value: responderCount,
+        icon: FaUsers,
+        tone: "text-dark-raspberry",
+        bg: "bg-dark-raspberry/10",
+        border: "border-dark-raspberry/20",
+      },
+      {
+        label: "Completed",
+        value: fulfilledCount,
+        icon: FaCheckCircle,
+        tone: "text-dusty-lavender",
+        bg: "bg-dusty-lavender/10",
+        border: "border-dusty-lavender/20",
+      },
+    ];
+  }, [feed, filterCategory, processedFeed.length]);
 
   const loadMoreListings = async () => {
     if (!hasMore || loadingMore) return;
     setLoadingMore(true);
+
     try {
       const nextPage = page + 1;
       const { data } = await api.get(
@@ -162,7 +306,7 @@ const Dashboard = () => {
       setFeed((prev) => [...prev, ...(data.donations || [])]);
       setHasMore(data.hasMore);
       setPage(nextPage);
-    } catch (error) {
+    } catch {
       toast.error("Failed to fetch more listings.");
     } finally {
       setLoadingMore(false);
@@ -170,8 +314,10 @@ const Dashboard = () => {
   };
 
   const handleGetLocation = async () => {
-    if (!navigator.geolocation)
+    if (!navigator.geolocation) {
       return toast.error("Geolocation is not supported.");
+    }
+
     setIsFetchingLocation(true);
     const toastId = toast.loading("Locating...");
 
@@ -185,7 +331,8 @@ const Dashboard = () => {
           const { data } = await axios.get(
             `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${apiKey}`,
           );
-          if (data && data.features && data.features.length > 0) {
+
+          if (data?.features?.length > 0) {
             const cityString = data.features[0].place_name.split(",")[0];
             setSosData((prev) => ({
               ...prev,
@@ -193,6 +340,7 @@ const Dashboard = () => {
               lat: latitude,
               lng: longitude,
             }));
+            setSuggestions([]);
             toast.success(`Location set: ${cityString}`, { id: toastId });
           }
         } catch {
@@ -212,36 +360,62 @@ const Dashboard = () => {
   const handleLocationType = (e) => {
     const val = e.target.value;
     setSosData((prev) => ({ ...prev, addressText: val, lat: null, lng: null }));
+
     if (typingTimeout) clearTimeout(typingTimeout);
+
     if (val.length > 2) {
       const timeoutId = setTimeout(async () => {
         try {
           const apiKey = import.meta.env.VITE_MAPBOX_TOKEN;
           if (!apiKey) return;
+
           const { data } = await axios.get(
             `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(val)}.json?access_token=${apiKey}&autocomplete=true&limit=5&country=in`,
           );
-          if (data && data.features)
+
+          if (data?.features) {
             setSuggestions(
-              data.features.map((f) => ({
-                display_name: f.place_name,
-                lat: f.center[1],
-                lon: f.center[0],
+              data.features.map((feature) => ({
+                display_name: feature.place_name,
+                lat: feature.center[1],
+                lon: feature.center[0],
               })),
             );
-        } catch (error) {
+          }
+        } catch {
           console.error("Autocomplete failed");
         }
       }, 600);
+
       setTypingTimeout(timeoutId);
     } else {
       setSuggestions([]);
     }
   };
 
+  const handleSelectSuggestion = (suggestion) => {
+    const locationLabel =
+      suggestion.display_name?.split(",").slice(0, 2).join(",") ||
+      suggestion.display_name;
+
+    setSosData((prev) => ({
+      ...prev,
+      addressText: locationLabel,
+      lat: suggestion.lat,
+      lng: suggestion.lon,
+    }));
+    setSuggestions([]);
+
+    if (typingTimeout) {
+      clearTimeout(typingTimeout);
+      setTypingTimeout(null);
+    }
+  };
+
   const handleSOSSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+
     try {
       const formData = new FormData();
       formData.append("listingType", "request");
@@ -258,7 +432,8 @@ const Dashboard = () => {
       if (sosData.lat) formData.append("lat", sosData.lat);
       if (sosData.lng) formData.append("lng", sosData.lng);
 
-      await api.post("/donations", formData);
+      const { data } = await api.post("/donations", formData);
+      setFeed((prev) => [data, ...prev]);
       setShowSOS(false);
       setSosData({
         bloodGroup: "",
@@ -278,19 +453,33 @@ const Dashboard = () => {
   };
 
   const handleDeletePost = async (id) => {
-    if (window.confirm("Delete this post?")) {
-      try {
-        await api.delete(`/donations/${id}`);
-        toast.success("Deleted.");
-      } catch {
-        toast.error("Failed to delete.");
-      }
+    if (!window.confirm("Delete this post?")) return;
+
+    try {
+      await api.delete(`/donations/${id}`);
+      setFeed((prev) => prev.filter((item) => item._id !== id));
+      toast.success("Deleted.");
+    } catch {
+      toast.error("Failed to delete.");
     }
   };
 
   const handleRequestItem = async (donationId) => {
     try {
       await api.post(`/donations/${donationId}/request`, {});
+      setFeed((prev) =>
+        prev.map((item) =>
+          item._id === donationId
+            ? {
+                ...item,
+                requestedBy: [
+                  ...(item.requestedBy || []),
+                  { _id: user._id, name: user.name },
+                ],
+              }
+            : item,
+        ),
+      );
       toast.success("Response sent!");
     } catch {
       toast.error("Failed to send request.");
@@ -299,6 +488,7 @@ const Dashboard = () => {
 
   const handleApproveRequest = async (donationId, receiverId) => {
     setApprovingId(receiverId);
+
     try {
       await api.patch(`/donations/${donationId}/approve`, { receiverId });
       setRequestsModal({ isOpen: false, donation: null });
@@ -319,258 +509,401 @@ const Dashboard = () => {
 
   const handleShare = async (item) => {
     const shareText = item.isEmergency
-      ? `🚨 URGENT: ${item.bloodGroup} Blood needed at ${item.addressText?.split(",")[0] || "nearby"}. Can you help?`
-      : `🙏 Sahayam: ${item.title} available near ${item.addressText?.split(",")[0] || "you"}.`;
+      ? `URGENT: ${item.bloodGroup} blood needed at ${item.addressText?.split(",")[0] || "nearby"}. Can you help?`
+      : `Sahayam: ${item.title} available near ${item.addressText?.split(",")[0] || "you"}.`;
     const shareData = {
       title: item.title,
       text: shareText,
       url: window.location.origin,
     };
+
     if (navigator.share) {
       try {
         await navigator.share(shareData);
-      } catch (err) {
+      } catch {
         console.log("Share cancelled");
       }
     } else {
       window.open(
-        `https://wa.me/?text=${encodeURIComponent(shareData.text + " -> " + shareData.url)}`,
+        `https://wa.me/?text=${encodeURIComponent(`${shareData.text} -> ${shareData.url}`)}`,
       );
     }
   };
-
-  const processedFeed = feed.filter(
-    (item) =>
-      filterCategory === "All" ||
-      item.category?.toLowerCase() === filterCategory.toLowerCase(),
-  );
 
   if (!user) return null;
 
   return (
     <Layout>
-      <div className="relative min-h-screen font-sans bg-[#fbf9f4] overflow-hidden">
-        {/* 👉 THE MASTERPIECE: Animated Ambient Glassmorphism Background */}
-        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-          <div className="absolute -top-[20%] -left-[10%] w-[70vw] h-[70vw] rounded-full bg-pine-teal/10 blur-[120px] animate-[spin_30s_linear_infinite]" />
-          <div className="absolute top-[40%] -right-[20%] w-[60vw] h-[60vw] rounded-full bg-blazing-flame/10 blur-[150px] animate-[spin_40s_linear_infinite_reverse]" />
-          <div className="absolute -bottom-[20%] left-[20%] w-[80vw] h-[80vw] rounded-full bg-dark-raspberry/5 blur-[150px] animate-[spin_50s_linear_infinite]" />
+      <div className="dashboard-shell relative min-h-screen overflow-hidden bg-pearl-beige font-sans text-pine-teal">
+        <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+          <div className="dashboard-grid absolute inset-0 opacity-80" />
+          <div className="dashboard-sheen absolute -top-24 left-[-25%] h-80 w-[150%] opacity-80" />
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-pine-teal/25 to-transparent" />
         </div>
 
-        <div className="max-w-6xl mx-auto px-4 pb-32 md:pb-24 relative z-10">
-          {/* RESPONDER TOAST */}
-          <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 pointer-events-none">
+        <div className="relative z-10 mx-auto max-w-6xl px-4 pb-32 md:pb-24">
+          <div className="pointer-events-none fixed left-1/2 top-20 z-[100] flex -translate-x-1/2 flex-col gap-2">
             <AnimatePresence>
-              {responders.map((res, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ y: -20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="bg-white/90 backdrop-blur-xl border border-blazing-flame/30 text-pine-teal px-5 py-3 rounded-full shadow-2xl flex items-center gap-3 pointer-events-auto"
+              {responders.map((res, index) => (
+                <MotionDiv
+                  key={`${res.blastId}-${index}`}
+                  initial={{ y: -20, opacity: 0, scale: 0.96 }}
+                  animate={{ y: 0, opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, y: -20, scale: 0.96 }}
+                  className="pointer-events-auto flex items-center gap-3 rounded-full border border-blazing-flame/30 bg-white/90 px-5 py-3 text-pine-teal shadow-2xl backdrop-blur-xl"
                 >
-                  <div className="w-8 h-8 rounded-full bg-blazing-flame/10 flex items-center justify-center">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blazing-flame/10">
                     <FaRunning className="text-blazing-flame" />
                   </div>
                   <span className="text-xs font-black uppercase tracking-widest">
                     {res.donorName} is coming!
                   </span>
-                </motion.div>
+                </MotionDiv>
               ))}
             </AnimatePresence>
           </div>
 
-          <header className="pt-10 pb-8 flex flex-col md:flex-row md:items-end justify-between gap-6 relative">
-            <div className="relative z-10">
-              <motion.h1
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-4xl md:text-5xl font-black tracking-tighter text-pine-teal leading-tight drop-shadow-sm"
-              >
-                Welcome, <br className="md:hidden" />{" "}
-                {user?.name?.split(" ")[0]}.
-              </motion.h1>
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.1 }}
-                className="text-dusty-lavender text-xs md:text-sm font-bold uppercase tracking-widest mt-2"
-              >
-                The grid is active and waiting.
-              </motion.p>
-            </div>
+          <header className="border-b border-white/60 pb-7 pt-8 md:pt-10">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <MotionDiv
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-3 inline-flex items-center gap-2 rounded-full border border-pine-teal/15 bg-white/65 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-pine-teal shadow-sm backdrop-blur-xl"
+                >
+                  <span className="h-2 w-2 rounded-full bg-blazing-flame shadow-[0_0_14px_rgba(255,74,28,0.8)]" />
+                  Live Community Feed
+                </MotionDiv>
+                <MotionH1
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.04 }}
+                  className="text-4xl font-black leading-tight tracking-tight text-pine-teal md:text-6xl"
+                >
+                  Welcome, <br className="sm:hidden" />
+                  {user?.name?.split(" ")[0] || "Friend"}.
+                </MotionH1>
+                <MotionP
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="mt-3 max-w-2xl text-sm font-bold leading-relaxed text-pine-teal/70 md:text-base"
+                >
+                  {isDonor
+                    ? "Share supplies, answer requests, and keep urgent posts visible."
+                    : "Track available support, respond quickly, and keep emergency needs moving."}
+                </MotionP>
+              </div>
 
-            {/* 👉 THE MASTERPIECE: Liquid Physics Quick Action Card */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="flex items-center gap-2 bg-white/60 backdrop-blur-2xl p-2 rounded-[1.5rem] shadow-xl border border-white/60 relative z-10"
-            >
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                transition={{ type: "spring", stiffness: 400, damping: 10 }}
-                onClick={() => navigate("/donations")}
-                className={`px-6 py-3 rounded-xl font-black uppercase tracking-widest text-[10px] md:text-xs transition-all shadow-lg ${isDonor ? "bg-pine-teal text-white shadow-pine-teal/30" : "bg-dark-raspberry text-white shadow-dark-raspberry/30"}`}
+              <MotionDiv
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.12, type: "spring", stiffness: 220 }}
+                className="grid w-full grid-cols-2 gap-2 rounded-[1.5rem] border border-white/70 bg-white/65 p-2 shadow-[0_18px_45px_rgba(41,82,74,0.1)] backdrop-blur-2xl sm:flex sm:w-auto"
               >
-                {isDonor ? "Post Intel" : "Request Support"}
-              </motion.button>
-              <div className="w-px h-10 bg-dusty-lavender/20 mx-1"></div>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                transition={{ type: "spring", stiffness: 400, damping: 10 }}
-                onClick={() => setShowSOS(true)}
-                className="px-6 py-3 rounded-xl font-black uppercase tracking-widest text-[10px] md:text-xs bg-blazing-flame/10 text-blazing-flame hover:bg-blazing-flame hover:text-white transition-all shadow-sm flex items-center gap-2"
-              >
-                <FaHeartbeat className="animate-pulse text-base" /> Broadcast
-                SOS
-              </motion.button>
-            </motion.div>
+                <MotionButton
+                  whileHover={{ y: -2 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => navigate("/donations")}
+                  className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg transition-all md:px-5 ${
+                    isDonor
+                      ? "bg-pine-teal shadow-pine-teal/25"
+                      : "bg-dark-raspberry shadow-dark-raspberry/25"
+                  }`}
+                >
+                  <FaBoxOpen className="text-sm" />
+                  {isDonor ? "Post" : "Request"}
+                </MotionButton>
+
+                {!user?.isAdmin && (
+                  <MotionButton
+                    whileHover={{ y: -2 }}
+                    whileTap={{ scale: 0.96 }}
+                    onClick={switchRole}
+                    className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-dusty-lavender/20 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-widest text-pine-teal shadow-sm transition-all hover:border-pine-teal/30 md:px-5"
+                  >
+                    <FaUsers className="text-sm text-dark-raspberry" />
+                    {isDonor ? "Receiver" : "Donor"}
+                  </MotionButton>
+                )}
+
+                <MotionButton
+                  whileHover={{ y: -2 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={enableNotifications}
+                  className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-dusty-lavender/20 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-widest text-pine-teal shadow-sm transition-all hover:border-blazing-flame/30 md:px-5"
+                >
+                  <FaBell className="text-sm text-blazing-flame" />
+                  Alerts
+                </MotionButton>
+
+                <MotionButton
+                  whileHover={{ y: -2 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => setShowSOS(true)}
+                  className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-blazing-flame px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-blazing-flame/25 transition-all md:px-5"
+                >
+                  <FaHeartbeat className="text-sm" />
+                  SOS
+                </MotionButton>
+              </MotionDiv>
+            </div>
           </header>
 
-          {/* MINIMALIST FILTERS */}
-          <div className="flex gap-3 overflow-x-auto no-scrollbar py-2 mb-8 relative z-10">
-            {["All", "Blood", "Food", "Clothes", "Book", "General"].map(
-              (cat) => (
-                <motion.button
-                  whileHover={{ y: -2 }}
-                  whileTap={{ scale: 0.95 }}
-                  key={cat}
-                  onClick={() => setFilterCategory(cat)}
-                  className={`px-6 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-widest whitespace-nowrap transition-all shadow-sm border ${filterCategory === cat ? "bg-pine-teal text-white border-pine-teal shadow-pine-teal/30" : "bg-white/60 backdrop-blur-md text-dusty-lavender hover:bg-white border-white/50"}`}
+          <MotionSection
+            initial="hidden"
+            animate="show"
+            variants={{
+              hidden: {},
+              show: { transition: { staggerChildren: 0.06 } },
+            }}
+            className="grid grid-cols-2 gap-3 py-6 lg:grid-cols-4"
+          >
+            {dashboardStats.map((stat) => {
+              const StatIcon = stat.icon;
+              return (
+                <MotionDiv
+                  key={stat.label}
+                  variants={{
+                    hidden: { opacity: 0, y: 16 },
+                    show: { opacity: 1, y: 0 },
+                  }}
+                  className={`relative overflow-hidden rounded-[1.5rem] border ${stat.border} bg-white/65 p-4 shadow-[0_14px_35px_rgba(41,82,74,0.07)] backdrop-blur-xl`}
                 >
-                  {cat}
-                </motion.button>
-              ),
-            )}
+                  <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-dusty-lavender">
+                        {stat.label}
+                      </p>
+                      <p className="mt-2 truncate text-2xl font-black tracking-tight text-pine-teal">
+                        {stat.value}
+                      </p>
+                    </div>
+                    <div
+                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${stat.border} ${stat.bg}`}
+                    >
+                      <StatIcon className={`text-lg ${stat.tone}`} />
+                    </div>
+                  </div>
+                </MotionDiv>
+              );
+            })}
+          </MotionSection>
+
+          <div className="sticky top-0 z-30 -mx-4 mb-6 border-y border-white/60 bg-pearl-beige/80 px-4 py-3 backdrop-blur-2xl md:static md:mx-0 md:rounded-[1.5rem] md:border md:bg-white/50">
+            <div className="flex gap-2 overflow-x-auto no-scrollbar">
+              {FILTER_OPTIONS.map((option) => {
+                const FilterIcon = option.icon;
+                const isActive = filterCategory === option.label;
+
+                return (
+                  <MotionButton
+                    whileHover={{ y: -2 }}
+                    whileTap={{ scale: 0.96 }}
+                    key={option.label}
+                    onClick={() => setFilterCategory(option.label)}
+                    className={`flex shrink-0 items-center gap-2 rounded-2xl border px-4 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all ${
+                      isActive
+                        ? "border-pine-teal bg-pine-teal text-white shadow-lg shadow-pine-teal/20"
+                        : "border-white/70 bg-white/65 text-dusty-lavender shadow-sm hover:border-pine-teal/20 hover:text-pine-teal"
+                    }`}
+                  >
+                    <FilterIcon className="text-sm" />
+                    {option.label}
+                  </MotionButton>
+                );
+              })}
+            </div>
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 relative z-10">
-              {[1, 2, 3, 4, 5, 6].map((n) => (
-                <SkeletonCard key={n} />
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+              {[1, 2, 3, 4, 5, 6].map((number) => (
+                <SkeletonCard key={number} />
               ))}
             </div>
           ) : processedFeed.length === 0 ? (
-            <div className="text-center py-32 bg-white/40 backdrop-blur-xl rounded-[3rem] border border-white/50 shadow-lg relative z-10">
-              <FaBoxOpen className="text-6xl text-pine-teal/20 mx-auto mb-4" />
-              <p className="font-black uppercase tracking-widest text-pine-teal/50 text-sm">
-                Sector Clear. No active signals.
+            <MotionDiv
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-[2rem] border border-dashed border-pine-teal/20 bg-white/55 px-6 py-20 text-center shadow-[0_18px_45px_rgba(41,82,74,0.08)] backdrop-blur-xl"
+            >
+              <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-3xl border border-pine-teal/10 bg-pine-teal/10 text-pine-teal">
+                <FaBoxOpen className="text-3xl" />
+              </div>
+              <h2 className="text-lg font-black uppercase tracking-widest text-pine-teal">
+                No active signals
+              </h2>
+              <p className="mx-auto mt-3 max-w-md text-sm font-bold leading-relaxed text-pine-teal/60">
+                Try another category or create a fresh community listing.
               </p>
-            </div>
+              <button
+                onClick={() => navigate("/donations")}
+                className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl bg-pine-teal px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-pine-teal/25 transition-all active:scale-95"
+              >
+                <FaBoxOpen />
+                New Listing
+              </button>
+            </MotionDiv>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 relative z-10">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
               <AnimatePresence mode="popLayout">
-                {processedFeed.map((item) => {
-                  const isMine = item.donorId?._id === user._id;
+                {processedFeed.map((item, index) => {
+                  const donorId = item.donorId?._id || item.donorId;
+                  const receiverId = item.receiverId?._id || item.receiverId;
+                  const isMine = donorId === user._id;
                   const alreadyReq = item.requestedBy?.some(
-                    (r) => r._id === user._id,
+                    (requester) => (requester._id || requester) === user._id,
                   );
                   const isApprovedReceiver =
-                    item.status === "pending" && item.receiverId === user._id;
+                    item.status === "pending" && receiverId === user._id;
+                  const meta = getCategoryMeta(item.category);
+                  const CategoryIcon = meta.icon;
+                  const avatarName = encodeURIComponent(
+                    item.donorId?.name || "Sahayam User",
+                  );
+                  const createdAt = item.createdAt
+                    ? new Date(item.createdAt).toLocaleDateString()
+                    : "Recently";
 
                   return (
-                    // 👉 THE MASTERPIECE: 3D Hover Cards with Radiant Glow
-                    <motion.div
+                    <MotionArticle
                       layout
+                      custom={index}
+                      variants={cardVariants}
+                      initial="hidden"
+                      animate="show"
+                      exit="exit"
+                      whileHover={{ y: -6 }}
                       key={item._id}
-                      initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.9, y: -20 }}
-                      whileHover={{ y: -8 }}
-                      transition={{
-                        type: "spring",
-                        stiffness: 300,
-                        damping: 20,
-                      }}
-                      className={`relative flex flex-col bg-white/60 backdrop-blur-2xl rounded-[2.5rem] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_60px_rgba(41,82,74,0.15)] transition-all duration-300 border ${item.isEmergency ? "border-blazing-flame/50 shadow-[0_15px_50px_rgba(255,74,28,0.2)]" : "border-white/60"} overflow-hidden group`}
+                      className={`group relative flex min-h-[430px] flex-col overflow-hidden rounded-[2rem] border bg-white/70 p-4 shadow-[0_18px_45px_rgba(41,82,74,0.08)] backdrop-blur-2xl transition-shadow duration-300 hover:shadow-[0_24px_60px_rgba(41,82,74,0.16)] ${
+                        item.isEmergency
+                          ? "border-blazing-flame/40"
+                          : "border-white/70"
+                      }`}
                     >
-                      {/* Inner Radiant Glow */}
-                      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/80 via-white/20 to-transparent pointer-events-none" />
+                      <div className="dashboard-card-sheen absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-white/70 to-transparent" />
+                      <div
+                        className={`absolute inset-x-0 top-0 h-1 ${
+                          item.isEmergency
+                            ? "bg-blazing-flame"
+                            : "bg-gradient-to-r from-pine-teal via-dusty-lavender to-dark-raspberry"
+                        }`}
+                      />
 
-                      <div className="flex justify-between items-start relative z-10 mb-4">
-                        <div className="flex items-center gap-3">
+                      <div className="relative z-10 mb-4 flex items-start justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
                           <img
                             src={
                               item.donorId?.profilePic ||
-                              `https://ui-avatars.com/api/?name=${item.donorId?.name}&background=e8dab2&color=29524a`
+                              `https://ui-avatars.com/api/?name=${avatarName}&background=e8dab2&color=29524a`
                             }
                             alt="User"
-                            className="w-11 h-11 rounded-[1.1rem] object-cover shadow-md border border-white/50"
+                            className="h-11 w-11 shrink-0 rounded-2xl border border-white/70 object-cover shadow-sm"
                           />
-                          <div>
-                            <p className="text-sm font-black text-pine-teal tracking-tight flex items-center gap-1">
-                              {item.donorId?.name}{" "}
+                          <div className="min-w-0">
+                            <p className="flex items-center gap-1 truncate text-sm font-black tracking-tight text-pine-teal">
+                              <span className="truncate">
+                                {item.donorId?.name || "Community Member"}
+                              </span>
                               {item.donorId?.points >= 50 && (
-                                <FaMedal className="text-blazing-flame" />
+                                <FaMedal className="shrink-0 text-blazing-flame" />
                               )}
                             </p>
-                            <p className="text-[9px] text-dusty-lavender uppercase font-bold tracking-widest mt-0.5">
-                              {new Date(item.createdAt).toLocaleDateString()}
+                            <p className="mt-0.5 text-[9px] font-bold uppercase tracking-widest text-dusty-lavender">
+                              {createdAt}
                             </p>
                           </div>
                         </div>
+
                         {item.isEmergency ? (
-                          <span className="bg-gradient-to-r from-blazing-flame to-[#e03a12] text-white px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg animate-pulse">
-                            SOS ALERT
+                          <span className="flex shrink-0 items-center gap-1 rounded-xl bg-blazing-flame px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-white shadow-lg shadow-blazing-flame/25">
+                            <FaExclamationTriangle />
+                            SOS
                           </span>
                         ) : (
-                          <span className="bg-white/80 backdrop-blur-md text-pine-teal border border-white/50 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-sm">
-                            {item.category}
+                          <span className="shrink-0 rounded-xl border border-white/70 bg-white/80 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-pine-teal shadow-sm">
+                            {meta.label}
                           </span>
                         )}
                       </div>
 
                       {item.image ? (
-                        <div className="w-full h-44 rounded-[1.5rem] overflow-hidden bg-pearl-beige shrink-0 relative z-10 shadow-inner">
+                        <div className="relative z-10 h-44 w-full shrink-0 overflow-hidden rounded-[1.5rem] bg-pearl-beige shadow-inner">
                           <img
                             src={optimizeImageUrl(item.image)}
-                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                            alt="Item"
+                            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                            alt={item.title || "Donation item"}
                           />
+                          <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-pine-teal/30 to-transparent" />
                         </div>
-                      ) : item.category === "blood" ? (
+                      ) : item.category?.toLowerCase() === "blood" ? (
                         <div
-                          className={`w-full h-44 rounded-[1.5rem] flex flex-col items-center justify-center shrink-0 relative z-10 shadow-inner ${item.isEmergency ? "bg-gradient-to-br from-blazing-flame to-[#e03a12] text-white" : "bg-gradient-to-br from-dark-raspberry to-[#850e53] text-white"}`}
+                          className={`relative z-10 flex h-44 w-full shrink-0 flex-col items-center justify-center overflow-hidden rounded-[1.5rem] text-white shadow-inner ${
+                            item.isEmergency
+                              ? "bg-gradient-to-br from-blazing-flame to-[#e03a12]"
+                              : "bg-gradient-to-br from-dark-raspberry to-[#850e53]"
+                          }`}
                         >
-                          <FaHeartbeat className="text-4xl mb-2 opacity-90 drop-shadow-md" />
-                          <span className="text-4xl font-black drop-shadow-md">
-                            {item.bloodGroup}
+                          <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.16),transparent_45%,rgba(0,0,0,0.12))]" />
+                          <FaHeartbeat className="relative mb-2 text-4xl drop-shadow-md" />
+                          <span className="relative text-4xl font-black drop-shadow-md">
+                            {item.bloodGroup || "Blood"}
                           </span>
                         </div>
-                      ) : null}
+                      ) : (
+                        <div
+                          className={`relative z-10 flex h-44 w-full shrink-0 flex-col items-center justify-center rounded-[1.5rem] border ${meta.panel} shadow-inner`}
+                        >
+                          <CategoryIcon className="mb-3 text-4xl" />
+                          <span className="text-xs font-black uppercase tracking-[0.2em]">
+                            {meta.label}
+                          </span>
+                        </div>
+                      )}
 
-                      <div className="flex-1 flex flex-col relative z-10 mt-4">
-                        <h3 className="text-lg font-black text-pine-teal line-clamp-1 mb-2">
+                      <div className="relative z-10 mt-4 flex flex-1 flex-col">
+                        <div className="mb-3 flex flex-wrap items-center gap-2">
+                          {item.quantity && (
+                            <span className="rounded-lg border border-pine-teal/10 bg-pine-teal/5 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-pine-teal">
+                              {item.quantity}
+                            </span>
+                          )}
+                          <span className="rounded-lg border border-dusty-lavender/15 bg-white/65 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-dusty-lavender">
+                            {item.status || "active"}
+                          </span>
+                        </div>
+
+                        <h3 className="mb-2 line-clamp-2 text-lg font-black leading-snug tracking-tight text-pine-teal">
                           {item.title}
                         </h3>
-                        <p className="text-xs text-pine-teal/70 font-medium leading-relaxed line-clamp-2 mb-4 flex-1">
+                        <p className="mb-4 line-clamp-2 flex-1 text-sm font-medium leading-relaxed text-pine-teal/70">
                           {item.description}
                         </p>
-                        <div className="flex items-center gap-2 text-dark-raspberry text-[10px] font-black uppercase tracking-widest mt-auto bg-dark-raspberry/5 p-2.5 rounded-xl border border-dark-raspberry/10">
-                          <FaMapMarkerAlt className="text-sm" />{" "}
+                        <div className="mt-auto flex items-center gap-2 rounded-2xl border border-dark-raspberry/10 bg-dark-raspberry/5 p-3 text-[10px] font-black uppercase tracking-widest text-dark-raspberry">
+                          <FaMapMarkerAlt className="shrink-0 text-sm" />
                           <span className="truncate">
-                            {item.addressText || "Unknown Sector"}
+                            {item.addressText || "Location pending"}
                           </span>
                         </div>
                       </div>
 
-                      {/* 👉 THE MASTERPIECE: Magnetic Action Buttons */}
-                      <div className="pt-4 mt-4 border-t border-dusty-lavender/10 flex gap-3 relative z-10">
+                      <div className="relative z-10 mt-4 flex gap-3 border-t border-dusty-lavender/10 pt-4">
                         {isMine ? (
                           item.status === "fulfilled" ? (
                             <button
                               disabled
-                              className="flex-1 py-3.5 bg-white/50 text-dusty-lavender rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm border border-white/50 cursor-not-allowed"
+                              className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-white/70 bg-white/60 py-3.5 text-[10px] font-black uppercase tracking-widest text-dusty-lavender shadow-sm"
                             >
-                              Mission Accomplished
+                              <FaCheckCircle />
+                              Completed
                             </button>
                           ) : (
                             <>
-                              <motion.button
-                                whileHover={{ scale: 1.03 }}
-                                whileTap={{ scale: 0.95 }}
+                              <MotionButton
+                                whileHover={{ y: -2 }}
+                                whileTap={{ scale: 0.96 }}
                                 onClick={() =>
                                   setRequestsModal({
                                     isOpen: true,
@@ -578,73 +911,82 @@ const Dashboard = () => {
                                   })
                                 }
                                 disabled={!item.requestedBy?.length}
-                                className={`flex-[2] py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm border ${item.requestedBy?.length > 0 ? "bg-white text-pine-teal border-white hover:border-pine-teal" : "bg-white/50 text-dusty-lavender border-white/50 cursor-not-allowed"}`}
+                                className={`flex flex-[2] items-center justify-center gap-2 rounded-2xl border py-3.5 text-[10px] font-black uppercase tracking-widest shadow-sm transition-all ${
+                                  item.requestedBy?.length > 0
+                                    ? "border-pine-teal/20 bg-white text-pine-teal hover:border-pine-teal/40"
+                                    : "cursor-not-allowed border-white/60 bg-white/50 text-dusty-lavender"
+                                }`}
                               >
-                                View Comms ({item.requestedBy?.length || 0})
-                              </motion.button>
-                              <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.9 }}
+                                <FaUsers />
+                                Requests ({item.requestedBy?.length || 0})
+                              </MotionButton>
+                              <MotionButton
+                                whileHover={{ y: -2 }}
+                                whileTap={{ scale: 0.94 }}
                                 onClick={() => handleDeletePost(item._id)}
-                                className="w-12 flex items-center justify-center bg-white border border-white hover:border-blazing-flame/50 text-blazing-flame shadow-sm rounded-xl transition-all"
+                                aria-label="Delete post"
+                                className="flex w-12 items-center justify-center rounded-2xl border border-white/70 bg-white text-blazing-flame shadow-sm transition-all hover:border-blazing-flame/40"
                               >
                                 <FaTrash className="text-sm" />
-                              </motion.button>
+                              </MotionButton>
                             </>
                           )
                         ) : item.status === "fulfilled" ? (
                           <button
                             disabled
-                            className="flex-1 py-3.5 bg-white/50 text-dusty-lavender border border-white/50 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm cursor-not-allowed flex justify-center items-center gap-2"
+                            className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-white/70 bg-white/60 py-3.5 text-[10px] font-black uppercase tracking-widest text-dusty-lavender shadow-sm"
                           >
-                            <FaLock /> Locked
+                            <FaLock />
+                            Closed
                           </button>
                         ) : isApprovedReceiver ? (
-                          <motion.button
-                            whileHover={{ scale: 1.03 }}
-                            whileTap={{ scale: 0.95 }}
+                          <MotionButton
+                            whileHover={{ y: -2 }}
+                            whileTap={{ scale: 0.96 }}
                             onClick={() =>
                               navigate(`/chat/${item._id}_${user._id}`)
                             }
-                            className="flex-1 py-3.5 bg-gradient-to-r from-dark-raspberry to-[#850e53] text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-[0_10px_20px_rgba(159,17,100,0.3)] flex justify-center items-center gap-2"
+                            className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-dark-raspberry to-[#850e53] py-3.5 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-dark-raspberry/25"
                           >
-                            <FaCommentDots className="text-sm" /> Connect
-                          </motion.button>
+                            <FaCommentDots className="text-sm" />
+                            Connect
+                          </MotionButton>
                         ) : alreadyReq ? (
                           <button
                             disabled
-                            className="flex-1 py-3.5 bg-white border border-pine-teal/30 text-pine-teal rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm flex justify-center items-center gap-2"
+                            className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-pine-teal/20 bg-white py-3.5 text-[10px] font-black uppercase tracking-widest text-pine-teal shadow-sm"
                           >
-                            <FaCheck /> Signal Sent
+                            <FaCheck />
+                            Sent
                           </button>
                         ) : (
                           <>
-                            <motion.button
-                              whileHover={{ scale: 1.03 }}
-                              whileTap={{ scale: 0.95 }}
+                            <MotionButton
+                              whileHover={{ y: -2 }}
+                              whileTap={{ scale: 0.96 }}
                               onClick={() => handleRequestItem(item._id)}
-                              className={`flex-[2] py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-white shadow-lg flex justify-center items-center gap-2 ${item.isEmergency ? "bg-gradient-to-r from-blazing-flame to-[#e03a12] shadow-blazing-flame/30" : "bg-gradient-to-r from-pine-teal to-[#1a3630] shadow-pine-teal/30"}`}
+                              className={`flex flex-[2] items-center justify-center gap-2 rounded-2xl py-3.5 text-[10px] font-black uppercase tracking-widest text-white shadow-lg ${
+                                item.isEmergency
+                                  ? "bg-gradient-to-r from-blazing-flame to-[#e03a12] shadow-blazing-flame/25"
+                                  : "bg-gradient-to-r from-pine-teal to-[#1a3630] shadow-pine-teal/25"
+                              }`}
                             >
-                              {item.isEmergency ? (
-                                <>
-                                  <FaHandsHelping className="text-sm" /> Respond
-                                </>
-                              ) : (
-                                "Claim Directive"
-                              )}
-                            </motion.button>
-                            <motion.button
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.9 }}
+                              <FaHandsHelping className="text-sm" />
+                              {item.isEmergency ? "Respond" : "Claim"}
+                            </MotionButton>
+                            <MotionButton
+                              whileHover={{ y: -2 }}
+                              whileTap={{ scale: 0.94 }}
                               onClick={() => handleShare(item)}
-                              className="w-12 flex items-center justify-center bg-white border border-white hover:border-pine-teal/50 text-pine-teal shadow-sm rounded-xl transition-all"
+                              aria-label="Share post"
+                              className="flex w-12 items-center justify-center rounded-2xl border border-white/70 bg-white text-pine-teal shadow-sm transition-all hover:border-pine-teal/40"
                             >
                               <FaShareAlt className="text-sm" />
-                            </motion.button>
+                            </MotionButton>
                           </>
                         )}
                       </div>
-                    </motion.div>
+                    </MotionArticle>
                   );
                 })}
               </AnimatePresence>
@@ -652,59 +994,61 @@ const Dashboard = () => {
           )}
 
           {hasMore && (
-            <div className="mt-12 flex justify-center relative z-10">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+            <div className="mt-12 flex justify-center">
+              <MotionButton
+                whileHover={{ y: -2, scale: 1.02 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={loadMoreListings}
                 disabled={loadingMore}
-                className="px-8 py-4 bg-white/80 backdrop-blur-md border border-white shadow-xl rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-pine-teal flex items-center gap-3"
+                className="flex items-center gap-3 rounded-full border border-white/70 bg-white/80 px-8 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-pine-teal shadow-xl backdrop-blur-xl disabled:opacity-60"
               >
                 {loadingMore ? (
                   <FaSpinner className="animate-spin text-lg" />
                 ) : (
-                  "Access More Intel"
+                  <>
+                    <FaBoxOpen />
+                    Load More
+                  </>
                 )}
-              </motion.button>
+              </MotionButton>
             </div>
           )}
         </div>
 
-        {/* SOS MODAL (Glassmorphic) */}
         <AnimatePresence>
           {showSOS && (
-            <div className="fixed inset-0 z-[3000] flex items-end sm:items-center justify-center p-4">
-              <motion.div
+            <div className="fixed inset-0 z-[3000] flex items-end justify-center p-4 sm:items-center">
+              <MotionDiv
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className="absolute inset-0 bg-pine-teal/60 backdrop-blur-md"
                 onClick={() => setShowSOS(false)}
               />
-              <motion.div
+              <MotionDiv
                 initial={{ y: "100%", opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 exit={{ y: "100%", opacity: 0 }}
                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="relative w-full max-w-md bg-white/90 backdrop-blur-2xl border border-white rounded-[2.5rem] p-8 shadow-[0_20px_60px_rgba(0,0,0,0.2)]"
+                className="relative w-full max-w-md rounded-[2rem] border border-white bg-white/90 p-6 shadow-[0_24px_70px_rgba(41,82,74,0.22)] backdrop-blur-2xl sm:p-8"
               >
-                <div className="flex justify-between items-center mb-8">
+                <div className="mb-7 flex items-center justify-between">
                   <div className="flex items-center gap-4 text-blazing-flame">
-                    <div className="w-12 h-12 bg-blazing-flame/10 rounded-2xl flex items-center justify-center border border-blazing-flame/20">
-                      <FaHeartbeat className="text-2xl animate-pulse" />
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-blazing-flame/20 bg-blazing-flame/10">
+                      <FaExclamationTriangle className="text-2xl" />
                     </div>
                     <div>
                       <h2 className="text-xl font-black uppercase tracking-tight">
-                        SOS Override
+                        SOS Broadcast
                       </h2>
-                      <p className="text-[9px] uppercase tracking-widest font-bold text-dusty-lavender">
-                        Bypass standard protocols
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-dusty-lavender">
+                        Urgent blood request
                       </p>
                     </div>
                   </div>
                   <button
                     onClick={() => setShowSOS(false)}
-                    className="p-3 bg-pearl-beige rounded-full text-dusty-lavender hover:text-pine-teal shadow-inner"
+                    className="rounded-full bg-pearl-beige p-3 text-dusty-lavender shadow-inner transition-colors hover:text-pine-teal"
                   >
                     <FaTimes />
                   </button>
@@ -718,7 +1062,7 @@ const Dashboard = () => {
                       onChange={(e) =>
                         setSosData({ ...sosData, bloodGroup: e.target.value })
                       }
-                      className="flex-1 bg-white border border-dusty-lavender/30 rounded-2xl px-4 py-4 text-xs font-black uppercase tracking-widest text-pine-teal outline-none focus:border-blazing-flame shadow-sm"
+                      className="flex-1 rounded-2xl border border-dusty-lavender/30 bg-white px-4 py-4 text-xs font-black uppercase tracking-widest text-pine-teal shadow-sm outline-none focus:border-blazing-flame"
                     >
                       <option value="" disabled>
                         Type
@@ -740,7 +1084,7 @@ const Dashboard = () => {
                       onChange={(e) =>
                         setSosData({ ...sosData, quantity: e.target.value })
                       }
-                      className="w-24 bg-white border border-dusty-lavender/30 rounded-2xl px-4 py-4 text-xs font-black uppercase tracking-widest text-pine-teal outline-none focus:border-blazing-flame shadow-sm text-center"
+                      className="w-24 rounded-2xl border border-dusty-lavender/30 bg-white px-4 py-4 text-center text-xs font-black uppercase tracking-widest text-pine-teal shadow-sm outline-none focus:border-blazing-flame"
                     />
                   </div>
                   <input
@@ -750,23 +1094,23 @@ const Dashboard = () => {
                     onChange={(e) =>
                       setSosData({ ...sosData, hospital: e.target.value })
                     }
-                    className="w-full bg-white border border-dusty-lavender/30 rounded-2xl px-5 py-4 text-sm font-bold text-pine-teal outline-none focus:border-blazing-flame shadow-sm"
+                    className="w-full rounded-2xl border border-dusty-lavender/30 bg-white px-5 py-4 text-sm font-bold text-pine-teal shadow-sm outline-none focus:border-blazing-flame"
                   />
 
                   <div className="relative">
                     <div className="flex gap-2">
                       <input
                         required
-                        placeholder="Search Area Coordinates"
+                        placeholder="Search Area"
                         value={sosData.addressText}
                         onChange={handleLocationType}
-                        className="flex-1 bg-white border border-dusty-lavender/30 rounded-2xl px-5 py-4 text-sm font-bold text-pine-teal outline-none focus:border-blazing-flame shadow-sm"
+                        className="min-w-0 flex-1 rounded-2xl border border-dusty-lavender/30 bg-white px-5 py-4 text-sm font-bold text-pine-teal shadow-sm outline-none focus:border-blazing-flame"
                       />
                       <button
                         type="button"
                         onClick={handleGetLocation}
                         disabled={isFetchingLocation}
-                        className="w-14 bg-pine-teal text-white rounded-2xl shadow-md flex items-center justify-center hover:bg-[#1a3630] transition-colors"
+                        className="flex w-14 shrink-0 items-center justify-center rounded-2xl bg-pine-teal text-white shadow-md transition-colors hover:bg-[#1a3630] disabled:opacity-60"
                       >
                         {isFetchingLocation ? (
                           <FaSpinner className="animate-spin text-lg" />
@@ -776,15 +1120,16 @@ const Dashboard = () => {
                       </button>
                     </div>
                     {suggestions.length > 0 && (
-                      <div className="absolute z-50 w-full mt-2 bg-white border border-dusty-lavender/30 rounded-2xl shadow-xl overflow-hidden">
-                        {suggestions.map((s, i) => (
-                          <div
-                            key={i}
-                            onClick={() => handleSelectSuggestion(s)}
-                            className="px-5 py-3.5 text-xs font-bold text-pine-teal hover:bg-pearl-beige cursor-pointer border-b border-dusty-lavender/10 last:border-0"
+                      <div className="absolute z-50 mt-2 max-h-60 w-full overflow-y-auto rounded-2xl border border-dusty-lavender/30 bg-white shadow-xl">
+                        {suggestions.map((suggestion, index) => (
+                          <button
+                            type="button"
+                            key={`${suggestion.display_name}-${index}`}
+                            onClick={() => handleSelectSuggestion(suggestion)}
+                            className="block w-full border-b border-dusty-lavender/10 px-5 py-3.5 text-left text-xs font-bold text-pine-teal transition-colors last:border-0 hover:bg-pearl-beige"
                           >
-                            {s.display_name}
-                          </div>
+                            {suggestion.display_name}
+                          </button>
                         ))}
                       </div>
                     )}
@@ -793,38 +1138,40 @@ const Dashboard = () => {
                   <textarea
                     required
                     rows="2"
-                    placeholder="Critical details regarding the patient..."
+                    placeholder="Critical patient details..."
                     value={sosData.description}
                     onChange={(e) =>
                       setSosData({ ...sosData, description: e.target.value })
                     }
-                    className="w-full bg-white border border-dusty-lavender/30 rounded-2xl px-5 py-4 text-sm font-bold text-pine-teal outline-none focus:border-blazing-flame resize-none shadow-sm"
-                  ></textarea>
+                    className="w-full resize-none rounded-2xl border border-dusty-lavender/30 bg-white px-5 py-4 text-sm font-bold text-pine-teal shadow-sm outline-none focus:border-blazing-flame"
+                  />
 
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
+                  <MotionButton
+                    whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.98 }}
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full py-5 bg-gradient-to-r from-blazing-flame to-[#e03a12] text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-[0_10px_30px_rgba(255,74,28,0.4)] disabled:opacity-50 mt-4 flex items-center justify-center gap-2"
+                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blazing-flame to-[#e03a12] py-5 text-[10px] font-black uppercase tracking-[0.2em] text-white shadow-[0_12px_35px_rgba(255,74,28,0.35)] disabled:opacity-50"
                   >
                     {isSubmitting ? (
                       <FaSpinner className="animate-spin text-lg" />
                     ) : (
-                      "Deploy SOS Sequence"
+                      <>
+                        <FaHeartbeat />
+                        Deploy SOS
+                      </>
                     )}
-                  </motion.button>
+                  </MotionButton>
                 </form>
-              </motion.div>
+              </MotionDiv>
             </div>
           )}
         </AnimatePresence>
 
-        {/* REVIEW REQUESTS MODAL */}
         <AnimatePresence>
           {requestsModal.isOpen && requestsModal.donation && (
             <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4">
-              <motion.div
+              <MotionDiv
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -833,18 +1180,18 @@ const Dashboard = () => {
                   setRequestsModal({ isOpen: false, donation: null })
                 }
               />
-              <motion.div
+              <MotionDiv
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
-                className="relative w-full max-w-md bg-white/90 backdrop-blur-2xl rounded-[2.5rem] p-8 shadow-2xl border border-white"
+                className="relative w-full max-w-md rounded-[2rem] border border-white bg-white/90 p-6 shadow-2xl backdrop-blur-2xl sm:p-8"
               >
-                <div className="flex justify-between items-center border-b border-dusty-lavender/20 pb-5 mb-5">
+                <div className="mb-5 flex items-center justify-between border-b border-dusty-lavender/20 pb-5">
                   <div>
-                    <h2 className="text-xl font-black text-pine-teal uppercase tracking-tight">
-                      Active Comms
+                    <h2 className="text-xl font-black uppercase tracking-tight text-pine-teal">
+                      Active Requests
                     </h2>
-                    <p className="text-[9px] uppercase tracking-widest font-bold text-dusty-lavender mt-1">
+                    <p className="mt-1 text-[9px] font-bold uppercase tracking-widest text-dusty-lavender">
                       Select a responder
                     </p>
                   </div>
@@ -852,47 +1199,50 @@ const Dashboard = () => {
                     onClick={() =>
                       setRequestsModal({ isOpen: false, donation: null })
                     }
-                    className="p-3 bg-pearl-beige rounded-full text-dusty-lavender hover:text-pine-teal shadow-inner"
+                    className="rounded-full bg-pearl-beige p-3 text-dusty-lavender shadow-inner transition-colors hover:text-pine-teal"
                   >
                     <FaTimes />
                   </button>
                 </div>
-                <div className="space-y-3 max-h-[50vh] overflow-y-auto no-scrollbar pb-2">
-                  {requestsModal.donation.requestedBy.map((req) => (
+                <div className="max-h-[50vh] space-y-3 overflow-y-auto pb-2 no-scrollbar">
+                  {requestsModal.donation.requestedBy.map((requester) => (
                     <div
-                      key={req._id}
-                      className="flex items-center justify-between bg-white border border-dusty-lavender/30 p-4 rounded-2xl shadow-sm"
+                      key={requester._id}
+                      className="flex items-center justify-between rounded-2xl border border-dusty-lavender/20 bg-white p-4 shadow-sm"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-[1rem] bg-pine-teal/10 text-pine-teal border border-pine-teal/20 flex items-center justify-center font-black text-sm uppercase shadow-sm">
-                          {req.name?.charAt(0)}
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-pine-teal/20 bg-pine-teal/10 text-sm font-black uppercase text-pine-teal shadow-sm">
+                          {requester.name?.charAt(0)}
                         </div>
-                        <span className="font-bold text-sm text-pine-teal leading-none">
-                          {req.name}
+                        <span className="truncate text-sm font-bold leading-none text-pine-teal">
+                          {requester.name}
                         </span>
                       </div>
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
+                      <MotionButton
+                        whileHover={{ y: -2 }}
+                        whileTap={{ scale: 0.96 }}
                         onClick={() =>
                           handleApproveRequest(
                             requestsModal.donation._id,
-                            req._id,
+                            requester._id,
                           )
                         }
-                        disabled={approvingId === req._id}
-                        className="px-5 py-3 bg-pine-teal text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-md flex items-center justify-center"
+                        disabled={approvingId === requester._id}
+                        className="flex items-center justify-center gap-2 rounded-xl bg-pine-teal px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-md disabled:opacity-60"
                       >
-                        {approvingId === req._id ? (
+                        {approvingId === requester._id ? (
                           <FaSpinner className="animate-spin text-sm" />
                         ) : (
-                          "Approve"
+                          <>
+                            <FaCheck />
+                            Approve
+                          </>
                         )}
-                      </motion.button>
+                      </MotionButton>
                     </div>
                   ))}
                 </div>
-              </motion.div>
+              </MotionDiv>
             </div>
           )}
         </AnimatePresence>
@@ -902,3 +1252,4 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+

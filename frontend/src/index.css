@@ -46,6 +46,78 @@ input, textarea, select {
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+.dashboard-shell {
+  background:
+    linear-gradient(135deg, rgba(232, 218, 178, 0.92), rgba(255, 255, 255, 0.74) 42%, rgba(232, 218, 178, 0.82)),
+    linear-gradient(180deg, rgba(41, 82, 74, 0.05), rgba(255, 255, 255, 0));
+}
+
+.dashboard-grid {
+  background-image:
+    linear-gradient(rgba(41, 82, 74, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(41, 82, 74, 0.07) 1px, transparent 1px);
+  background-size: 46px 46px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.86), transparent 82%);
+  animation: dashboard-grid-pan 26s linear infinite;
+}
+
+.dashboard-sheen {
+  background: linear-gradient(
+    105deg,
+    transparent 18%,
+    rgba(255, 74, 28, 0.09) 36%,
+    rgba(159, 17, 100, 0.08) 50%,
+    rgba(41, 82, 74, 0.09) 64%,
+    transparent 82%
+  );
+  filter: blur(34px);
+  transform: rotate(-2deg);
+  animation: dashboard-sheen-drift 18s ease-in-out infinite;
+}
+
+.dashboard-card-sheen {
+  transform: translateX(-140%) skewX(-16deg);
+  transition: transform 850ms ease, opacity 850ms ease;
+  opacity: 0;
+}
+
+.group:hover .dashboard-card-sheen {
+  transform: translateX(260%) skewX(-16deg);
+  opacity: 1;
+}
+
+@keyframes dashboard-grid-pan {
+  from {
+    background-position: 0 0, 0 0;
+  }
+  to {
+    background-position: 46px 46px, 46px 46px;
+  }
+}
+
+@keyframes dashboard-sheen-drift {
+  0%,
+  100% {
+    transform: translate3d(-3%, -4%, 0) rotate(-2deg);
+  }
+  50% {
+    transform: translate3d(3%, 4%, 0) rotate(2deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-grid,
+  .dashboard-sheen {
+    animation: none;
+  }
+
+  .dashboard-card-sheen,
+  .group:hover .dashboard-card-sheen {
+    transform: none;
+    opacity: 0;
+  }
+}
+
 .custom-popup .leaflet-popup-content-wrapper {
   background: #ffffff;
   border: 1px solid rgba(132, 107, 138, 0.3);
