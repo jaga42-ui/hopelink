@@ -16,10 +16,11 @@ const {
   saveFCMToken // 👉 NEW: Catches the Firebase token from the phone
 } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
+const { validateRegister, validateLogin } = require('../middleware/validateMiddleware');
 
 // Standard Auth
-router.post('/register', registerUser);
-router.post('/login', loginUser);
+router.post('/register', validateRegister, registerUser);
+router.post('/login', validateLogin, loginUser);
 router.post('/google', googleLogin);
 
 // Password Reset Routes (Public)

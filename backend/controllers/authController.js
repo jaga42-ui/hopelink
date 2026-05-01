@@ -383,8 +383,7 @@ const forgotPassword = asyncHandler(async (req, res) => {
   const user = await User.findOne({ email });
 
   if (!user) {
-    res.status(404);
-    throw new Error("User not found");
+    return res.json({ message: "If an account with that email exists, a security clearance link has been dispatched." });
   }
 
   const secret = process.env.JWT_SECRET + user.password;
@@ -422,7 +421,7 @@ const forgotPassword = asyncHandler(async (req, res) => {
   // 👉 THE FIX: Removed await to unblock the Event Loop. Fires in background.
   transporter.sendMail(mailOptions).catch(err => console.error("SMTP Error:", err));
   
-  res.json({ message: "Security clearance link dispatched to your email." });
+  res.json({ message: "If an account with that email exists, a security clearance link has been dispatched." });
 });
 
 const resetPassword = asyncHandler(async (req, res) => {

@@ -20,6 +20,15 @@ const { protect } = require("./middleware/authMiddleware");
 
 dotenv.config();
 
+// 👉 STARTUP CHECK: Ensure critical env variables are present
+const requiredEnv = ["MONGO_URI", "JWT_SECRET", "FRONTEND_URL"];
+requiredEnv.forEach((env) => {
+  if (!process.env[env]) {
+    console.error(`🚨 FATAL ERROR: Missing required environment variable: ${env}`);
+    process.exit(1);
+  }
+});
+
 const app = express();
 const server = http.createServer(app);
 
@@ -97,7 +106,19 @@ const postLimiter = rateLimit({
   },
 });
 
+// 👉 THE FIX: Strict Auth Limiter to prevent brute force
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: {
+    message: "Security Protocol Active: Too many authentication attempts. Try again in 15 minutes.",
+  },
+});
+
 app.use("/api/", apiLimiter);
+app.use("/api/auth/login", authLimiter);
+app.use("/api/auth/register", authLimiter);
+app.use("/api/auth/forgotpassword", authLimiter);
 
 app.use("/api/donations", (req, res, next) => {
   if (req.method === "POST") return postLimiter(req, res, next);

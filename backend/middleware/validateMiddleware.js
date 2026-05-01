@@ -3,8 +3,12 @@ const Joi = require('joi');
 const registerSchema = Joi.object({
   name: Joi.string().required(),
   email: Joi.string().email().required(),
-  // STRICT RULE: Minimum 6 chars
-  password: Joi.string().min(6).required(), 
+  // STRICT RULE: Minimum 8 chars, 1 uppercase, 1 lowercase, 1 number
+  password: Joi.string()
+    .min(8)
+    .pattern(new RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)'))
+    .message('Password must contain at least 8 characters, one uppercase letter, one lowercase letter, and one number')
+    .required(),
   phone: Joi.string().required(),
   role: Joi.string().valid('donor', 'receiver', 'admin').default('donor'),
   address: Joi.string().allow('').optional()
