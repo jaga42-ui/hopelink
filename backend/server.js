@@ -16,6 +16,9 @@ const hpp = require("hpp");
 const cron = require("node-cron");
 const Donation = require("./models/Donation");
 const Feedback = require("./models/Feedback"); 
+const Blast = require("./models/Blast");
+const User = require("./models/User");
+const admin = require("firebase-admin");
 const { protect } = require("./middleware/authMiddleware");
 
 dotenv.config();
@@ -219,6 +222,65 @@ cron.schedule("0 0 * * *", async () => {
 
   } catch (err) {
     console.error("❌ [CRON] Cleanup failed:", err);
+  }
+});
+
+// 👉 AI & SMART ROUTING: Radius Expansion Job
+cron.schedule("* * * * *", async () => {
+  try {
+    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+    
+    // Find active blasts stuck at level 1 with no responses
+    const stalledBlasts = await Blast.find({
+      pingLevel: 1,
+      active: true,
+      responses: { $size: 0 },
+      createdAt: { $lt: twoMinutesAgo }
+    });
+
+    if (stalledBlasts.length > 0) {
+      console.log(`📡 [CRON] Expanding radius for ${stalledBlasts.length} stalled emergency blasts.`);
+    }
+
+    for (let blast of stalledBlasts) {
+      const [lng, lat] = blast.location.coordinates;
+      
+      // Query the next 100 closest donors, excluding those already pinged
+      const expandedDonors = await User.find({
+        location: {
+          $near: {
+            $geometry: { type: "Point", coordinates: [lng, lat] },
+            $maxDistance: 50000, // Expand to 50km
+          },
+        },
+        activeRole: "donor",
+        _id: { $nin: [...blast.pingedDonors, blast.requester] },
+      }).limit(100);
+
+      if (expandedDonors.length > 0) {
+        const pushTokens = expandedDonors
+          .filter(d => d.fcmToken)
+          .map(d => d.fcmToken);
+
+        if (pushTokens.length > 0 && admin.apps.length > 0) {
+          const pushMessage = {
+            notification: {
+              title: `🚨 EXPANDED ALERT: ${blast.bloodGroup || "Help"} Needed!`,
+              body: "Original responders are unavailable. We need you now! " + blast.message,
+            },
+            tokens: pushTokens,
+          };
+          admin.messaging().sendEachForMulticast(pushMessage).catch(console.error);
+        }
+
+        // Update Blast
+        blast.pingLevel = 2;
+        blast.pingedDonors.push(...expandedDonors.map(d => d._id));
+        await blast.save();
+      }
+    }
+  } catch (err) {
+    console.error("❌ [CRON] Smart Routing Expansion failed:", err);
   }
 });
 

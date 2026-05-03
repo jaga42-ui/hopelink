@@ -13,7 +13,9 @@ const blastSchema = new mongoose.Schema({
     status: { type: String, default: 'on-the-way' },
     respondedAt: { type: Date, default: Date.now }
   }],
-  active: { type: Boolean, default: true }
+  active: { type: Boolean, default: true },
+  pingLevel: { type: Number, default: 1 },
+  pingedDonors: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Blast', blastSchema);

@@ -120,7 +120,7 @@ const Layout = ({ children }) => {
   const themeBgAccent = isDonor ? "bg-blazing-flame" : "bg-dark-raspberry";
 
   const menuItems = [
-    { name: "Feed", path: "/dashboard", icon: <FaHome /> },
+    { name: "Incidents", path: "/dashboard", icon: <FaHome /> },
     {
       name: "Radar",
       path: "/radar",

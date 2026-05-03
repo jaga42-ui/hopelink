@@ -7,8 +7,12 @@ const userSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     profilePic: { type: String },
-    activeRole: { type: String, enum: ["donor", "receiver"], default: "donor" },
+    activeRole: { type: String, enum: ["donor", "receiver", "ngo"], default: "donor" },
     isAdmin: { type: Boolean, default: false },
+
+    // NGO Specific Fields
+    organizationName: { type: String },
+    isVerified: { type: Boolean, default: false }, // Crucial: NGOs must be approved before login
 
     // Web Push Subscription
     pushSubscription: { type: Object, default: null },

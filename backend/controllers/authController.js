@@ -7,6 +7,7 @@ const nodemailer = require("nodemailer");
 const admin = require("firebase-admin");
 
 const { sendPostAlertEmail } = require("../utils/sendEmail");
+const { evaluateText } = require("../utils/spamDetector");
 
 const client = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
@@ -36,7 +37,7 @@ const generateToken = (id) => {
 };
 
 const registerUser = asyncHandler(async (req, res) => {
-  const { name, password, phone, activeRole, bloodGroup } = req.body;
+  const { name, password, phone, activeRole, bloodGroup, organizationName } = req.body;
   // 👉 THE FIX: Normalize email to prevent duplicate accounts
   const email = req.body.email ? req.body.email.toLowerCase().trim() : "";
 
@@ -59,6 +60,8 @@ const registerUser = asyncHandler(async (req, res) => {
     bloodGroup: bloodGroup || undefined,
     activeRole: activeRole || "donor",
     isAdmin: false,
+    organizationName: activeRole === "ngo" ? organizationName : undefined,
+    isVerified: activeRole === "ngo" ? false : true,
     profilePic: "",
     addressText: "",
     location: { type: "Point", coordinates: [0, 0] },
@@ -88,6 +91,11 @@ const loginUser = asyncHandler(async (req, res) => {
   const password = req.body.password;
   
   const user = await User.findOne({ email });
+
+  if (user && user.activeRole === "ngo" && !user.isVerified) {
+    res.status(403);
+    throw new Error("NGO Account pending verification. Please contact support.");
+  }
 
   if (user && (await user.matchPassword(password))) {
     res.json({
@@ -290,15 +298,15 @@ const sendEmergencyBlast = asyncHandler(async (req, res) => {
     throw new Error("Location and message are required for a blast");
   }
 
-  const blast = await Blast.create({
-    requester: req.user._id,
-    message,
-    bloodGroup,
-    location: { type: "Point", coordinates: [Number(lng), Number(lat)] },
-  });
+  // 👉 AI & SMART ROUTING: Spam Detection
+  const spamCheck = evaluateText(message);
+  if (spamCheck.isSpam) {
+    res.status(400);
+    throw new Error(`Broadcast blocked: ${spamCheck.reason}`);
+  }
 
-  // 👉 THE FIX: Added .limit(1000) to prevent server locking on massive broadcasts
-  const nearbyDonors = await User.find({
+  // 👉 AI & SMART ROUTING: Fetch 50 nearest, then pick top 10 rated
+  const rawNearbyDonors = await User.find({
     location: {
       $near: {
         $geometry: { type: "Point", coordinates: [Number(lng), Number(lat)] },
@@ -307,12 +315,28 @@ const sendEmergencyBlast = asyncHandler(async (req, res) => {
     },
     activeRole: "donor",
     _id: { $ne: req.user._id },
-  }).limit(1000);
+  }).limit(50);
 
-  const pushTokens = nearbyDonors
+  // Sort by rating descending and take top 10 elite responders
+  const eliteDonors = rawNearbyDonors
+    .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+    .slice(0, 10);
+    
+  const pingedDonorIds = eliteDonors.map(d => d._id);
+
+  const blast = await Blast.create({
+    requester: req.user._id,
+    message,
+    bloodGroup,
+    location: { type: "Point", coordinates: [Number(lng), Number(lat)] },
+    pingLevel: 1,
+    pingedDonors: pingedDonorIds,
+  });
+
+  const pushTokens = eliteDonors
     .filter((donor) => donor.fcmToken)
     .map((donor) => donor.fcmToken);
-  const emailAddresses = nearbyDonors
+  const emailAddresses = eliteDonors
     .filter((donor) => donor.email)
     .map((donor) => donor.email);
 
@@ -344,7 +368,7 @@ const sendEmergencyBlast = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     blastId: blast._id,
-    recipients: nearbyDonors.length,
+    recipients: eliteDonors.length,
   });
 });
 

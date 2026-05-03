@@ -30,18 +30,14 @@ const donationSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ["food", "clothes", "book", "blood", "other"],
+      enum: ["blood", "medical", "ngo_relief", "other"],
       required: true,
     },
     title: { type: String, required: true },
     description: { type: String, required: true },
     quantity: { type: String },
 
-    condition: { type: String },
-    foodType: { type: String },
-    expiryDate: { type: Date },
     pickupTime: { type: String },
-    bookAuthor: { type: String },
 
     pickupPIN: { type: String, required: true },
     image: { type: String },

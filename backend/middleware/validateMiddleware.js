@@ -10,7 +10,9 @@ const registerSchema = Joi.object({
     .message('Password must contain at least 8 characters, one uppercase letter, one lowercase letter, and one number')
     .required(),
   phone: Joi.string().required(),
-  role: Joi.string().valid('donor', 'receiver', 'admin').default('donor'),
+  activeRole: Joi.string().valid('donor', 'receiver', 'admin', 'ngo').default('donor'),
+  organizationName: Joi.string().when('activeRole', { is: 'ngo', then: Joi.required(), otherwise: Joi.optional() }),
+  bloodGroup: Joi.string().allow('').optional(),
   address: Joi.string().allow('').optional()
 });
 

@@ -15,15 +15,14 @@ const sendPostAlertEmail = async (bccEmails, postDetails) => {
 
   const radarLink = `${process.env.FRONTEND_URL}/radar`;
 
-  // 👉 SAHAYAM LIGHT THEME DYNAMICS
-  const isEmergency = postDetails.isEmergency || false;
+  const isEmergency = postDetails.isEmergency || postDetails.priority === 'high';
   
   const theme = {
-    title: isEmergency ? "EMERGENCY ALERT IN YOUR SECTOR" : "NEW COMMUNITY OFFER NEARBY",
-    subject: isEmergency ? `🚨 URGENT: ${postDetails.bloodGroup || 'Assistance'} Needed` : `📢 Local Update: New Item Available`,
-    color: isEmergency ? "#ff4a1c" : "#9f1164", // Blazing Flame for SOS, Dark Raspberry for Donations
-    border: isEmergency ? "#ff4a1c" : "#9f1164",
-    messageLabel: isEmergency ? "Transmission Details" : "Item Details",
+    title: isEmergency ? "EMERGENCY ALERT IN YOUR SECTOR" : "NGO RELIEF UPDATE NEARBY",
+    subject: isEmergency ? `🚨 URGENT: ${postDetails.bloodGroup || 'Assistance'} Needed` : `📢 Local Update: Verified NGO Relief Camp`,
+    color: isEmergency ? "#ff4a1c" : "#1e7a6f", // Blazing Flame for SOS, Pine Teal for NGO
+    border: isEmergency ? "#ff4a1c" : "#1e7a6f",
+    messageLabel: isEmergency ? "Emergency Details" : "Relief Details",
   };
 
   const mailOptions = {
