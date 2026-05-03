@@ -19,6 +19,7 @@ const Profile = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState({ totalDonations: 0, activeListings: 0, bloodDonations: 0 });
   const [loading, setLoading] = useState(true);
+  const [generatedStory, setGeneratedStory] = useState("");
   
   const [isEditing, setIsEditing] = useState(false);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
@@ -300,7 +301,7 @@ const Profile = () => {
             </div>
 
             {/* 👉 NEW: AI Hero Story Engine */}
-            <div className="mt-8 bg-white/70 backdrop-blur-lg border border-blazing-flame/20 rounded-[2rem] p-6 shadow-sm relative overflow-hidden group">
+            <div className="mt-8 bg-white/70 backdrop-blur-lg border border-blazing-flame/20 rounded-[2rem] p-6 shadow-sm relative overflow-hidden group flex flex-col">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blazing-flame to-pine-teal" />
               <div className="flex flex-col md:flex-row items-center justify-between gap-4 relative z-10">
                 <div className="text-center md:text-left">
@@ -315,18 +316,8 @@ const Profile = () => {
                     try {
                       const { data } = await api.get('/donations/hero-story');
                       toast.dismiss(toastId);
-                      
-                      if (navigator.share) {
-                        navigator.share({
-                          title: 'My Sahayam Journey',
-                          text: data.story,
-                          url: 'https://hopelink-api.onrender.com'
-                        }).catch(console.error);
-                      } else {
-                        // Fallback to clipboard
-                        navigator.clipboard.writeText(data.story + " https://hopelink-api.onrender.com");
-                        toast.success("Story copied to clipboard!");
-                      }
+                      setGeneratedStory(data.story);
+                      toast.success("Story Generated!");
                     } catch (err) {
                       toast.error("Failed to generate story", { id: toastId });
                     }
@@ -336,6 +327,24 @@ const Profile = () => {
                   <FaStar /> Generate AI Story
                 </button>
               </div>
+
+              {generatedStory && (
+                <div className="mt-4 p-4 bg-white border border-dusty-lavender/30 rounded-xl relative">
+                  <p className="text-pine-teal font-medium text-sm italic">"{generatedStory}"</p>
+                  <div className="flex justify-end mt-3">
+                    <button onClick={() => {
+                        if (navigator.share) {
+                          navigator.share({ title: 'My Sahayam Journey', text: generatedStory, url: 'https://hopelink-api.onrender.com' }).catch(console.error);
+                        } else {
+                          navigator.clipboard.writeText(generatedStory + " https://hopelink-api.onrender.com");
+                          toast.success("Copied to clipboard!");
+                        }
+                    }} className="text-[10px] uppercase font-black tracking-widest text-blazing-flame hover:underline flex items-center gap-1">
+                      <FaAward /> Share Now
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="text-center pt-6 md:pt-8 px-4">
