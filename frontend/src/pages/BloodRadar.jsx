@@ -88,7 +88,8 @@ const BloodRadar = () => {
           if(apiKey) {
             const { data } = await axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${apiKey}`);
             if (data && data.features && data.features.length > 0) {
-              const cityString = data.features[0].place_name.split(",")[0];
+              const cityFeature = data.features.find(f => f.id.startsWith("place.") || f.id.startsWith("locality.") || f.id.startsWith("neighborhood."));
+              const cityString = cityFeature ? cityFeature.text : data.features[0].text;
               setMyAddressText(cityString);
             }
           }

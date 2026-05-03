@@ -1,6 +1,7 @@
 import { useEffect, useContext, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { Helmet } from "react-helmet-async";
 import {
   FaMapMarkerAlt,
   FaHandsHelping,
@@ -63,6 +64,18 @@ const Landing = () => {
 
   return (
     <>
+      <Helmet>
+        <title>Sahayam - The Hyper-Local Lifesaver Network</title>
+        <meta name="description" content="Join Sahayam to build a hyper-local grid of life-savers. Donate food, clothes, or blood, and respond to local emergencies instantly." />
+        <meta property="og:title" content="Sahayam - Connect. Rescue. Survive." />
+        <meta property="og:description" content="The world's fastest hyper-local community emergency and donation network. Be the hero your city needs." />
+        <meta property="og:image" content="https://sahayam.vercel.app/pwa-512x512.png" />
+        <meta property="og:url" content="https://sahayam.vercel.app" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Sahayam - Lifesaver Network" />
+        <meta name="twitter:description" content="Join the grid. Save lives in your neighborhood today." />
+        <meta name="twitter:image" content="https://sahayam.vercel.app/pwa-512x512.png" />
+      </Helmet>
       {/* --- PREMIUM OPENING CREDIT SEQUENCE --- */}
       <AnimatePresence>
         {showSplash && (

@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   FaUpload, FaSpinner, FaLocationArrow, FaBoxOpen, FaCalendarAlt,
   FaLeaf, FaClock, FaTags, FaInfoCircle, FaBook, FaHandHoldingHeart, FaSearch,
+  FaShareAlt, FaWhatsapp, FaTwitter, FaCopy, FaCheckCircle
 } from "react-icons/fa";
 import toast from "react-hot-toast";
 
@@ -22,6 +23,11 @@ const CreateDonation = () => {
     category: "food", title: "", description: "", quantity: "", addressText: user?.addressText || "",
     condition: "Gently Used", foodType: "Veg", expiryDate: "", pickupTime: "", bookAuthor: "",
   });
+
+  // MARKETING VIRAL LOOP STATE
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [createdData, setCreatedData] = useState(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -114,9 +120,10 @@ const CreateDonation = () => {
         setIsSubmitting(false); return toast.error("Please provide an expiry/consume-by date for food safety.");
       }
 
-      await api.post("/donations", submitData);
+      const { data } = await api.post("/donations", submitData);
+      setCreatedData(data);
+      setShowShareModal(true);
       toast.success(isRequest ? "Request posted successfully!" : "Donation listed successfully!");
-      navigate("/dashboard");
     } catch (error) { toast.error(error.response?.data?.message || "Failed to post listing"); } finally { setIsSubmitting(false); }
   };
 
@@ -258,6 +265,55 @@ const CreateDonation = () => {
           </button>
         </form>
       </div>
+
+      {/* 👉 THE MASTERPIECE: Viral Growth Loop Share Modal */}
+      <AnimatePresence>
+        {showShareModal && (
+          <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => navigate("/dashboard")} className="absolute inset-0 bg-pine-teal/80 backdrop-blur-sm" />
+            <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} className="bg-white rounded-[2rem] p-8 max-w-sm w-full shadow-2xl relative z-10 text-center border border-pearl-beige overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-blazing-flame to-dark-raspberry" />
+              
+              <div className="w-16 h-16 bg-pearl-beige rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-inner">
+                <FaCheckCircle className="text-4xl text-pine-teal" />
+              </div>
+              
+              <h2 className="text-2xl font-black uppercase text-pine-teal tracking-tight leading-none mb-2">Listing Live!</h2>
+              <p className="text-xs font-bold text-dusty-lavender tracking-widest uppercase mb-6">Multiply your impact</p>
+              
+              <div className="bg-pearl-beige/30 p-4 rounded-xl border border-dusty-lavender/20 mb-6 text-left">
+                <p className="text-pine-teal text-sm font-bold mb-1 line-clamp-1">{createdData?.title}</p>
+                <p className="text-dusty-lavender text-[10px] uppercase font-black tracking-widest">Sahayam grows through community. Share this link to find help 5x faster!</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <a href={`https://wa.me/?text=Check out my ${isRequest ? 'request' : 'donation'} on Sahayam: ${encodeURIComponent(createdData?.title)}! Join the Lifesaver Network today. https://sahayam.vercel.app/`} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center gap-2 bg-[#25D366]/10 text-[#25D366] p-4 rounded-2xl hover:bg-[#25D366] hover:text-white transition-colors cursor-pointer border border-[#25D366]/20">
+                  <FaWhatsapp className="text-2xl" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">WhatsApp</span>
+                </a>
+                <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Just posted a ${isRequest ? 'request' : 'donation'} on @SahayamHQ! Let's build a better community together. \n\nhttps://sahayam.vercel.app/`)}`} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center gap-2 bg-[#1DA1F2]/10 text-[#1DA1F2] p-4 rounded-2xl hover:bg-[#1DA1F2] hover:text-white transition-colors cursor-pointer border border-[#1DA1F2]/20">
+                  <FaTwitter className="text-2xl" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Twitter</span>
+                </a>
+              </div>
+
+              <button 
+                onClick={() => {
+                  navigator.clipboard.writeText(`https://sahayam.vercel.app/`);
+                  setLinkCopied(true);
+                  toast.success("Link copied!");
+                  setTimeout(() => setLinkCopied(false), 2000);
+                }} 
+                className="w-full bg-pearl-beige text-pine-teal font-black tracking-widest uppercase text-[10px] py-4 rounded-xl mb-3 flex items-center justify-center gap-2 transition-all hover:bg-dusty-lavender hover:text-white"
+              >
+                {linkCopied ? <FaCheckCircle /> : <FaCopy />} {linkCopied ? "Copied!" : "Copy Link"}
+              </button>
+
+              <button onClick={() => navigate("/dashboard")} className="text-dusty-lavender text-[9px] font-bold uppercase tracking-[0.2em] hover:text-dark-raspberry underline underline-offset-4">Skip & Return to Dashboard</button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </Layout>
   );
 };
