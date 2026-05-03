@@ -5,7 +5,7 @@ import AuthContext from '../context/AuthContext';
 import { FaEnvelope, FaLock, FaSpinner, FaGoogle, FaShieldAlt } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
-import logo from '../assets/Logo.png';
+import logo from '../assets/logo.png';
 import PolicyModal from '../components/PolicyModal';
 
 const Login = () => {

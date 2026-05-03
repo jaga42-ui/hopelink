@@ -21,7 +21,7 @@ import {
   FaCommentAlt, // 👉 Imported Feedback Icon
 } from "react-icons/fa";
 
-import logo from "../assets/Logo.png";
+import logo from "../assets/logo.png";
 import FeedbackModal from "./FeedbackModal"; // 👉 Imported the Modal
 import OnboardingModal from "./OnboardingModal"; // 👉 Imported the Onboarding Modal
 

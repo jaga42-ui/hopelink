@@ -14,7 +14,7 @@ import {
   FaHeartbeat,
 } from "react-icons/fa";
 
-import logo from "../assets/Logo.png";
+import logo from "../assets/logo.png";
 import AuthContext from "../context/AuthContext";
 
 // --- ANIMATION VARIANTS ---
