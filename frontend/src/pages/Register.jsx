@@ -10,7 +10,7 @@ import api from "../utils/api";
 
 const Register = () => {
   const [formData, setFormData] = useState({
-    name: "", email: "", password: "", phone: "", bloodGroup: "", organizationName: "",
+    name: "", email: "", password: "", phone: "", bloodGroup: "",
   });
   const [activeRole, setActiveRole] = useState("donor");
   const [isLoading, setIsLoading] = useState(false);
@@ -23,10 +23,10 @@ const Register = () => {
   const navigate = useNavigate();
 
   // 👉 DYNAMIC THEME HANDLERS BASED ON ROLE
-  const themeAccent = activeRole === "donor" ? "text-blazing-flame" : activeRole === "receiver" ? "text-dark-raspberry" : "text-pine-teal";
-  const themeBg = activeRole === "donor" ? "bg-blazing-flame hover:bg-[#e03a12]" : activeRole === "receiver" ? "bg-dark-raspberry hover:bg-[#850e53]" : "bg-pine-teal hover:bg-[#1a3630]";
-  const themeFocusBorder = activeRole === "donor" ? "focus:border-blazing-flame focus:ring-blazing-flame/10" : activeRole === "receiver" ? "focus:border-dark-raspberry focus:ring-dark-raspberry/10" : "focus:border-pine-teal focus:ring-pine-teal/10";
-  const themeShadow = activeRole === "donor" ? "shadow-[0_10px_25px_rgba(255,74,28,0.3)]" : activeRole === "receiver" ? "shadow-[0_10px_25px_rgba(159,17,100,0.3)]" : "shadow-[0_10px_25px_rgba(41,82,74,0.3)]";
+  const themeAccent = activeRole === "donor" ? "text-blazing-flame" : "text-dark-raspberry";
+  const themeBg = activeRole === "donor" ? "bg-blazing-flame hover:bg-[#e03a12]" : "bg-dark-raspberry hover:bg-[#850e53]";
+  const themeFocusBorder = activeRole === "donor" ? "focus:border-blazing-flame focus:ring-blazing-flame/10" : "focus:border-dark-raspberry focus:ring-dark-raspberry/10";
+  const themeShadow = activeRole === "donor" ? "shadow-[0_10px_25px_rgba(255,74,28,0.3)]" : "shadow-[0_10px_25px_rgba(159,17,100,0.3)]";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -40,7 +40,6 @@ const Register = () => {
     try {
       const payload = { ...formData, activeRole };
       if (!payload.bloodGroup) delete payload.bloodGroup;
-      if (activeRole !== "ngo") delete payload.organizationName;
 
       const { data } = await api.post("/auth/register", payload);
       login(data);
@@ -93,21 +92,14 @@ const Register = () => {
             onClick={() => setActiveRole("donor")}
             className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeRole === "donor" ? "bg-blazing-flame text-white shadow-md" : "text-dusty-lavender hover:text-pine-teal hover:bg-white"}`}
           >
-            Donor
+            I am a Donor
           </button>
           <button
             type="button"
             onClick={() => setActiveRole("receiver")}
             className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeRole === "receiver" ? "bg-dark-raspberry text-white shadow-md" : "text-dusty-lavender hover:text-pine-teal hover:bg-white"}`}
           >
-            Receiver
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveRole("ngo")}
-            className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeRole === "ngo" ? "bg-pine-teal text-white shadow-md" : "text-dusty-lavender hover:text-pine-teal hover:bg-white"}`}
-          >
-            NGO
+            I am a Receiver
           </button>
         </div>
 
@@ -178,21 +170,6 @@ const Register = () => {
                   <option key={bg} value={bg}>{bg}</option>
                 ))}
               </select>
-            </div>
-          )}
-
-          {activeRole === "ngo" && (
-            <div className="relative">
-              <FaShieldAlt className="absolute left-4 top-1/2 -translate-y-1/2 text-pine-teal" />
-              <input
-                required
-                aria-label="Organization Name"
-                type="text"
-                placeholder="NGO / Hospital Name"
-                value={formData.organizationName}
-                onChange={(e) => setFormData({ ...formData, organizationName: e.target.value })}
-                className={`w-full bg-white border border-dusty-lavender/40 rounded-xl pl-11 pr-4 py-3.5 text-pine-teal text-base md:text-sm outline-none focus:ring-4 transition-all shadow-inner placeholder-dusty-lavender/70 ${themeFocusBorder}`}
-              />
             </div>
           )}
 

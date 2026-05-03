@@ -1,4 +1,4 @@
-// Developed by guruprasad and team
+﻿// Developed by guruprasad and team
 import { useState, useEffect, useContext, useMemo } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -39,9 +39,10 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 const FILTER_OPTIONS = [
   { label: "All", icon: FaBoxOpen },
   { label: "Blood", icon: FaHeartbeat },
-  { label: "Medical", icon: FaBoxOpen },
-  { label: "NGO Relief", icon: FaHandsHelping },
-  { label: "Other", icon: FaHandsHelping },
+  { label: "Food", icon: FaUtensils },
+  { label: "Clothes", icon: FaTshirt },
+  { label: "Book", icon: FaBook },
+  { label: "General", icon: FaHandsHelping },
 ];
 
 const CATEGORY_META = {
@@ -51,20 +52,20 @@ const CATEGORY_META = {
     panel:
       "bg-blazing-flame/10 text-blazing-flame border-blazing-flame/20",
   },
-  medical: {
-    label: "Medical",
-    icon: FaBoxOpen,
+  food: {
+    label: "Food",
+    icon: FaUtensils,
     panel: "bg-pine-teal/10 text-pine-teal border-pine-teal/20",
   },
-  ngo_relief: {
-    label: "NGO Relief",
-    icon: FaHandsHelping,
+  clothes: {
+    label: "Clothes",
+    icon: FaTshirt,
     panel:
       "bg-dark-raspberry/10 text-dark-raspberry border-dark-raspberry/20",
   },
-  other: {
-    label: "Other",
-    icon: FaHandsHelping,
+  book: {
+    label: "Book",
+    icon: FaBook,
     panel:
       "bg-dusty-lavender/10 text-dusty-lavender border-dusty-lavender/20",
   },

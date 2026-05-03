@@ -19,8 +19,8 @@ const CreateDonation = () => {
 
   const [formData, setFormData] = useState({
     listingType: user?.activeRole === "receiver" ? "request" : "donation",
-    category: "medical", title: "", description: "", quantity: "", addressText: user?.addressText || "",
-    pickupTime: "",
+    category: "food", title: "", description: "", quantity: "", addressText: user?.addressText || "",
+    condition: "Gently Used", foodType: "Veg", expiryDate: "", pickupTime: "", bookAuthor: "",
   });
 
   const [imageFile, setImageFile] = useState(null);
@@ -110,7 +110,9 @@ const CreateDonation = () => {
       Object.keys(formData).forEach(key => submitData.append(key, formData[key]));
       if (imageFile) submitData.append("image", imageFile);
 
-
+      if (formData.category === "food" && !isRequest && !formData.expiryDate) {
+        setIsSubmitting(false); return toast.error("Please provide an expiry/consume-by date for food safety.");
+      }
 
       await api.post("/donations", submitData);
       toast.success(isRequest ? "Request posted successfully!" : "Donation listed successfully!");
@@ -148,7 +150,7 @@ const CreateDonation = () => {
               <div>
                 <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 block">Category</label>
                 <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className={`w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-5 py-3.5 md:py-4 text-pine-teal text-base font-bold outline-none transition-colors appearance-none cursor-pointer focus:bg-white ${themeFocusBorder}`}>
-                  <option value="medical">💊 Medical Supplies</option><option value="ngo_relief">🤝 NGO Relief</option><option value="blood">🩸 Blood Request</option><option value="other">📦 Other</option>
+                  <option value="food">🍔 Food & Groceries</option><option value="clothes">👕 Clothes & Apparel</option><option value="book">📘 Books & Education</option>
                 </select>
               </div>
               <div>
@@ -168,7 +170,47 @@ const CreateDonation = () => {
             </div>
           </div>
 
-
+          <div className={`border rounded-2xl md:rounded-3xl p-5 md:p-6 space-y-5 md:space-y-6 transition-colors duration-500 bg-white/50 border-white shadow-sm`}>
+            <h3 className="text-pine-teal text-sm md:text-base font-bold flex items-center gap-2 border-b border-dusty-lavender/20 pb-3">
+              <FaTags className={themeAccent} /> Specific Details
+            </h3>
+            <AnimatePresence mode="wait">
+              {formData.category === "food" ? (
+                <motion.div key="food" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6 overflow-hidden">
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 flex items-center gap-2"><FaLeaf /> Diet Type</label>
+                    <select value={formData.foodType} onChange={(e) => setFormData({ ...formData, foodType: e.target.value })} className={`w-full bg-white border border-dusty-lavender/40 rounded-2xl px-4 md:px-5 py-3.5 md:py-4 text-pine-teal text-base font-bold outline-none transition-colors appearance-none cursor-pointer ${themeFocusBorder}`}>
+                      <option value="Veg">Vegetarian</option><option value="Non-Veg">Non-Vegetarian</option><option value="Vegan">Vegan</option><option value="Packaged">Packaged/Sealed</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 flex items-center gap-2"><FaCalendarAlt /> {isRequest ? "Latest Date Needed" : "Best Before / Expiry"}</label>
+                    <input type="date" required={!isRequest && formData.category === "food"} value={formData.expiryDate} onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })} className={`w-full bg-white border border-dusty-lavender/40 rounded-2xl px-4 md:px-5 py-3.5 md:py-4 text-pine-teal text-base font-bold outline-none transition-colors ${themeFocusBorder}`} />
+                  </div>
+                </motion.div>
+              ) : formData.category === "book" ? (
+                <motion.div key="book" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6 overflow-hidden">
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 flex items-center gap-2"><FaBook /> Author / Publisher</label>
+                    <input required value={formData.bookAuthor} onChange={(e) => setFormData({ ...formData, bookAuthor: e.target.value })} placeholder="e.g. R.S. Aggarwal" className={`w-full bg-white border border-dusty-lavender/40 rounded-2xl px-4 md:px-5 py-3.5 md:py-4 text-pine-teal text-base font-bold outline-none transition-colors ${themeFocusBorder}`} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 flex items-center gap-2"><FaTags /> Condition {isRequest ? "Accepted" : ""}</label>
+                    <select value={formData.condition} onChange={(e) => setFormData({ ...formData, condition: e.target.value })} className={`w-full bg-white border border-dusty-lavender/40 rounded-2xl px-4 md:px-5 py-3.5 md:py-4 text-pine-teal text-base font-bold outline-none transition-colors appearance-none cursor-pointer ${themeFocusBorder}`}>
+                      <option value="New">Brand New</option><option value="Like New">Like New</option><option value="Gently Used">Gently Used / Marked</option>{isRequest && <option value="Any">Any Condition is Fine</option>}
+                    </select>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div key="clothes" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 flex items-center gap-2"><FaTags /> Item Condition</label>
+                  <select value={formData.condition} onChange={(e) => setFormData({ ...formData, condition: e.target.value })} className={`w-full bg-white border border-dusty-lavender/40 rounded-2xl px-4 md:px-5 py-3.5 md:py-4 text-pine-teal text-base font-bold outline-none transition-colors appearance-none cursor-pointer ${themeFocusBorder}`}>
+                    <option value="New">Brand New / Unused</option><option value="Like New">Like New</option><option value="Gently Used">Gently Used</option>{isRequest ? <option value="Any">Any Condition is Fine</option> : <option value="Worn/Old">Worn / Needs Repair</option>}
+                  </select>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           <div className="space-y-5 md:space-y-6">
             <h3 className="text-pine-teal text-sm md:text-base font-bold flex items-center gap-2 border-b border-dusty-lavender/20 pb-3">
