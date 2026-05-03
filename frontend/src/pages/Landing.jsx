@@ -14,7 +14,7 @@ import {
   FaHeartbeat,
 } from "react-icons/fa";
 
-import logo from "../assets/Logo.png";
+import logo from "../assets/logo.png";
 import AuthContext from "../context/AuthContext";
 
 // --- ANIMATION VARIANTS ---
@@ -74,12 +74,12 @@ const Landing = () => {
             className="fixed inset-0 z-[9999] flex items-center justify-center"
             style={{ background: 'radial-gradient(circle at center, #29524a, #1a3630)' }}
           >
-            <motion.h1 
+            <motion.h1
               initial={{ opacity: 0, filter: "blur(10px)", scale: 0.9 }}
               animate={{ opacity: 1, filter: "blur(0px)", scale: 1, transition: { duration: 1.2, ease: "easeOut", delay: 0.3 } }}
               className="text-2xl sm:text-4xl font-black tracking-[0.3em] text-[#e8dab2] uppercase text-center px-4"
             >
-              Developed by <span className="text-[#ff4a1c] drop-shadow-[0_0_15px_rgba(255,74,28,0.5)]">Guruprasad</span><br/>and Team
+              Developed by <span className="text-[#ff4a1c] drop-shadow-[0_0_15px_rgba(255,74,28,0.5)]">Guruprasad</span><br />and Team
             </motion.h1>
           </motion.div>
         )}
@@ -87,7 +87,7 @@ const Landing = () => {
 
       {/* NOTE: overflow-x-hidden is used here to safely contain absolute background glows without breaking vertical scrolling */}
       <main className="flex flex-col min-h-screen bg-pearl-beige text-pine-teal font-sans relative selection:bg-dark-raspberry selection:text-white overflow-x-hidden">
-        
+
         {/* VIBRANT BACKGROUND GLOWS */}
         <div className="absolute inset-0 z-0 pointer-events-none">
           <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[80vw] max-w-[800px] h-[50vh] bg-dark-raspberry/10 blur-[100px] rounded-full"></div>

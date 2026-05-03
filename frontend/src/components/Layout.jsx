@@ -21,7 +21,7 @@ import {
   FaCommentAlt, // 👉 Imported Feedback Icon
 } from "react-icons/fa";
 
-import logo from "../assets/Logo.png";
+import logo from "../assets/logo.png";
 import FeedbackModal from "./FeedbackModal"; // 👉 Imported the Modal
 import OnboardingModal from "./OnboardingModal"; // 👉 Imported the Onboarding Modal
 
@@ -32,7 +32,7 @@ const Layout = ({ children }) => {
 
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [hasUnread, setHasUnread] = useState(false);
-  
+
   // 👉 THE FIX: Added Feedback State
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
@@ -72,11 +72,10 @@ const Layout = ({ children }) => {
             initial={{ opacity: 0, y: -50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
-            className={`w-full max-w-sm border-l-4 p-4 rounded-xl shadow-[0_10px_30px_rgba(41,82,74,0.1)] flex items-start gap-3 bg-white ${
-              data.level === "critical"
+            className={`w-full max-w-sm border-l-4 p-4 rounded-xl shadow-[0_10px_30px_rgba(41,82,74,0.1)] flex items-start gap-3 bg-white ${data.level === "critical"
                 ? "border-blazing-flame"
                 : "border-pine-teal"
-            }`}
+              }`}
           >
             <div
               className={`mt-1 ${data.level === "critical" ? "text-blazing-flame animate-pulse" : "text-pine-teal"}`}
@@ -375,15 +374,14 @@ const Layout = ({ children }) => {
                   <div className="relative">
                     <motion.div
                       whileTap={{ scale: 0.8 }}
-                      className={`text-xl transition-transform duration-300 ${
-                        isActive
+                      className={`text-xl transition-transform duration-300 ${isActive
                           ? isRadar
                             ? "text-blazing-flame scale-110"
                             : `${themeTextAccent} scale-110`
                           : isRadar
                             ? "text-blazing-flame/70 animate-pulse"
                             : "text-dusty-lavender"
-                      }`}
+                        }`}
                     >
                       {item.icon}
                     </motion.div>
