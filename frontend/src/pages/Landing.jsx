@@ -85,8 +85,8 @@ const Landing = () => {
         )}
       </AnimatePresence>
 
-      {/* NOTE: overflow-hidden is used here to safely contain absolute background glows without breaking mobile rendering */}
-      <main className="flex flex-col min-h-screen bg-pearl-beige text-pine-teal font-sans relative selection:bg-dark-raspberry selection:text-white overflow-hidden">
+      {/* NOTE: overflow-x-hidden is used here to safely contain absolute background glows without breaking vertical scrolling */}
+      <main className="flex flex-col min-h-screen bg-pearl-beige text-pine-teal font-sans relative selection:bg-dark-raspberry selection:text-white overflow-x-hidden">
         
         {/* VIBRANT BACKGROUND GLOWS */}
         <div className="absolute inset-0 z-0 pointer-events-none">
