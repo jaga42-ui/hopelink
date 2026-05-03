@@ -93,6 +93,9 @@ app.use(compression());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// 👉 THE FIX: Trust proxy so express-rate-limit reads the real IP behind Render's load balancer
+app.set("trust proxy", 1);
+
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 300,
