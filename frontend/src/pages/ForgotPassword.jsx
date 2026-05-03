@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { FaEnvelope, FaSpinner, FaLock } from 'react-icons/fa';
 
 import api from '../utils/api';
-import logo from '../assets/logo.png';
+import logo from '../assets/Logo.png';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');

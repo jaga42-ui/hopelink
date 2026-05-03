@@ -7,6 +7,7 @@ import {
 import toast from "react-hot-toast";
 import AuthContext from "../context/AuthContext";
 import api from "../utils/api";
+import logo from "../assets/Logo.png";
 import PolicyModal from "../components/PolicyModal";
 
 const Register = () => {
