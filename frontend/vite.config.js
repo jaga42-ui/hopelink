@@ -9,11 +9,11 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'HopeLink - Community Sharing',
-        short_name: 'HopeLink',
-        description: 'Connect, share, and help your local community.',
-        theme_color: '#0b141a', // Your dark aesthetic background
-        background_color: '#0b141a',
+        name: 'Sahayam - Lifesaver Network',
+        short_name: 'Sahayam',
+        description: 'Hyper-local community emergency and donation network.',
+        theme_color: '#e8dab2', // Pearl Beige background
+        background_color: '#e8dab2',
         display: 'standalone', // This hides the browser URL bar!
         icons: [
           {
