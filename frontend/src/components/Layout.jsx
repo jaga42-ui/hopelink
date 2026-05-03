@@ -23,6 +23,7 @@ import {
 
 import logo from "../assets/logo.png";
 import FeedbackModal from "./FeedbackModal"; // 👉 Imported the Modal
+import OnboardingModal from "./OnboardingModal"; // 👉 Imported the Onboarding Modal
 
 const Layout = ({ children }) => {
   const { user, logout, switchRole } = useContext(AuthContext);
@@ -56,6 +57,7 @@ const Layout = ({ children }) => {
   }, [location.pathname]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (location.pathname.includes("/chat")) setHasUnread(false);
   }, [location.pathname]);
 
@@ -430,6 +432,7 @@ const Layout = ({ children }) => {
 
       {/* 👉 THE FIX: Added Feedback Modal Component */}
       <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
+      <OnboardingModal />
     </div>
   );
 };

@@ -8,7 +8,7 @@ import logo from '../assets/logo.png';
 import FeedbackModal from './FeedbackModal'; // 👉 Imported the Modal
 
 const Sidebar = () => {
-  const { user, logout, switchRole } = useContext(AuthContext);
+  const { user, logout, switchRole, toggleAvailability } = useContext(AuthContext);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -56,16 +56,28 @@ const Sidebar = () => {
         </Link>
 
         {user && !user.isAdmin && (
-          <button 
-            onClick={switchRole}
-            className="w-full flex items-center justify-between bg-pearl-beige/30 border border-dusty-lavender/30 p-1.5 rounded-2xl hover:bg-white transition-all shadow-inner"
-          >
-            <span className={`text-[9px] font-black uppercase tracking-widest flex-1 text-center ${isDonor ? 'text-blazing-flame' : 'text-dusty-lavender'}`}>Donor</span>
-            <div className="w-10 h-5 bg-white rounded-full relative border border-dusty-lavender/40 shadow-sm">
-              <div className={`absolute top-0.5 left-0.5 w-3.5 h-3.5 rounded-full transition-transform duration-300 ${isDonor ? 'bg-blazing-flame' : 'bg-dark-raspberry translate-x-5'}`} />
-            </div>
-            <span className={`text-[9px] font-black uppercase tracking-widest flex-1 text-center ${!isDonor ? 'text-dark-raspberry' : 'text-dusty-lavender'}`}>Receiver</span>
-          </button>
+          <div className="space-y-3">
+            <button 
+              onClick={switchRole}
+              className="w-full flex items-center justify-between bg-pearl-beige/30 border border-dusty-lavender/30 p-1.5 rounded-2xl hover:bg-white transition-all shadow-inner"
+            >
+              <span className={`text-[9px] font-black uppercase tracking-widest flex-1 text-center ${isDonor ? 'text-blazing-flame' : 'text-dusty-lavender'}`}>Donor</span>
+              <div className="w-10 h-5 bg-white rounded-full relative border border-dusty-lavender/40 shadow-sm">
+                <div className={`absolute top-0.5 left-0.5 w-3.5 h-3.5 rounded-full transition-transform duration-300 ${isDonor ? 'bg-blazing-flame' : 'bg-dark-raspberry translate-x-5'}`} />
+              </div>
+              <span className={`text-[9px] font-black uppercase tracking-widest flex-1 text-center ${!isDonor ? 'text-dark-raspberry' : 'text-dusty-lavender'}`}>Receiver</span>
+            </button>
+            <button 
+              onClick={toggleAvailability}
+              className="w-full flex items-center justify-between bg-pearl-beige/30 border border-dusty-lavender/30 p-1.5 rounded-2xl hover:bg-white transition-all shadow-inner"
+            >
+              <span className={`text-[9px] font-black uppercase tracking-widest flex-1 text-center ${!user?.isAvailable ? 'text-pine-teal' : 'text-dusty-lavender'}`}>Snooze</span>
+              <div className="w-10 h-5 bg-white rounded-full relative border border-dusty-lavender/40 shadow-sm">
+                <div className={`absolute top-0.5 left-0.5 w-3.5 h-3.5 rounded-full transition-transform duration-300 ${!user?.isAvailable ? 'bg-dusty-lavender' : 'bg-pine-teal translate-x-5'}`} />
+              </div>
+              <span className={`text-[9px] font-black uppercase tracking-widest flex-1 text-center ${user?.isAvailable ? 'text-blazing-flame' : 'text-dusty-lavender'}`}>On-Duty</span>
+            </button>
+          </div>
         )}
       </div>
 

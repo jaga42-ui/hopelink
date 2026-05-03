@@ -6,11 +6,13 @@ import { FaEnvelope, FaLock, FaSpinner, FaGoogle, FaShieldAlt } from 'react-icon
 import toast from 'react-hot-toast';
 import api from '../utils/api';
 import logo from '../assets/logo.png';
+import PolicyModal from '../components/PolicyModal';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPolicyModal, setShowPolicyModal] = useState(false);
   
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -159,7 +161,15 @@ const Login = () => {
             </Link>
           </p>
         </div>
+
+        <div className="mt-4 text-center">
+          <button type="button" onClick={() => setShowPolicyModal(true)} className="text-[10px] text-dusty-lavender hover:text-pine-teal underline font-bold uppercase tracking-widest transition-colors">
+            Terms & Privacy Policy
+          </button>
+        </div>
       </motion.div>
+
+      <PolicyModal isOpen={showPolicyModal} onClose={() => setShowPolicyModal(false)} />
     </main>
   );
 };

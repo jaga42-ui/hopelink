@@ -73,6 +73,22 @@ export const AuthProvider = ({ children }) => {
     };
   }, [user]);
 
+  const toggleAvailability = async () => {
+    if (!user) return;
+    try {
+      const { data } = await api.put("/auth/toggle-availability");
+      setUser(data);
+      localStorage.setItem("user", JSON.stringify(data));
+      if (data.isAvailable) {
+        toast.success("Snooze Disabled: You are now On-Duty for SOS alerts.");
+      } else {
+        toast.success("Snooze Enabled: You will not receive SOS alerts.");
+      }
+    } catch (error) {
+      toast.error("Failed to toggle availability status.");
+    }
+  };
+
   const switchRole = async () => {
     if (!user) return;
     try {
@@ -128,7 +144,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, switchRole, setUser, unreadCount, setUnreadCount, enableNotifications, socket }}>
+    <AuthContext.Provider value={{ user, login, logout, switchRole, toggleAvailability, setUser, unreadCount, setUnreadCount, enableNotifications, socket }}>
       {children}
     </AuthContext.Provider>
   );

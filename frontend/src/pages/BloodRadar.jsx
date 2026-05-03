@@ -16,6 +16,8 @@ import toast from "react-hot-toast";
 import axios from "axios";
 import api from "../utils/api";
 import EmergencyMatchModal from "../components/EmergencyMatchModal";
+import AITriageModal from "../components/AITriageModal"; // 👉 Imported AI Triage
+import { FaRobot } from "react-icons/fa";
 
 // 👉 THE MASTERPIECE: Custom HTML Sonar Pulse for the User's Location
 const mySonarIcon = L.divIcon({
@@ -61,6 +63,13 @@ const BloodRadar = () => {
   const [isBlasting, setIsBlasting] = useState(false);
   const [activeSOS, setActiveSOS] = useState(null);
   const [myAddressText, setMyAddressText] = useState("Acquiring Target...");
+  const [showTriageModal, setShowTriageModal] = useState(false); // 👉 AI Triage State
+
+  const handleTriageData = (data) => {
+    setEmotionalMessage(data.description + (data.title ? ` [${data.title}]` : ''));
+    if (data.bloodGroup) setBloodGroup(data.bloodGroup);
+    if (data.addressText) setMyAddressText(data.addressText);
+  };
 
   useEffect(() => {
     if (!navigator.geolocation) return toast.error("GPS not supported.");
@@ -234,7 +243,12 @@ const BloodRadar = () => {
                 <div className="w-12 h-1.5 bg-dusty-lavender/20 rounded-full mx-auto mb-6 sm:hidden" />
                 <button type="button" onClick={() => setShowBlastModal(false)} className="hidden sm:block absolute top-6 right-6 text-dusty-lavender hover:text-pine-teal bg-dusty-lavender/10 p-2 rounded-full transition-colors"><FaTimes className="text-sm" /></button>
 
-                <h2 className="text-2xl sm:text-3xl font-black italic tracking-tighter mb-1 text-blazing-flame drop-shadow-[0_0_15px_rgba(255,74,28,0.2)]">SOS DIRECTIVE</h2>
+                <div className="flex justify-between items-center mb-1">
+                  <h2 className="text-2xl sm:text-3xl font-black italic tracking-tighter text-blazing-flame drop-shadow-[0_0_15px_rgba(255,74,28,0.2)]">SOS DIRECTIVE</h2>
+                  <button onClick={() => setShowTriageModal(true)} className="flex items-center gap-2 bg-blazing-flame/10 text-blazing-flame hover:bg-blazing-flame hover:text-white transition-colors px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest">
+                    <FaRobot /> AI Auto-Fill
+                  </button>
+                </div>
                 <p className="text-dusty-lavender text-[10px] sm:text-[11px] font-bold uppercase tracking-widest mb-8 border-b border-dusty-lavender/20 pb-4">Ping active nodes within {radius / 1000}km</p>
 
                 <textarea value={emotionalMessage} onChange={(e) => setEmotionalMessage(e.target.value)} placeholder="Transmit emergency details..." className="w-full h-32 sm:h-40 bg-white/50 border border-dusty-lavender/30 rounded-2xl p-5 text-pine-teal text-sm outline-none focus:border-blazing-flame focus:bg-white transition-all resize-none mb-6 placeholder-dusty-lavender/70" />
@@ -250,6 +264,7 @@ const BloodRadar = () => {
           )}
         </AnimatePresence>
 
+        <AITriageModal isOpen={showTriageModal} onClose={() => setShowTriageModal(false)} onTriageComplete={handleTriageData} />
         {activeSOS && <EmergencyMatchModal sosData={activeSOS} onClose={() => setActiveSOS(null)} />}
       </div>
 

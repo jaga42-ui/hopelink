@@ -21,7 +21,10 @@ import {
   FaCheckCircle,
   FaCommentAlt, // 👉 Added icon for feedback
   FaStar, // 👉 Added icon for ratings
+  FaMapMarkerAlt, // 👉 Added icon for heatmap
 } from "react-icons/fa";
+import { MapContainer, TileLayer, CircleMarker } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
 import {
   XAxis,
   YAxis,
@@ -48,6 +51,7 @@ const Admin = () => {
   const [listings, setListings] = useState([]);
   const [eventsList, setEventsList] = useState([]);
   const [feedbacks, setFeedbacks] = useState([]); // 👉 Added state for feedback
+  const [heatmapData, setHeatmapData] = useState(null); // 👉 Added state for heatmap
   const [loading, setLoading] = useState(true);
 
   const [broadcastMsg, setBroadcastMsg] = useState("");
@@ -72,19 +76,21 @@ const Admin = () => {
     const fetchAdminData = async () => {
       try {
         // 👉 Added the feedback endpoint to the initial data fetch
-        const [statsRes, usersRes, listingsRes, eventsRes, feedbackRes] =
+        const [statsRes, usersRes, listingsRes, eventsRes, feedbackRes, heatmapRes] =
           await Promise.all([
             api.get("/admin/stats"),
             api.get("/admin/users"),
             api.get("/admin/listings"),
             api.get("/events"),
             api.get("/admin/feedback"),
+            api.get("/admin/heatmap"),
           ]);
         setStats(statsRes.data);
         setUsersList(usersRes.data);
         setListings(listingsRes.data);
         setEventsList(eventsRes.data);
         setFeedbacks(feedbackRes.data);
+        setHeatmapData(heatmapRes.data);
         setLoading(false);
       } catch (error) {
         toast.error("Failed to load admin data");
@@ -223,6 +229,7 @@ const Admin = () => {
                 { id: "events", label: "Events", icon: <FaCalendarAlt /> },
                 { id: "moderation", label: "Moderation", icon: <FaFlag /> },
                 { id: "feedback", label: "Feedback", icon: <FaCommentAlt /> }, // 👉 Added Feedback Tab
+                { id: "heatmap", label: "Heatmap", icon: <FaMapMarkerAlt /> }, // 👉 Added Heatmap Tab
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -600,6 +607,69 @@ const Admin = () => {
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* 👉 NEW HEATMAP TAB */}
+            {activeTab === "heatmap" && heatmapData && (
+              <div className="bg-white/70 backdrop-blur-lg border border-white rounded-[2rem] p-6 md:p-8 shadow-[0_20px_40px_rgba(41,82,74,0.08)] min-h-[70vh] flex flex-col">
+                <div className="flex items-center justify-between mb-6 border-b border-dusty-lavender/30 pb-4">
+                  <h2 className="text-sm font-black uppercase tracking-widest text-pine-teal flex items-center gap-2">
+                    <FaMapMarkerAlt /> Global Activity Grid
+                  </h2>
+                  <div className="flex gap-4">
+                    <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-dusty-lavender">
+                      <div className="w-2.5 h-2.5 rounded-full bg-pine-teal"></div> Donors ({heatmapData.donors.length})
+                    </span>
+                    <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-dusty-lavender">
+                      <div className="w-2.5 h-2.5 rounded-full bg-blazing-flame animate-pulse"></div> Emergencies ({heatmapData.emergencies.length})
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="flex-1 w-full bg-pearl-beige rounded-2xl overflow-hidden shadow-inner border border-dusty-lavender/30 relative min-h-[500px]">
+                  <MapContainer 
+                    center={[20.5937, 78.9629]} 
+                    zoom={5} 
+                    style={{ height: "100%", width: "100%", background: "#e8dab2" }}
+                  >
+                    <TileLayer 
+                      url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" 
+                      attribution='&copy; CARTO' 
+                    />
+                    
+                    {heatmapData.donors.map((donor) => (
+                      donor.location?.coordinates && (
+                        <CircleMarker 
+                          key={donor._id}
+                          center={[donor.location.coordinates[1], donor.location.coordinates[0]]}
+                          radius={5}
+                          fillColor="#29524a"
+                          color="#29524a"
+                          weight={1}
+                          opacity={0.8}
+                          fillOpacity={0.6}
+                        />
+                      )
+                    ))}
+
+                    {heatmapData.emergencies.map((em) => (
+                      em.location?.coordinates && (
+                        <CircleMarker 
+                          key={em._id}
+                          center={[em.location.coordinates[1], em.location.coordinates[0]]}
+                          radius={12}
+                          fillColor="#ff4a1c"
+                          color="#ff4a1c"
+                          weight={2}
+                          opacity={1}
+                          fillOpacity={0.8}
+                          className="animate-pulse"
+                        />
+                      )
+                    ))}
+                  </MapContainer>
+                </div>
               </div>
             )}
 
