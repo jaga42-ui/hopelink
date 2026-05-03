@@ -1,8 +1,8 @@
 import { useState, useContext } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  FaUserPlus, FaEnvelope, FaLock, FaPhone, FaTint, FaShieldAlt, FaTimes, FaCheck,
+  FaUserPlus, FaEnvelope, FaLock, FaPhone, FaTint, FaShieldAlt, FaTimes, FaCheck, FaSpinner,
 } from "react-icons/fa";
 import toast from "react-hot-toast";
 import AuthContext from "../context/AuthContext";
@@ -10,6 +10,8 @@ import api from "../utils/api";
 import PolicyModal from "../components/PolicyModal";
 
 const Register = () => {
+  const [searchParams] = useSearchParams();
+  const refCode = searchParams.get('ref') || '';
   const [formData, setFormData] = useState({
     name: "", email: "", password: "", phone: "", bloodGroup: "",
   });
@@ -39,7 +41,7 @@ const Register = () => {
 
     setIsLoading(true);
     try {
-      const payload = { ...formData, activeRole };
+      const payload = { ...formData, activeRole, refCode };
       if (!payload.bloodGroup) delete payload.bloodGroup;
 
       const { data } = await api.post("/auth/register", payload);

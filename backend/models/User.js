@@ -30,6 +30,11 @@ const userSchema = new mongoose.Schema(
     bloodGroup: { type: String },
     addressText: { type: String },
     isAvailable: { type: Boolean, default: true },
+    referralCode: {
+      type: String,
+      unique: true,
+      sparse: true
+    },
 
     // Geospatial Tracking
     location: {

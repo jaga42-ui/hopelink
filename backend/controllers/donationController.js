@@ -379,8 +379,17 @@ const markFulfilled = asyncHandler(async (req, res) => {
   const { calculateRank, getPointsForAction } = require("../utils/gamification");
 
   const donor = await User.findById(donation.donorId);
-  donor.points += getPointsForAction('SUCCESSFUL_DONATION');
-  donor.donationsCount += 1;
+  if (donor) {
+    donor.points += 10;
+    donor.donationsCount += 1;
+    await donor.save();
+
+    // 👉 NEW: Automated Certificate logic
+    if (donor.donationsCount === 1 || donor.donationsCount === 5 || donor.donationsCount === 10) {
+      const { sendCertificateEmail } = require('../utils/sendEmail');
+      sendCertificateEmail(donor.email, donor.name, donor.donationsCount).catch(console.error);
+    }
+  }
   donor.rank = calculateRank(donor.points);
   await donor.save();
 
@@ -475,6 +484,51 @@ const reportDonation = asyncHandler(async (req, res) => {
   });
 });
 
+const getCityLeaderboard = asyncHandler(async (req, res) => {
+  const cityLeaderboard = await User.aggregate([
+    { $match: { addressText: { $exists: true, $ne: "" }, points: { $gt: 0 } } },
+    { $group: { _id: "$addressText", totalPoints: { $sum: "$points" }, donors: { $sum: 1 } } },
+    { $sort: { totalPoints: -1 } },
+    { $limit: 10 }
+  ]);
+  res.json(cityLeaderboard);
+});
+
+const generateHeroStory = asyncHandler(async (req, res) => {
+  const donation = await require("../models/Donation").findOne({ donorId: req.user.id, status: 'fulfilled' }).sort({ updatedAt: -1 });
+
+  if (!process.env.GEMINI_API_KEY) {
+    return res.json({ story: `I am a proud volunteer on the Sahayam platform, ready to help my community. Join our local lifesaver network today! #SahayamApp` });
+  }
+
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+  let prompt = "";
+  if (donation) {
+    prompt = `
+    Write a grounded, humble, and realistic 2-sentence social media post for a user who just helped someone on the Sahayam app.
+    Details of their help: Category: ${donation.category}. Title: ${donation.title}.
+    Do not use exaggerated or overly dramatic language. Keep it deeply personal, calm, and genuine. 
+    Mention the Sahayam app naturally. Do not include quotes.
+    `;
+  } else {
+    prompt = `
+    Write a grounded, humble, and realistic 2-sentence social media post for a registered volunteer on the Sahayam app.
+    They are standing by to help their local community.
+    Keep it deeply personal, calm, and genuine. Mention the Sahayam app naturally. Do not include quotes.
+    `;
+  }
+
+  try {
+    const result = await model.generateContent(prompt);
+    res.json({ story: result.response.text().trim() });
+  } catch (error) {
+    console.error("AI Hero Story Error:", error);
+    res.json({ story: `I just helped fulfill a critical medical request on the Sahayam platform. Join our local lifesaver network today. #SahayamApp` });
+  }
+});
+
 const triageSOS = asyncHandler(async (req, res) => {
   const { text } = req.body;
   if (!text) {
@@ -529,6 +583,8 @@ module.exports = {
   approveRequest,
   acceptSOS,
   getLeaderboard,
+  getCityLeaderboard,
   reportDonation,
   triageSOS,
+  generateHeroStory,
 };

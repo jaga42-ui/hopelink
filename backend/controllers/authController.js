@@ -37,7 +37,7 @@ const generateToken = (id) => {
 };
 
 const registerUser = asyncHandler(async (req, res) => {
-  const { name, password, phone, activeRole, bloodGroup, organizationName } = req.body;
+  const { name, password, phone, activeRole, bloodGroup, organizationName, refCode } = req.body;
   // 👉 THE FIX: Normalize email to prevent duplicate accounts
   const email = req.body.email ? req.body.email.toLowerCase().trim() : "";
 
@@ -51,6 +51,8 @@ const registerUser = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error("Email already registered");
   }
+
+  const referralCode = name.substring(0, 3).toUpperCase() + Math.floor(1000 + Math.random() * 9000);
 
   const user = await User.create({
     name,
@@ -68,6 +70,18 @@ const registerUser = asyncHandler(async (req, res) => {
   });
 
   if (user) {
+    if (refCode) {
+      const referrer = await User.findOne({ referralCode: refCode.toUpperCase() });
+      if (referrer) {
+        referrer.points += 50;
+        await referrer.save();
+      }
+    }
+
+    // 👉 NEW: Send Welcome Email
+    const { sendWelcomeEmail } = require('../utils/sendEmail');
+    sendWelcomeEmail(user.email, user.name).catch(console.error);
+
     res.status(201).json({
       _id: user.id,
       name: user.name,
@@ -77,6 +91,7 @@ const registerUser = asyncHandler(async (req, res) => {
       isAdmin: user.isAdmin,
       profilePic: user.profilePic,
       addressText: user.addressText,
+      referralCode: user.referralCode,
       token: generateToken(user._id),
     });
   } else {
@@ -108,6 +123,7 @@ const loginUser = asyncHandler(async (req, res) => {
       profilePic: user.profilePic,
       bloodGroup: user.bloodGroup,
       addressText: user.addressText,
+      referralCode: user.referralCode,
       token: generateToken(user._id),
     });
   } else {

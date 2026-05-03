@@ -10,7 +10,8 @@ const {
   toggleAdminRole,
   sendBroadcast, // 👉 NEW IMPORT
   resolveReport,  // 👉 NEW IMPORT
-  getHeatmapData
+  getHeatmapData,
+  generateMarketingStrategy
 } = require('../controllers/adminController');
 
 const adminGuard = (req, res, next) => {
@@ -26,6 +27,7 @@ router.use(protect, adminGuard);
 
 router.get('/stats', getDashboardStats);
 router.get('/heatmap', getHeatmapData);
+router.get('/marketing', generateMarketingStrategy);
 router.get('/users', getAllUsers);
 router.get('/listings', getAllListings);
 router.delete('/users/:id', deleteUser);

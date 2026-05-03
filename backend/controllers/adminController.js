@@ -3,6 +3,38 @@ const User = require('../models/User');
 const Donation = require('../models/Donation');
 const moment = require('moment'); 
 
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+const generateMarketingStrategy = asyncHandler(async (req, res) => {
+  if (!process.env.GEMINI_API_KEY) {
+    res.status(500);
+    throw new Error("Gemini API key is not configured");
+  }
+  
+  const [totalUsers, activeSOS] = await Promise.all([
+    User.countDocuments(),
+    Donation.countDocuments({ isEmergency: true, status: 'active' })
+  ]);
+
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+  const prompt = `
+  Act as a calm, professional community organizer for 'Sahayam', a local peer-to-peer blood donation app.
+  Current platform stats: ${totalUsers} total registered users, ${activeSOS} active emergencies currently unresolved.
+  Write a short, grounded, and sincere social media post asking locals to join the app. 
+  Focus on community support and real data. Do not exaggerate or use hyperbole. Be direct and realistic.
+  `;
+  
+  try {
+    const result = await model.generateContent(prompt);
+    res.json({ strategy: result.response.text().trim() });
+  } catch (error) {
+    res.status(500);
+    throw new Error("Failed to generate AI strategy");
+  }
+});
+
 const getHeatmapData = asyncHandler(async (req, res) => {
   const donors = await User.find({ activeRole: "donor", location: { $exists: true } })
     .select("location");
@@ -186,5 +218,5 @@ const resolveReport = asyncHandler(async (req, res) => {
 
 module.exports = { 
   getDashboardStats, getAllUsers, getAllListings, deleteUser, 
-  deleteListing, toggleAdminRole, sendBroadcast, resolveReport, getHeatmapData
+  deleteListing, toggleAdminRole, sendBroadcast, resolveReport, getHeatmapData, generateMarketingStrategy
 };

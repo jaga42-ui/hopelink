@@ -269,6 +269,27 @@ const Profile = () => {
               </div>
             </div>
 
+            {/* 👉 NEW: Referral Gamification */}
+            <div className="mt-6 bg-white/70 backdrop-blur-lg border border-pine-teal/20 rounded-[2rem] p-6 shadow-sm relative overflow-hidden">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-widest text-pine-teal flex items-center gap-2 mb-1">
+                    <FaAward className="text-pine-teal" /> Recruit & Rank Up
+                  </h3>
+                  <p className="text-[10px] text-dusty-lavender uppercase font-bold tracking-wider">Earn 50 XP for every hero you recruit!</p>
+                </div>
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(`https://hopelink-api.onrender.com/register?ref=${user.referralCode || ''}`);
+                    toast.success("Recruitment Link Copied!");
+                  }}
+                  className="w-full md:w-auto py-3 px-6 bg-pine-teal hover:bg-[#1a3630] text-white font-black uppercase tracking-widest text-[10px] rounded-xl shadow-md transition-all active:scale-95"
+                >
+                  Copy Link
+                </button>
+              </div>
+            </div>
+
             <div className="md:hidden mt-8 pt-6 border-t border-dusty-lavender/30">
               <button 
                 onClick={handleMobileLogout} 
@@ -276,6 +297,45 @@ const Profile = () => {
               >
                 <FaSignOutAlt className="text-lg" /> Secure Logout
               </button>
+            </div>
+
+            {/* 👉 NEW: AI Hero Story Engine */}
+            <div className="mt-8 bg-white/70 backdrop-blur-lg border border-blazing-flame/20 rounded-[2rem] p-6 shadow-sm relative overflow-hidden group">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blazing-flame to-pine-teal" />
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4 relative z-10">
+                <div className="text-center md:text-left">
+                  <h3 className="text-sm font-black uppercase tracking-widest text-pine-teal flex items-center justify-center md:justify-start gap-2 mb-1">
+                    <FaAward className="text-blazing-flame" /> Share Your Legacy
+                  </h3>
+                  <p className="text-[10px] text-dusty-lavender uppercase font-bold tracking-wider">Let AI craft your personalized impact story to inspire others.</p>
+                </div>
+                <button 
+                  onClick={async () => {
+                    const toastId = toast.loading("AI is crafting your story...");
+                    try {
+                      const { data } = await api.get('/donations/hero-story');
+                      toast.dismiss(toastId);
+                      
+                      if (navigator.share) {
+                        navigator.share({
+                          title: 'My Sahayam Journey',
+                          text: data.story,
+                          url: 'https://hopelink-api.onrender.com'
+                        }).catch(console.error);
+                      } else {
+                        // Fallback to clipboard
+                        navigator.clipboard.writeText(data.story + " https://hopelink-api.onrender.com");
+                        toast.success("Story copied to clipboard!");
+                      }
+                    } catch (err) {
+                      toast.error("Failed to generate story", { id: toastId });
+                    }
+                  }}
+                  className="w-full md:w-auto py-3 px-6 bg-blazing-flame hover:bg-[#e03a12] text-white font-black uppercase tracking-widest text-[10px] rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <FaStar /> Generate AI Story
+                </button>
+              </div>
             </div>
 
             <div className="text-center pt-6 md:pt-8 px-4">
