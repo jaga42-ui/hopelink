@@ -4,6 +4,7 @@ const User = require("../models/User");
 const admin = require("firebase-admin");
 
 const { sendPostAlertEmail } = require("../utils/sendEmail");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 if (!admin.apps.length) {
   try {
@@ -375,17 +376,19 @@ const markFulfilled = asyncHandler(async (req, res) => {
   donation.status = "fulfilled";
   await donation.save();
 
+  const { calculateRank, getPointsForAction } = require("../utils/gamification");
+
   const donor = await User.findById(donation.donorId);
-  donor.points += 50;
+  donor.points += getPointsForAction('SUCCESSFUL_DONATION');
   donor.donationsCount += 1;
-  if (donor.points > 500) donor.rank = "Community Hero";
-  if (donor.points > 1000) donor.rank = "Guardian Angel";
+  donor.rank = calculateRank(donor.points);
   await donor.save();
 
   if (donation.receiverId) {
     const receiver = await User.findById(donation.receiverId);
-    receiver.points += 20;
+    receiver.points += getPointsForAction('RECEIVE_DONATION');
     receiver.requestsCount += 1;
+    receiver.rank = calculateRank(receiver.points);
 
     if (rating) {
       const newTotal = receiver.totalRatings + 1;
@@ -472,6 +475,49 @@ const reportDonation = asyncHandler(async (req, res) => {
   });
 });
 
+const triageSOS = asyncHandler(async (req, res) => {
+  const { text } = req.body;
+  if (!text) {
+    res.status(400);
+    throw new Error("Text is required");
+  }
+
+  if (!process.env.GEMINI_API_KEY) {
+    res.status(500);
+    throw new Error("Gemini API key is not configured");
+  }
+
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  
+  const prompt = `
+  You are an Emergency Medical Triage AI for the Sahayam platform.
+  Parse the following user message and extract details for an SOS alert.
+  Return ONLY a valid JSON object with these exact keys:
+  - title (A concise, urgent title)
+  - description (A summary of the emergency)
+  - bloodGroup (If mentioned, exact format like A+, O-. If not mentioned, return empty string)
+  - addressText (The location or hospital mentioned)
+  - isEmergency (boolean, usually true for SOS)
+
+  Message: "${text}"
+  `;
+
+  try {
+    const resultResponse = await model.generateContent(prompt);
+    let resultText = resultResponse.response.text();
+    
+    // Strip markdown formatting if any
+    resultText = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(resultText);
+    res.json(parsed);
+  } catch (error) {
+    console.error("AI Triage Error:", error);
+    res.status(500);
+    throw new Error("Failed to parse AI request");
+  }
+});
+
 module.exports = {
   createDonation,
   getDonations,
@@ -484,4 +530,5 @@ module.exports = {
   acceptSOS,
   getLeaderboard,
   reportDonation,
+  triageSOS,
 };

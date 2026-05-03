@@ -9,7 +9,8 @@ const {
   deleteListing,
   toggleAdminRole,
   sendBroadcast, // 👉 NEW IMPORT
-  resolveReport  // 👉 NEW IMPORT
+  resolveReport,  // 👉 NEW IMPORT
+  getHeatmapData
 } = require('../controllers/adminController');
 
 const adminGuard = (req, res, next) => {
@@ -24,6 +25,7 @@ const adminGuard = (req, res, next) => {
 router.use(protect, adminGuard);
 
 router.get('/stats', getDashboardStats);
+router.get('/heatmap', getHeatmapData);
 router.get('/users', getAllUsers);
 router.get('/listings', getAllListings);
 router.delete('/users/:id', deleteUser);

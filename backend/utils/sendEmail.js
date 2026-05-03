@@ -39,11 +39,13 @@ const sendPostAlertEmail = async (bccEmails, postDetails) => {
           <p style="margin: 0 0 10px 0; color: #846b8a; font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; font-weight: 900;">${theme.messageLabel}</p>
           <p style="margin: 0; font-size: 18px; font-weight: 700; color: #29524a;">"${postDetails.message}"</p>
           ${postDetails.bloodGroup ? `<p style="margin: 15px 0 0 0; color: ${theme.color}; font-weight: 900; font-size: 14px; text-transform: uppercase; letter-spacing: 0.1em;">Required: ${postDetails.bloodGroup}</p>` : ''}
+          ${postDetails.requesterName ? `<p style="margin: 15px 0 0 0; color: #29524a; font-weight: 500; font-size: 14px;"><strong>Contact:</strong> ${postDetails.requesterName} ${postDetails.requesterPhone ? `(${postDetails.requesterPhone})` : ''}</p>` : ''}
         </div>
 
         <p style="color: #29524a; margin-bottom: 30px; font-weight: 500;">Access the radar to view the exact location and establish contact.</p>
         
-        <a href="${radarLink}" style="display: inline-block; padding: 16px 32px; background-color: ${theme.border}; color: #ffffff; text-decoration: none; border-radius: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; box-shadow: 0 10px 25px rgba(41, 82, 74, 0.2);">Open Radar</a>
+        <a href="${radarLink}" style="display: inline-block; padding: 16px 32px; background-color: ${theme.border}; color: #ffffff; text-decoration: none; border-radius: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; box-shadow: 0 10px 25px rgba(41, 82, 74, 0.2); margin-right: 10px; margin-bottom: 10px;">Open Radar</a>
+        ${postDetails.lat && postDetails.lng ? `<a href="https://maps.google.com/?q=${postDetails.lat},${postDetails.lng}" style="display: inline-block; padding: 14px 30px; background-color: transparent; border: 2px solid ${theme.border}; color: ${theme.border}; text-decoration: none; border-radius: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px;">Get Directions</a>` : ''}
         
         <hr style="border: 0; border-top: 1px solid rgba(132, 107, 138, 0.2); margin: 40px 0 20px 0;" />
         <p style="font-size: 10px; color: #846b8a; margin: 0; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em;">You are receiving this communication because your Sahayam profile is set to an active radius near this event.</p>

@@ -15,7 +15,8 @@ const {
   approveRequest,  
   getLeaderboard,
   acceptSOS,
-  reportDonation // 👉 NEW: Imported the Report handler
+  reportDonation, // 👉 NEW: Imported the Report handler
+  triageSOS
 } = require('../controllers/donationController');
 
 const { protect } = require('../middleware/authMiddleware');
@@ -41,5 +42,8 @@ router.patch('/:id/sos-accept', protect, acceptSOS);
 
 // 👉 NEW: The Report & Auto-Moderation Route
 router.post('/:id/report', protect, reportDonation);
+
+// 👉 NEW: AI Triage Assistant
+router.post('/triage', protect, triageSOS);
 
 module.exports = router;

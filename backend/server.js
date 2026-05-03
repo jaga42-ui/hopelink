@@ -149,11 +149,19 @@ app.use("/api/events", require("./routes/events"));
 // 1. Users submitting feedback
 app.post("/api/feedback", protect, async (req, res) => {
   try {
+    const { calculateRank, getPointsForAction } = require("./utils/gamification");
+
     const feedback = await Feedback.create({
       user: req.user._id,
       rating: req.body.rating,
       message: req.body.message
     });
+
+    const user = await User.findById(req.user._id);
+    user.points += getPointsForAction('SUBMIT_APP_FEEDBACK');
+    user.rank = calculateRank(user.points);
+    await user.save();
+
     res.status(201).json(feedback);
   } catch (error) {
     res.status(400).json({ message: "Failed to submit feedback" });
@@ -254,6 +262,7 @@ cron.schedule("* * * * *", async () => {
           },
         },
         activeRole: "donor",
+        isAvailable: true,
         _id: { $nin: [...blast.pingedDonors, blast.requester] },
       }).limit(100);
 
@@ -271,6 +280,17 @@ cron.schedule("* * * * *", async () => {
             tokens: pushTokens,
           };
           admin.messaging().sendEachForMulticast(pushMessage).catch(console.error);
+        }
+
+        // 👉 THE FIX: 100% Free Email Fallback instead of Paid Twilio SMS
+        const fallbackEmails = expandedDonors.filter(d => d.email).map(d => d.email);
+        if (fallbackEmails.length > 0) {
+          const { sendPostAlertEmail } = require("./utils/sendEmail");
+          sendPostAlertEmail(fallbackEmails, {
+            message: "Original responders failed to answer. We are expanding the radius! " + blast.message,
+            bloodGroup: blast.bloodGroup,
+            isEmergency: true
+          }).catch(console.error);
         }
 
         // Update Blast

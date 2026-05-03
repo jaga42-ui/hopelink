@@ -13,7 +13,8 @@ const {
   respondToBlast,
   forgotPassword, 
   resetPassword,
-  saveFCMToken // 👉 NEW: Catches the Firebase token from the phone
+  saveFCMToken, // 👉 NEW: Catches the Firebase token from the phone
+  toggleAvailability
 } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 const { validateRegister, validateLogin } = require('../middleware/validateMiddleware');
@@ -31,6 +32,7 @@ router.post('/resetpassword/:id/:token', resetPassword);
 router.put('/role', protect, toggleRole);
 router.put('/profile', protect, updateProfile);
 router.get('/profile', protect, getMe);
+router.put('/toggle-availability', protect, toggleAvailability);
 router.post('/fcm-token', protect, saveFCMToken); // 👉 NEW: Firebase Token Route
 
 // Map & Radar Routes

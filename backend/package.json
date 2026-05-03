@@ -35,9 +35,9 @@
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.1",
     "socket.io": "^4.8.3",
-    "twilio": "^5.12.2",
     "web-push": "^3.6.7",
-    "xss-clean": "^0.1.4"
+    "xss-clean": "^0.1.4",
+    "@google/generative-ai": "^0.21.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.0"

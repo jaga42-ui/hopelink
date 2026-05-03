@@ -3,6 +3,16 @@ const User = require('../models/User');
 const Donation = require('../models/Donation');
 const moment = require('moment'); 
 
+const getHeatmapData = asyncHandler(async (req, res) => {
+  const donors = await User.find({ activeRole: "donor", location: { $exists: true } })
+    .select("location");
+    
+  const emergencies = await Donation.find({ isEmergency: true, location: { $exists: true } })
+    .select("location");
+
+  res.json({ donors, emergencies });
+});
+
 // @desc    Get platform statistics
 // @route   GET /api/admin/stats
 const getDashboardStats = asyncHandler(async (req, res) => {
@@ -176,5 +186,5 @@ const resolveReport = asyncHandler(async (req, res) => {
 
 module.exports = { 
   getDashboardStats, getAllUsers, getAllListings, deleteUser, 
-  deleteListing, toggleAdminRole, sendBroadcast, resolveReport  
+  deleteListing, toggleAdminRole, sendBroadcast, resolveReport, getHeatmapData
 };

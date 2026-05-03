@@ -29,6 +29,7 @@ const userSchema = new mongoose.Schema(
     phone: { type: String },
     bloodGroup: { type: String },
     addressText: { type: String },
+    isAvailable: { type: Boolean, default: true },
 
     // Geospatial Tracking
     location: {

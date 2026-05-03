@@ -314,6 +314,7 @@ const sendEmergencyBlast = asyncHandler(async (req, res) => {
       },
     },
     activeRole: "donor",
+    isAvailable: true,
     _id: { $ne: req.user._id },
   }).limit(50);
 
@@ -362,6 +363,10 @@ const sendEmergencyBlast = asyncHandler(async (req, res) => {
       message,
       bloodGroup,
       isEmergency: true,
+      requesterName: req.user.name,
+      requesterPhone: req.user.phone,
+      lat,
+      lng,
     });
   }
 
@@ -384,8 +389,15 @@ const respondToBlast = asyncHandler(async (req, res) => {
   );
   if (alreadyResponded) return res.json(blast);
 
+  const { calculateRank, getPointsForAction } = require("../utils/gamification");
+
   blast.responses.push({ donor: req.user._id });
   await blast.save();
+
+  const responder = await User.findById(req.user._id);
+  responder.points += getPointsForAction('RESPOND_SOS');
+  responder.rank = calculateRank(responder.points);
+  await responder.save();
 
   const io = req.app.get("io");
   if (io) {
@@ -473,6 +485,27 @@ const resetPassword = asyncHandler(async (req, res) => {
   }
 });
 
+const toggleAvailability = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id);
+  user.isAvailable = !user.isAvailable;
+  await user.save();
+  
+  res.json({
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    profilePic: user.profilePic,
+    activeRole: user.activeRole,
+    isAdmin: user.isAdmin,
+    points: user.points,
+    rank: user.rank,
+    rating: user.rating,
+    donationsCount: user.donationsCount,
+    addressText: user.addressText,
+    isAvailable: user.isAvailable
+  });
+});
+
 module.exports = {
   registerUser,
   loginUser,
@@ -487,4 +520,5 @@ module.exports = {
   respondToBlast,
   forgotPassword,
   resetPassword,
+  toggleAvailability,
 };
