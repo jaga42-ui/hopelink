@@ -136,11 +136,11 @@ const Admin = () => {
   };
 
   const handleDeleteUser = async (id, name) => {
-    if (window.confirm(`PERMANENTLY BAN ${name} and delete all their posts?`)) {
+    if (window.confirm(`PERMANENTLY DELETE ${name} and all their history?`)) {
       try {
         await api.delete(`/admin/users/${id}`);
         setUsersList(usersList.filter((u) => u._id !== id));
-        toast.success("User banished.");
+        toast.success("User permanently deleted.");
       } catch (error) {
         toast.error("Failed to delete user");
       }
@@ -742,9 +742,9 @@ const Admin = () => {
                                     handleDeleteUser(u._id, u.name)
                                   }
                                   className="bg-blazing-flame/10 text-blazing-flame border border-blazing-flame/20 hover:bg-blazing-flame hover:text-white p-2 rounded-xl transition-all"
-                                  title="Ban User"
+                                  title="Delete User"
                                 >
-                                  <FaBan />
+                                  <FaTrash />
                                 </button>
                               </>
                             )}
@@ -821,7 +821,7 @@ const Admin = () => {
                             onClick={() => handleDeleteUser(u._id, u.name)}
                             className="flex-1 bg-blazing-flame/10 text-blazing-flame border border-blazing-flame/20 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all active:scale-95"
                           >
-                            <FaBan /> Banish
+                            <FaTrash /> Delete
                           </button>
                         </div>
                       )}
