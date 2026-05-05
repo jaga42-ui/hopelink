@@ -1236,7 +1236,7 @@ const Dashboard = () => {
                 </div>
 
                 <form onSubmit={handleSOSSubmit} className="relative z-10 space-y-4">
-                  <div className="flex gap-3">
+                  <div className="flex flex-col sm:flex-row gap-3">
                     <select
                       required
                       value={sosData.bloodGroup}
@@ -1278,7 +1278,7 @@ const Dashboard = () => {
                     className="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm font-bold text-white shadow-inner outline-none focus:border-blazing-flame focus:bg-blazing-flame/10 transition-all placeholder-white/30"
                   />
 
-                  <div className="flex gap-3">
+                  <div className="flex flex-col sm:flex-row gap-3">
                     <input
                       required
                       placeholder="Patient Name"
@@ -1309,7 +1309,7 @@ const Dashboard = () => {
                   />
 
                   <div className="relative">
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <input
                         required
                         readOnly
@@ -1321,7 +1321,7 @@ const Dashboard = () => {
                         type="button"
                         onClick={handleGetLocation}
                         disabled={isFetchingLocation}
-                        className="flex w-14 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-white/10 text-white shadow-md transition-all hover:bg-blazing-flame hover:border-blazing-flame disabled:opacity-60"
+                        className="flex w-full sm:w-14 py-4 sm:py-0 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-white/10 text-white shadow-md transition-all hover:bg-blazing-flame hover:border-blazing-flame disabled:opacity-60"
                       >
                         {isFetchingLocation ? (
                           <FaSpinner className="animate-spin text-lg" />
