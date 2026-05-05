@@ -49,12 +49,20 @@ const fadeUp = {
 const Landing = () => {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(() => {
+    // Only show splash screen once per session
+    return !sessionStorage.getItem("splashShown");
+  });
 
   useEffect(() => {
-    const timer = setTimeout(() => setShowSplash(false), 2500);
-    return () => clearTimeout(timer);
-  }, []);
+    if (showSplash) {
+      const timer = setTimeout(() => {
+        setShowSplash(false);
+        sessionStorage.setItem("splashShown", "true");
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [showSplash]);
 
   useEffect(() => {
     if (user && user.token) {
@@ -127,40 +135,49 @@ const Landing = () => {
         {/* HERO SECTION */}
         <section className="relative z-10 max-w-5xl mx-auto px-6 pt-12 pb-24 flex flex-col items-center text-center justify-center flex-grow">
           <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="mb-6" style={{ perspective: "1000px" }}>
-            <h1 className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tighter leading-[1.05] text-pine-teal">
-              <span className="inline-block overflow-hidden">
-                <motion.span variants={letterReveal} className="inline-block">Connecting&nbsp;</motion.span>
+            <h1 aria-label="When seconds matter, we respond." className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tighter leading-[1.05] text-pine-teal">
+              <span aria-hidden="true" className="inline-block overflow-hidden">
+                <motion.span variants={letterReveal} className="inline-block">When Seconds&nbsp;</motion.span>
               </span>
-              <span className="inline-block overflow-hidden">
+              <br className="hidden sm:block" />
+              <span aria-hidden="true" className="inline-block overflow-hidden pb-2">
+                <motion.span variants={letterReveal} className="inline-block">Matter,&nbsp;</motion.span>
+              </span>
+              <span aria-hidden="true" className="inline-block overflow-hidden">
                 <motion.span
                   variants={letterReveal}
                   className="inline-block text-transparent bg-clip-text bg-gradient-to-r from-dark-raspberry to-blazing-flame"
                 >
-                  Help,&nbsp;
+                  We Respond.
                 </motion.span>
-              </span>
-              <br className="hidden sm:block" />
-              <span className="inline-block overflow-hidden pb-4">
-                <motion.span variants={letterReveal} className="inline-block">Instantly.</motion.span>
               </span>
             </h1>
           </motion.div>
 
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4, duration: 0.8 }} className="max-w-3xl">
-            <p className="text-dark-raspberry font-bold uppercase tracking-widest text-sm mb-4 flex items-center justify-center gap-2">
-              <FaBolt className="animate-pulse text-blazing-flame" /> When Every Second Matters, Sahayam Responds
+            <p className="text-dark-raspberry font-bold uppercase tracking-widest text-xs md:text-sm mb-6 flex items-center justify-center gap-2">
+              <FaBolt className="animate-pulse text-blazing-flame" /> The Hyper-Local Lifesaver Grid
             </p>
-            <p className="text-pine-teal/80 text-lg sm:text-xl font-medium mb-12 leading-relaxed">
-              In times of emergency, delays cost lives. Sahayam is a real-time networking platform designed to instantly connect people in need with nearby responders, volunteers, and essential services. Whether it’s a medical emergency or an urgent request — you are never alone.
-            </p>
+            
+            <div className="bg-white/60 backdrop-blur-md border border-white p-6 rounded-3xl shadow-[0_10px_30px_rgba(41,82,74,0.05)] mb-10 text-left md:text-center relative overflow-hidden group">
+              <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-dark-raspberry to-blazing-flame md:hidden"></div>
+              <p className="text-pine-teal/90 text-sm sm:text-base font-medium leading-relaxed mb-4">
+                <strong className="text-dark-raspberry font-black tracking-wide uppercase text-xs block md:inline md:mr-2">The Reality:</strong> 
+                It’s 2 AM. A loved one urgently needs O- blood. The hospital bank is empty, and posting on social media feels like shouting into a void. Time is running out. What do you do?
+              </p>
+              <p className="text-pine-teal/90 text-sm sm:text-base font-medium leading-relaxed">
+                <strong className="text-blazing-flame font-black tracking-wide uppercase text-xs block md:inline md:mr-2">The Solution:</strong> 
+                Sahayam is a real-time, AI-driven emergency network. Press one button, and we instantly route your SOS to verified donors, NGOs, and volunteers actively listening in your specific neighborhood. No delays. No middlemen. Just immediate, life-saving help.
+              </p>
+            </div>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.6, type: "spring" }} className="flex flex-col items-center gap-4 w-full">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6, type: "spring" }} className="flex flex-col items-center gap-4 w-full">
             <Link to="/register" className="px-10 py-5 bg-blazing-flame text-white rounded-full font-black text-sm sm:text-base uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-[0_10px_25px_rgba(255,74,28,0.4)] flex items-center justify-center gap-3 w-full sm:w-auto">
-              Get Started Today <FaBolt />
+              Join The Grid Today <FaBolt />
             </Link>
             <p className="text-pine-teal/60 text-xs font-medium mt-2">
-              Already have an account?{" "}
+              Are you an NGO or existing volunteer?{" "}
               <Link to="/login" className="text-dark-raspberry hover:text-blazing-flame transition-colors font-bold">
                 Sign In
               </Link>

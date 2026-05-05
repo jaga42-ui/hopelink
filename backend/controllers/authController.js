@@ -67,6 +67,8 @@ const registerUser = asyncHandler(async (req, res) => {
     profilePic: "",
     addressText: "",
     location: { type: "Point", coordinates: [0, 0] },
+    isEmailVerified: false,
+    emailVerificationToken: Math.floor(100000 + Math.random() * 900000).toString(), // 6-digit OTP
   });
 
   if (user) {
@@ -78,9 +80,10 @@ const registerUser = asyncHandler(async (req, res) => {
       }
     }
 
-    // 👉 NEW: Send Welcome Email
-    const { sendWelcomeEmail } = require('../utils/sendEmail');
+    // 👉 NEW: Send Welcome & Verification Email
+    const { sendWelcomeEmail, sendVerificationEmail } = require('../utils/sendEmail');
     sendWelcomeEmail(user.email, user.name).catch(console.error);
+    sendVerificationEmail(user.email, user.name, user.emailVerificationToken).catch(console.error);
 
     res.status(201).json({
       _id: user.id,
@@ -110,6 +113,12 @@ const loginUser = asyncHandler(async (req, res) => {
   if (user && user.activeRole === "ngo" && !user.isVerified) {
     res.status(403);
     throw new Error("NGO Account pending verification. Please contact support.");
+  }
+
+  // 👉 THE FIX: Trust and Safety - Block unverified emails
+  if (user && !user.isEmailVerified && user.activeRole !== "ngo") {
+    res.status(403);
+    throw new Error("Please verify your email address before logging in.");
   }
 
   if (user && (await user.matchPassword(password))) {
@@ -522,6 +531,35 @@ const toggleAvailability = asyncHandler(async (req, res) => {
   });
 });
 
+const verifyEmail = asyncHandler(async (req, res) => {
+  const { email, token } = req.body;
+  if (!email || !token) {
+    res.status(400);
+    throw new Error("Email and token are required");
+  }
+
+  const user = await User.findOne({ email: email.toLowerCase().trim() });
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+
+  if (user.isEmailVerified) {
+    return res.json({ message: "Email already verified. You can log in." });
+  }
+
+  if (user.emailVerificationToken !== token) {
+    res.status(400);
+    throw new Error("Invalid verification code");
+  }
+
+  user.isEmailVerified = true;
+  user.emailVerificationToken = undefined;
+  await user.save();
+
+  res.json({ message: "Email successfully verified! You can now log in." });
+});
+
 module.exports = {
   registerUser,
   loginUser,
@@ -537,4 +575,5 @@ module.exports = {
   forgotPassword,
   resetPassword,
   toggleAvailability,
+  verifyEmail,
 };

@@ -22,6 +22,20 @@ const donationSchema = new mongoose.Schema(
     // 👉 THE TRUST & SAFETY ADDITION: Tracks users who reported this post
     reports: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
 
+    // 👉 FEATURE 3: Institutional Nodes
+    verifiedByInstitution: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+    // 👉 FEATURE 1: AI Triage Severity
+    severityLevel: {
+      type: String,
+      enum: ["Code Red", "Code Yellow", "Code Green", "Unverified"],
+      default: "Unverified",
+    },
+
     listingType: {
       type: String,
       enum: ["donation", "request"],
@@ -47,6 +61,15 @@ const donationSchema = new mongoose.Schema(
     image: { type: String },
     isEmergency: { type: Boolean, default: false },
     bloodGroup: { type: String },
+
+    // Emergency Medical Context
+    patientDetails: {
+      name: { type: String },
+      age: { type: Number },
+      contactPhone: { type: String },
+    },
+    hospitalRoomNumber: { type: String },
+    criticalDeadline: { type: Date },
 
     location: {
       type: { type: String, enum: ["Point"], default: "Point" },

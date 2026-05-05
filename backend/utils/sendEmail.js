@@ -103,7 +103,32 @@ const sendWelcomeEmail = async (email, name) => {
     await transporter.sendMail(mailOptions);
   } catch (error) {
     console.error("Welcome Email Failed:", error.message);
+};
+
+const sendVerificationEmail = async (email, name, token) => {
+  const mailOptions = {
+    from: `"Sahayam Team" <${process.env.SMTP_EMAIL}>`,
+    to: email,
+    subject: "Verify your email for Sahayam 🛡️",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 30px; background-color: #fdfbf7; border-radius: 20px; border: 1px solid #e2d8e5;">
+        <h1 style="color: #ff4a1c; margin-bottom: 5px;">Security Verification, ${name}</h1>
+        <p style="color: #846b8a; font-size: 16px;">To keep the Sahayam emergency network safe from spam, please verify your email.</p>
+        
+        <div style="background-color: white; padding: 20px; border-radius: 10px; margin: 25px 0; border-left: 4px solid #1e7a6f; text-align: center;">
+          <h2 style="color: #29524a; font-size: 24px; letter-spacing: 4px; margin: 0;">${token}</h2>
+        </div>
+
+        <p style="color: #29524a; font-size: 14px;">Enter this code in the app to complete your registration.</p>
+      </div>
+    `,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+  } catch (error) {
+    console.error("Verification Email Failed:", error.message);
   }
 };
 
-module.exports = { sendPostAlertEmail, sendCertificateEmail, sendWelcomeEmail };
+module.exports = { sendPostAlertEmail, sendCertificateEmail, sendWelcomeEmail, sendVerificationEmail };

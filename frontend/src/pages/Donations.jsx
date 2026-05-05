@@ -37,34 +37,7 @@ const Donations = () => {
   const themeFocusBorder = isRequest ? "focus:border-dark-raspberry" : "focus:border-blazing-flame";
   const themeContainerBorder = "border-white";
 
-  const handleLocationType = (e) => {
-    const val = e.target.value;
-    setFormData((prev) => ({ ...prev, addressText: val, lat: null, lng: null }));
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    
-    if (val.length > 2) {
-      typingTimeoutRef.current = setTimeout(async () => {
-        try {
-          const apiKey = import.meta.env.VITE_MAPBOX_TOKEN;
-          if (!apiKey) return;
-          const { data } = await axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(val)}.json?access_token=${apiKey}&autocomplete=true&limit=5&country=in`);
-          
-          if (data && data.features) {
-            const formattedSuggestions = data.features.map(f => ({
-              display_name: f.place_name, lat: f.center[1], lon: f.center[0]
-            }));
-            setSuggestions(formattedSuggestions);
-          } else { setSuggestions([]); }
-        } catch (error) { console.error("Mapbox Autocomplete failed"); }
-      }, 600);
-    } else { setSuggestions([]); }
-  };
-
-  const handleSelectSuggestion = (locationObj) => {
-    const cleanName = locationObj.display_name.split(",")[0];
-    setFormData((prev) => ({ ...prev, addressText: cleanName, lat: locationObj.lat, lng: locationObj.lon }));
-    setSuggestions([]);
-  };
+  // Removed handleLocationType and handleSelectSuggestion as manual typing is disabled
 
   const handleGetLocation = () => {
     if (!navigator.geolocation) return toast.error("GPS not supported");
@@ -220,16 +193,11 @@ const Donations = () => {
               <div className="relative">
                 <label className="text-[10px] font-black uppercase tracking-widest text-dusty-lavender ml-2 md:ml-4 mb-1.5 block">Location *</label>
                 <div className="flex gap-2">
-                  <input required type="text" placeholder="Use GPS..." value={formData.addressText} onChange={handleLocationType} className={`flex-1 w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-5 py-3.5 md:py-4 text-pine-teal text-base md:text-sm font-bold placeholder-dusty-lavender/70 outline-none transition-all shadow-inner focus:bg-white ${themeFocusBorder}`} />
+                  <input required readOnly type="text" placeholder="Use GPS for accurate location..." value={formData.addressText} className={`flex-1 w-full bg-pearl-beige/30 border border-dusty-lavender/40 rounded-2xl px-4 md:px-5 py-3.5 md:py-4 text-pine-teal text-base md:text-sm font-bold placeholder-dusty-lavender/70 outline-none transition-all shadow-inner cursor-not-allowed opacity-80`} />
                   <button type="button" onClick={handleGetLocation} disabled={isFetchingLocation} className="px-4 md:px-5 bg-white text-blazing-flame border border-dusty-lavender/40 rounded-2xl active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center shrink-0 shadow-sm hover:shadow-md">
                     {isFetchingLocation ? <FaSpinner className="animate-spin text-lg" /> : <FaLocationArrow className="text-lg" />}
                   </button>
                 </div>
-                {suggestions.length > 0 && (
-                  <div className="absolute z-[100] w-full mt-2 bg-white border border-dusty-lavender/30 rounded-xl overflow-y-auto max-h-48 shadow-2xl">
-                    {suggestions.map((s, index) => (<div key={index} onClick={() => handleSelectSuggestion(s)} className="px-5 py-3 text-sm text-pine-teal hover:text-white hover:bg-pine-teal cursor-pointer border-b border-dusty-lavender/20 last:border-0 truncate">{s.display_name}</div>))}
-                  </div>
-                )}
               </div>
 
               <div>

@@ -15,6 +15,8 @@ import {
   FaEdit,
   FaTrash,
   FaShieldAlt,
+  FaMapMarkerAlt,
+  FaQrcode,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -37,6 +39,9 @@ const Chat = () => {
 
   const [editingMessage, setEditingMessage] = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(null);
+  const [showETA, setShowETA] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [qrScanning, setQrScanning] = useState(false);
 
   const messagesEndRef = useRef(null);
 
@@ -82,6 +87,7 @@ const Chat = () => {
         await api.put(`/chat/${donationId}/read`);
         socket.emit("mark_as_read", {
           donationId,
+          receiverId: otherUserId,
           readerId: user._id,
         });
         scrollToBottom();
@@ -102,6 +108,7 @@ const Chat = () => {
       if (message.sender !== user._id)
         socket.emit("mark_as_read", {
           donationId,
+          receiverId: otherUserId,
           readerId: user._id,
         });
       scrollToBottom();
@@ -232,7 +239,7 @@ const Chat = () => {
       setMessages((prev) => prev.filter((msg) => msg._id !== msgId));
       try {
         await api.delete(`/chat/${msgId}`);
-        socket.emit("delete_message", { id: msgId, donationId });
+        socket.emit("delete_message", { id: msgId, donationId, receiver: otherUserId });
       } catch (error) {
         toast.error("Failed to delete message");
       }
@@ -289,7 +296,47 @@ const Chat = () => {
               </div>
             </div>
           </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowETA(!showETA)}
+              className={`flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 rounded-xl border text-[9px] font-black uppercase tracking-widest transition-all ${showETA ? "bg-blazing-flame text-white border-blazing-flame shadow-[0_0_15px_rgba(255,74,28,0.4)]" : "bg-white text-pine-teal border-pine-teal/20 hover:bg-pine-teal hover:text-white"}`}
+            >
+              <FaMapMarkerAlt /> {showETA ? "Tracking" : "ETA"}
+            </button>
+            <button
+              onClick={() => setShowQRModal(true)}
+              className="flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 rounded-xl border border-pine-teal bg-pine-teal text-white text-[9px] font-black uppercase tracking-widest transition-all shadow-md hover:bg-[#1a3630]"
+            >
+              <FaQrcode /> Handshake
+            </button>
+          </div>
         </header>
+
+        <AnimatePresence>
+          {showETA && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="bg-gradient-to-r from-[#1c0808] to-[#0a0000] border-b border-blazing-flame/30 overflow-hidden relative shrink-0 shadow-inner"
+            >
+              <div className="absolute inset-0 flex items-center justify-center opacity-30 pointer-events-none">
+                <div className="w-[300px] h-[300px] rounded-full border border-blazing-flame/20 animate-ping" style={{ animationDuration: '3s' }} />
+              </div>
+              <div className="p-4 flex items-center justify-between relative z-10">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-blazing-flame/10 border border-blazing-flame/50 flex items-center justify-center text-blazing-flame shadow-[0_0_15px_rgba(255,74,28,0.3)]">
+                    <FaMapMarkerAlt className="animate-bounce" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-black text-sm uppercase tracking-wider">Live ETA Tracking</h3>
+                    <p className="text-blazing-flame text-[10px] font-bold uppercase tracking-[0.2em] animate-pulse">Operator is 2.4 miles away (Est. 8 mins)</p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <section
           className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 z-10 no-scrollbar relative bg-pearl-beige/30"
@@ -486,6 +533,85 @@ const Chat = () => {
             </button>
           </form>
         </div>
+
+        <AnimatePresence>
+          {showQRModal && (
+            <div className="fixed inset-0 z-[4000] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-[#0a0a0a]/90 backdrop-blur-md"
+                onClick={() => setShowQRModal(false)}
+              />
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="relative w-full max-w-sm rounded-[2.5rem] bg-white p-8 shadow-2xl flex flex-col items-center border-4 border-pine-teal"
+              >
+                <div className="absolute top-4 right-4">
+                   <button onClick={() => setShowQRModal(false)} className="p-2 text-dusty-lavender hover:text-pine-teal bg-pearl-beige rounded-full transition-colors"><FaTimes /></button>
+                </div>
+                <div className="mb-5 flex flex-col items-center mt-2">
+                  <div className="w-16 h-16 rounded-3xl bg-pine-teal/10 flex items-center justify-center text-pine-teal mb-3 shadow-inner">
+                    <FaQrcode className="text-3xl" />
+                  </div>
+                  <h2 className="text-2xl font-black uppercase tracking-tight text-pine-teal">Secure Handoff</h2>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-dusty-lavender text-center mt-1">
+                    {!isDonor ? "Present this to complete transfer" : "Scan to verify transfer"}
+                  </p>
+                </div>
+
+                <div className="relative w-56 h-56 bg-pearl-beige rounded-3xl flex items-center justify-center overflow-hidden border-2 border-dashed border-pine-teal/40 p-3">
+                  {!isDonor ? (
+                    <img 
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=Sahayam-Handshake-${donationId}_${user._id}&color=29524a&bgcolor=f5f2eb`} 
+                      alt="Handoff QR" 
+                      className="w-full h-full rounded-2xl object-cover" 
+                    />
+                  ) : (
+                    <>
+                      <div className="w-44 h-44 grid grid-cols-5 grid-rows-5 gap-1.5 opacity-80">
+                         {Array.from({length: 25}).map((_, i) => (
+                           <div key={i} className={`bg-pine-teal ${Math.random() > 0.4 ? 'rounded-md' : 'rounded-full scale-75'}`} style={{ opacity: Math.random() > 0.2 ? 1 : 0 }} />
+                         ))}
+                      </div>
+                      {qrScanning && (
+                        <motion.div 
+                          initial={{ y: 0 }}
+                          animate={{ y: 224 }}
+                          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                          className="absolute top-0 left-0 w-full h-1.5 bg-blazing-flame shadow-[0_0_25px_rgba(255,74,28,1)] z-10" 
+                        />
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {isDonor && (
+                  <button
+                    onClick={() => {
+                      setQrScanning(true);
+                      setTimeout(() => {
+                        setQrScanning(false);
+                        setShowQRModal(false);
+                        toast.success("Handshake Verified! Transfer Complete.", { 
+                          icon: "🤝",
+                          style: { background: "#ffffff", color: "#29524a", border: "1px solid #29524a", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "0.1em" }
+                        });
+                      }, 2500);
+                    }}
+                    className={`mt-6 w-full rounded-2xl py-4 text-xs font-black uppercase tracking-widest text-white shadow-[0_10px_25px_rgba(41,82,74,0.3)] transition-all ${qrScanning ? 'bg-[#1a3630]' : 'bg-pine-teal hover:scale-[1.02] hover:bg-[#1a3630] active:scale-95'}`}
+                    disabled={qrScanning}
+                  >
+                    {qrScanning ? "Verifying Keys..." : "Simulate Scan"}
+                  </button>
+                )}
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </main>
     </Layout>
   );

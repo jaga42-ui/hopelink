@@ -39,10 +39,7 @@ class ErrorBoundary extends React.Component {
                 A critical error occurred while rendering this interface. The Sahayam transmission has been interrupted.
               </p>
 
-              {/* Developer Error Output */}
-              <div className="bg-pearl-beige/50 border border-dusty-lavender/30 p-4 rounded-xl text-[10px] text-blazing-flame font-mono text-left overflow-x-auto mb-8 hidden md:block opacity-80">
-                {this.state.errorMessage}
-              </div>
+              {/* Developer Error Output has been disabled for production safety and clean UI */}
 
               <div className="flex flex-col gap-3">
                 <button

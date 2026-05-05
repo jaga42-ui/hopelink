@@ -14,6 +14,14 @@ const userSchema = new mongoose.Schema(
     organizationName: { type: String },
     isVerified: { type: Boolean, default: false }, // Crucial: NGOs must be approved before login
 
+    // Trust & Safety
+    isEmailVerified: { type: Boolean, default: false },
+    emailVerificationToken: { type: String },
+    kycStatus: {
+      documentVerified: { type: Boolean, default: false },
+      documentType: { type: String, enum: ["aadhaar", "passport", "driving_license", "none"], default: "none" },
+    },
+
     // Web Push Subscription
     pushSubscription: { type: Object, default: null },
     fcmToken: { type: String },
@@ -41,6 +49,21 @@ const userSchema = new mongoose.Schema(
       type: { type: String, enum: ["Point"], default: "Point" },
       coordinates: { type: [Number], default: [0, 0] },
     },
+
+    // Medical Dossier
+    medicalDossier: {
+      allergies: { type: [String], default: [] },
+      chronicConditions: { type: [String], default: [] },
+    },
+
+    // Emergency Contacts
+    emergencyContacts: [{
+      name: { type: String },
+      phone: { type: String },
+      relation: { type: String }
+    }],
+
+    lastActiveAt: { type: Date, default: Date.now },
   },
   { timestamps: true },
 );

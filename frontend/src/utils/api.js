@@ -15,7 +15,7 @@ api.interceptors.request.use((config) => {
   return config;
 }, (error) => Promise.reject(error));
 
-// 👉 THE FIX: Handle Expired Tokens globally
+// 👉 THE FIX: Handle Expired Tokens globally and intercept massive UI-breaking errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -25,6 +25,17 @@ api.interceptors.response.use(
       localStorage.removeItem('user');
       window.location.href = '/login';
     }
+
+    // 👉 THE FIX: Prevent HTML dumps or massive stack traces from breaking `toast.error`
+    if (error.response && error.response.data) {
+      const data = error.response.data;
+      if (typeof data === 'string' && data.length > 150) {
+        error.response.data = { message: "Network anomaly detected. Please try again." };
+      } else if (data.message && data.message.length > 150) {
+        error.response.data.message = "System error. The engineering team has been notified.";
+      }
+    }
+
     return Promise.reject(error);
   }
 );

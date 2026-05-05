@@ -5,6 +5,15 @@ const messageSchema = new mongoose.Schema({
   receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   donationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Donation', required: true },
   content: { type: String, required: true },
+  
+  // Advanced Features
+  messageType: { 
+    type: String, 
+    enum: ["text", "image", "location_ping", "system_alert"], 
+    default: "text" 
+  },
+  metadata: { type: mongoose.Schema.Types.Mixed },
+
   read: { type: Boolean, default: false }
 }, { timestamps: true });
 

@@ -41,6 +41,7 @@ const createDonation = asyncHandler(async (req, res) => {
     bloodGroup,
     lat,
     lng,
+    severityLevel,
   } = req.body;
 
   let imageUrl = req.file ? req.file.path : "";
@@ -72,6 +73,8 @@ const createDonation = asyncHandler(async (req, res) => {
       coordinates: [parsedLng, parsedLat],
       addressText,
     },
+    severityLevel: severityLevel || (isCriticalEmergency ? "Code Yellow" : "Unverified"),
+    verifiedByInstitution: req.user.activeRole === "ngo" ? req.user._id : null,
   });
 
   const populatedDonation = await Donation.findById(newDonation._id)
@@ -85,18 +88,36 @@ const createDonation = asyncHandler(async (req, res) => {
 
   if (isCriticalEmergency) {
     try {
-      // 👉 THE FIX: Added Geospatial filter and strict limit to prevent spamming millions globally
-      const potentialSaviors = await User.find({
+      const query = {
         activeRole: "donor",
         _id: { $ne: req.user._id },
         fcmToken: { $exists: true, $ne: null },
         location: {
           $near: {
             $geometry: { type: "Point", coordinates: [parsedLng, parsedLat] },
-            $maxDistance: 50000, // 50km radius only!
+            $maxDistance: 50000, // 50km radius
           },
         },
-      }).limit(500); 
+      };
+
+      // Medical Cross-Matching Algorithm
+      const compatibilityMatrix = {
+        "O-": ["O-"],
+        "O+": ["O+", "O-"],
+        "A-": ["A-", "O-"],
+        "A+": ["A+", "A-", "O+", "O-"],
+        "B-": ["B-", "O-"],
+        "B+": ["B+", "B-", "O+", "O-"],
+        "AB-": ["AB-", "A-", "B-", "O-"],
+        "AB+": ["O-", "O+", "A-", "A+", "B-", "B+", "AB-", "AB+"]
+      };
+
+      if (category === "blood" && bloodGroup && compatibilityMatrix[bloodGroup]) {
+        query.bloodGroup = { $in: compatibilityMatrix[bloodGroup] };
+        console.log(`[MEDICAL MATRIX] Cross-matching ${bloodGroup} to compatible donors:`, compatibilityMatrix[bloodGroup]);
+      }
+
+      const potentialSaviors = await User.find(query).limit(500);
 
       const tokens = potentialSaviors.map((u) => u.fcmToken);
 

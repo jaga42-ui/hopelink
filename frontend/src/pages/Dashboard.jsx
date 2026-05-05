@@ -26,6 +26,8 @@ import {
   FaTshirt,
   FaBook,
   FaBell,
+  FaShieldAlt,
+  FaMicrophone,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -157,11 +159,66 @@ const Dashboard = () => {
     bloodGroup: "",
     quantity: "",
     hospital: "",
+    roomNumber: "",
+    patientName: "",
+    patientAge: "",
     addressText: "",
     description: "",
     lat: null,
     lng: null,
   });
+
+  const [isListening, setIsListening] = useState(false);
+
+  const startVoiceRecognition = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error("Voice SOS is not supported in this browser.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      toast.loading("Listening... Speak your emergency clearly.", { id: "voiceSOS" });
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      toast.success("Voice processed! Review auto-filled data.", { id: "voiceSOS" });
+      
+      let newSosData = { ...sosData, description: transcript };
+      const lowerText = transcript.toLowerCase();
+      
+      const bloodTypes = ["a+", "a-", "b+", "b-", "ab+", "ab-", "o+", "o-"];
+      for (const bg of bloodTypes) {
+        if (lowerText.includes(bg) || lowerText.includes(bg.replace("+", " positive").replace("-", " negative"))) {
+          newSosData.bloodGroup = bg.toUpperCase();
+          break;
+        }
+      }
+      
+      const unitMatch = lowerText.match(/(\d+)\s*units?/);
+      if (unitMatch) newSosData.quantity = unitMatch[1];
+
+      setSosData(newSosData);
+    };
+
+    recognition.onerror = (event) => {
+      toast.error(`Voice recognition failed: ${event.error}`, { id: "voiceSOS" });
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
+  };
 
   const [requestsModal, setRequestsModal] = useState({
     isOpen: false,
@@ -418,10 +475,24 @@ const Dashboard = () => {
     setIsSubmitting(true);
 
     try {
+      const toastId = toast.loading("AI Triage: Analyzing emergency severity...");
+      
+      // Simulate AI Triage Delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      const textAnalysis = (sosData.description + " " + sosData.title).toLowerCase();
+      let severityLevel = "Code Yellow";
+      if (textAnalysis.includes("critical") || textAnalysis.includes("urgent") || textAnalysis.includes("accident") || textAnalysis.includes("dying") || textAnalysis.includes("icu")) {
+        severityLevel = "Code Red";
+      }
+
+      toast.success(`AI Triage complete. Classified as ${severityLevel}. Broadcasting...`, { id: toastId });
+
       const formData = new FormData();
       formData.append("listingType", "request");
       formData.append("category", "blood");
       formData.append("isEmergency", "true");
+      formData.append("severityLevel", severityLevel);
       formData.append("bloodGroup", sosData.bloodGroup);
       formData.append("quantity", `${sosData.quantity} Units`);
       formData.append("title", `URGENT: ${sosData.bloodGroup} Needed!`);
@@ -430,6 +501,19 @@ const Dashboard = () => {
         "addressText",
         `${sosData.hospital}, ${sosData.addressText}`,
       );
+      if (sosData.roomNumber) formData.append("hospitalRoomNumber", sosData.roomNumber);
+      
+      const patientDetails = {
+        name: sosData.patientName,
+        age: sosData.patientAge ? parseInt(sosData.patientAge) : undefined,
+      };
+      formData.append("patientDetails", JSON.stringify(patientDetails));
+
+      // Calculate a 4-hour critical deadline for Code Red, 12-hour for Code Yellow
+      const deadlineHours = severityLevel === "Code Red" ? 4 : 12;
+      const criticalDeadline = new Date(Date.now() + deadlineHours * 60 * 60 * 1000).toISOString();
+      formData.append("criticalDeadline", criticalDeadline);
+
       if (sosData.lat) formData.append("lat", sosData.lat);
       if (sosData.lng) formData.append("lng", sosData.lng);
 
@@ -440,6 +524,9 @@ const Dashboard = () => {
         bloodGroup: "",
         quantity: "",
         hospital: "",
+        roomNumber: "",
+        patientName: "",
+        patientAge: "",
         addressText: "",
         description: "",
         lat: null,
@@ -571,29 +658,32 @@ const Dashboard = () => {
                   animate={{ opacity: 1, y: 0 }}
                   className="mb-3 hidden items-center gap-2 rounded-full border border-pine-teal/15 bg-white/60 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-pine-teal shadow-sm backdrop-blur-xl sm:inline-flex"
                 >
-                  <span className="h-2 w-2 rounded-full bg-blazing-flame shadow-[0_0_14px_rgba(255,74,28,0.8)]" />
-                  Live Community Feed
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blazing-flame opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-blazing-flame"></span>
+                  </span>
+                  Sahayam Global Grid : Online
                 </MotionDiv>
                 <MotionH1
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.04 }}
-                  className="text-2xl font-black leading-tight tracking-tight text-pine-teal sm:text-4xl md:text-6xl"
+                  className="text-3xl font-black leading-tight tracking-tight text-pine-teal sm:text-5xl md:text-6xl"
                 >
-                  <span className="sm:hidden">Hi, </span>
-                  <span className="hidden sm:inline">Welcome, </span>
-                  <br className="hidden sm:block md:hidden" />
-                  {user?.name?.split(" ")[0] || "Friend"}.
+                  <span className="block text-dusty-lavender text-[10px] sm:text-xs uppercase tracking-[0.3em] mb-1">
+                    Commander Node // {isDonor ? 'Donor Status' : 'Receiver Status'}
+                  </span>
+                  {user?.name?.split(" ")[0] || "Operator"}<span className="text-blazing-flame animate-pulse">_</span>
                 </MotionH1>
                 <MotionP
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 }}
-                  className="mt-3 hidden max-w-2xl text-sm font-bold leading-relaxed text-pine-teal/70 sm:block md:text-base"
+                  className="mt-3 hidden max-w-2xl text-sm font-bold leading-relaxed text-pine-teal/70 sm:block md:text-base border-l-2 border-blazing-flame/50 pl-3"
                 >
                   {isDonor
-                    ? "Share supplies, answer requests, and keep urgent posts visible."
-                    : "Track available support, respond quickly, and keep emergency needs moving."}
+                    ? "Your sector is clear. Monitor live distress signals below or dispatch resources to nearby zones."
+                    : "Live distress grid activated. Deploy emergency requests for immediate community assistance."}
                 </MotionP>
               </div>
 
@@ -670,9 +760,12 @@ const Dashboard = () => {
                     hidden: { opacity: 0, y: 16 },
                     show: { opacity: 1, y: 0 },
                   }}
-                  className={`relative overflow-hidden rounded-[1.5rem] border ${stat.border} bg-white/65 p-4 shadow-[0_14px_35px_rgba(41,82,74,0.07)] backdrop-blur-xl`}
+                  className={`group relative overflow-hidden rounded-[1.5rem] border ${stat.border} bg-white/65 p-4 shadow-[0_14px_35px_rgba(41,82,74,0.07)] backdrop-blur-xl hover:scale-105 hover:shadow-[0_20px_40px_rgba(41,82,74,0.12)] transition-all duration-300 cursor-default`}
                 >
                   <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
+                  <div className="absolute -right-6 -bottom-6 opacity-5 group-hover:opacity-10 group-hover:scale-150 transition-all duration-500">
+                    <StatIcon className="text-[100px]" />
+                  </div>
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <p className="text-[9px] font-black uppercase tracking-widest text-dusty-lavender">
@@ -855,16 +948,23 @@ const Dashboard = () => {
                           </div>
                         </div>
 
-                        {item.isEmergency ? (
-                          <span className="flex shrink-0 items-center gap-1 rounded-xl bg-blazing-flame px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-white shadow-lg shadow-blazing-flame/25">
-                            <FaExclamationTriangle />
-                            SOS
-                          </span>
-                        ) : (
-                          <span className="shrink-0 rounded-xl border border-white/70 bg-white/80 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-pine-teal shadow-sm">
-                            {meta.label}
-                          </span>
-                        )}
+                        <div className="flex gap-2">
+                          {item.verifiedByInstitution && (
+                            <span className="flex shrink-0 items-center gap-1 rounded-xl bg-[#2b7fff] px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-white shadow-lg shadow-[#2b7fff]/25" title="Verified by Institutional Node">
+                              <FaShieldAlt /> Verified
+                            </span>
+                          )}
+                          {item.isEmergency ? (
+                            <span className="flex shrink-0 items-center gap-1 rounded-xl bg-blazing-flame px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-white shadow-lg shadow-blazing-flame/25">
+                              <FaExclamationTriangle />
+                              SOS
+                            </span>
+                          ) : (
+                            <span className="shrink-0 rounded-xl border border-white/70 bg-white/80 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-pine-teal shadow-sm">
+                              {meta.label}
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       {item.image ? (
@@ -913,17 +1013,43 @@ const Dashboard = () => {
                           </span>
                         </div>
 
-                        <h3 className="mb-2 line-clamp-2 text-lg font-black leading-snug tracking-tight text-pine-teal">
+                        <h3 className="mb-2 line-clamp-2 text-lg font-black leading-snug tracking-tight text-pine-teal group-hover:text-blazing-flame transition-colors duration-300">
                           {item.title}
                         </h3>
+
+                        {item.patientDetails && item.patientDetails.name && (
+                          <div className="mb-3 bg-gradient-to-r from-blazing-flame/10 to-transparent border-l-2 border-blazing-flame pl-3 py-2">
+                             <p className="text-[9px] font-black uppercase tracking-[0.2em] text-blazing-flame mb-0.5">Patient Intel</p>
+                             <p className="text-sm font-black text-pine-teal">{item.patientDetails.name} <span className="text-pine-teal/60 font-bold ml-1">({item.patientDetails.age} Yrs)</span></p>
+                             {item.hospitalRoomNumber && <p className="text-[10px] font-bold text-pine-teal mt-1">Ward: <span className="font-black text-dark-raspberry">{item.hospitalRoomNumber}</span></p>}
+                          </div>
+                        )}
+
                         <p className="mb-4 line-clamp-2 flex-1 text-sm font-medium leading-relaxed text-pine-teal/70">
                           {item.description}
                         </p>
-                        <div className="mt-auto flex items-center gap-2 rounded-2xl border border-dark-raspberry/10 bg-dark-raspberry/5 p-3 text-[10px] font-black uppercase tracking-widest text-dark-raspberry">
-                          <FaMapMarkerAlt className="shrink-0 text-sm" />
-                          <span className="truncate">
-                            {item.addressText || "Location pending"}
-                          </span>
+                        
+                        <div className="mt-auto flex flex-wrap items-center gap-2">
+                          {item.criticalDeadline && (
+                            <div className="w-full flex items-center gap-2 rounded-xl border border-blazing-flame/30 bg-blazing-flame/5 p-2.5 text-[10px] font-black uppercase tracking-widest text-blazing-flame shadow-sm mb-1">
+                              <FaClock className="text-sm shrink-0 animate-pulse" />
+                              <span className="truncate">Deadline: {new Date(item.criticalDeadline).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                            </div>
+                          )}
+                          {item.severityLevel && item.severityLevel !== "Unverified" && (
+                            <div className={`rounded-xl border px-3 py-1.5 text-[9px] font-black uppercase tracking-widest shadow-sm ${
+                              item.severityLevel === "Code Red" ? "border-blazing-flame/40 bg-blazing-flame/10 text-blazing-flame" :
+                              "border-[#ffd700]/40 bg-[#ffd700]/10 text-[#cca000]"
+                            }`}>
+                              {item.severityLevel}
+                            </div>
+                          )}
+                          <div className="flex flex-1 items-center gap-2 rounded-xl border border-dark-raspberry/10 bg-dark-raspberry/5 p-3 text-[10px] font-black uppercase tracking-widest text-dark-raspberry">
+                            <FaMapMarkerAlt className="shrink-0 text-sm" />
+                            <span className="truncate">
+                              {item.addressText || "Location pending"}
+                            </span>
+                          </div>
                         </div>
                       </div>
 
@@ -1060,39 +1186,56 @@ const Dashboard = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-pine-teal/60 backdrop-blur-md"
+                className="absolute inset-0 bg-[#0a0a0a]/80 backdrop-blur-md"
                 onClick={() => setShowSOS(false)}
               />
               <MotionDiv
-                initial={{ y: "100%", opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: "100%", opacity: 0 }}
+                initial={{ y: "100%", opacity: 0, scale: 0.95 }}
+                animate={{ y: 0, opacity: 1, scale: 1 }}
+                exit={{ y: "100%", opacity: 0, scale: 0.95 }}
                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="relative w-full max-w-md rounded-[2rem] border border-white bg-white/90 p-6 shadow-[0_24px_70px_rgba(41,82,74,0.22)] backdrop-blur-2xl sm:p-8"
+                className="relative w-full max-w-md rounded-[2rem] border border-blazing-flame/50 bg-gradient-to-br from-[#1c0808] to-[#0a0000] p-6 shadow-[0_0_80px_rgba(255,74,28,0.3)] backdrop-blur-2xl sm:p-8 overflow-hidden"
               >
-                <div className="mb-7 flex items-center justify-between">
+                {/* Emergency Radar Animation Background */}
+                <div className="absolute inset-0 z-0 flex items-center justify-center opacity-20 pointer-events-none">
+                  <div className="w-[400px] h-[400px] rounded-full border border-blazing-flame/20 animate-ping" style={{ animationDuration: '3s' }} />
+                  <div className="absolute w-[200px] h-[200px] rounded-full border border-blazing-flame/30 animate-ping" style={{ animationDuration: '2s' }} />
+                </div>
+
+                <div className="relative z-10 mb-7 flex items-center justify-between">
                   <div className="flex items-center gap-4 text-blazing-flame">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-blazing-flame/20 bg-blazing-flame/10">
-                      <FaExclamationTriangle className="text-2xl" />
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-blazing-flame bg-blazing-flame/20 shadow-[0_0_15px_rgba(255,74,28,0.5)]">
+                      <FaExclamationTriangle className="text-2xl animate-pulse text-white" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-black uppercase tracking-tight">
+                      <h2 className="text-2xl font-black uppercase tracking-tight text-white">
                         SOS Broadcast
                       </h2>
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-dusty-lavender">
-                        Urgent blood request
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blazing-flame animate-pulse">
+                        Critical Override Activated
                       </p>
                     </div>
                   </div>
                   <button
                     onClick={() => setShowSOS(false)}
-                    className="rounded-full bg-pearl-beige p-3 text-dusty-lavender shadow-inner transition-colors hover:text-pine-teal"
+                    className="rounded-full bg-white/10 p-3 text-white/50 shadow-inner transition-all hover:bg-blazing-flame hover:text-white"
                   >
                     <FaTimes />
                   </button>
                 </div>
 
-                <form onSubmit={handleSOSSubmit} className="space-y-5">
+                <div className="mb-6">
+                  <button
+                    type="button"
+                    onClick={startVoiceRecognition}
+                    className={`w-full flex items-center justify-center gap-3 rounded-2xl border py-4 text-xs font-black uppercase tracking-widest text-white shadow-[0_10px_30px_rgba(255,74,28,0.2)] transition-all ${isListening ? "bg-blazing-flame border-blazing-flame animate-pulse shadow-[0_0_40px_rgba(255,74,28,0.6)]" : "bg-white/10 border-blazing-flame/50 hover:bg-blazing-flame/20"}`}
+                  >
+                    <FaMicrophone className={isListening ? "text-lg animate-bounce" : "text-lg"} />
+                    {isListening ? "Listening... Speak Now" : "Panic Mode: Voice SOS"}
+                  </button>
+                </div>
+
+                <form onSubmit={handleSOSSubmit} className="relative z-10 space-y-4">
                   <div className="flex gap-3">
                     <select
                       required
@@ -1100,14 +1243,14 @@ const Dashboard = () => {
                       onChange={(e) =>
                         setSosData({ ...sosData, bloodGroup: e.target.value })
                       }
-                      className="flex-1 rounded-2xl border border-dusty-lavender/30 bg-white px-4 py-4 text-xs font-black uppercase tracking-widest text-pine-teal shadow-sm outline-none focus:border-blazing-flame"
+                      className="flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-xs font-black uppercase tracking-widest text-white shadow-inner outline-none focus:border-blazing-flame focus:bg-blazing-flame/10 transition-all cursor-pointer appearance-none"
                     >
-                      <option value="" disabled>
-                        Type
+                      <option value="" disabled className="text-black">
+                        Blood Type
                       </option>
                       {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map(
                         (bg) => (
-                          <option key={bg} value={bg}>
+                          <option key={bg} value={bg} className="text-black">
                             {bg}
                           </option>
                         ),
@@ -1122,7 +1265,7 @@ const Dashboard = () => {
                       onChange={(e) =>
                         setSosData({ ...sosData, quantity: e.target.value })
                       }
-                      className="w-24 rounded-2xl border border-dusty-lavender/30 bg-white px-4 py-4 text-center text-xs font-black uppercase tracking-widest text-pine-teal shadow-sm outline-none focus:border-blazing-flame"
+                      className="w-24 rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-center text-xs font-black uppercase tracking-widest text-white shadow-inner outline-none focus:border-blazing-flame focus:bg-blazing-flame/10 transition-all placeholder-white/30"
                     />
                   </div>
                   <input
@@ -1132,23 +1275,53 @@ const Dashboard = () => {
                     onChange={(e) =>
                       setSosData({ ...sosData, hospital: e.target.value })
                     }
-                    className="w-full rounded-2xl border border-dusty-lavender/30 bg-white px-5 py-4 text-sm font-bold text-pine-teal shadow-sm outline-none focus:border-blazing-flame"
+                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm font-bold text-white shadow-inner outline-none focus:border-blazing-flame focus:bg-blazing-flame/10 transition-all placeholder-white/30"
+                  />
+
+                  <div className="flex gap-3">
+                    <input
+                      required
+                      placeholder="Patient Name"
+                      value={sosData.patientName}
+                      onChange={(e) =>
+                        setSosData({ ...sosData, patientName: e.target.value })
+                      }
+                      className="flex-[2] rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm font-bold text-white shadow-inner outline-none focus:border-blazing-flame focus:bg-blazing-flame/10 transition-all placeholder-white/30"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Age"
+                      value={sosData.patientAge}
+                      onChange={(e) =>
+                        setSosData({ ...sosData, patientAge: e.target.value })
+                      }
+                      className="flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-center text-sm font-bold text-white shadow-inner outline-none focus:border-blazing-flame focus:bg-blazing-flame/10 transition-all placeholder-white/30"
+                    />
+                  </div>
+
+                  <input
+                    placeholder="Ward / ICU / Room No. (Optional)"
+                    value={sosData.roomNumber}
+                    onChange={(e) =>
+                      setSosData({ ...sosData, roomNumber: e.target.value })
+                    }
+                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm font-bold text-white shadow-inner outline-none focus:border-blazing-flame focus:bg-blazing-flame/10 transition-all placeholder-white/30"
                   />
 
                   <div className="relative">
                     <div className="flex gap-2">
                       <input
                         required
-                        placeholder="Search Area"
+                        readOnly
+                        placeholder="Use GPS for accurate location"
                         value={sosData.addressText}
-                        onChange={handleLocationType}
-                        className="min-w-0 flex-1 rounded-2xl border border-dusty-lavender/30 bg-white px-5 py-4 text-sm font-bold text-pine-teal shadow-sm outline-none focus:border-blazing-flame"
+                        className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm font-bold text-white shadow-inner outline-none transition-all placeholder-white/30 cursor-not-allowed opacity-80"
                       />
                       <button
                         type="button"
                         onClick={handleGetLocation}
                         disabled={isFetchingLocation}
-                        className="flex w-14 shrink-0 items-center justify-center rounded-2xl bg-pine-teal text-white shadow-md transition-colors hover:bg-[#1a3630] disabled:opacity-60"
+                        className="flex w-14 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-white/10 text-white shadow-md transition-all hover:bg-blazing-flame hover:border-blazing-flame disabled:opacity-60"
                       >
                         {isFetchingLocation ? (
                           <FaSpinner className="animate-spin text-lg" />
@@ -1157,20 +1330,7 @@ const Dashboard = () => {
                         )}
                       </button>
                     </div>
-                    {suggestions.length > 0 && (
-                      <div className="absolute z-50 mt-2 max-h-60 w-full overflow-y-auto rounded-2xl border border-dusty-lavender/30 bg-white shadow-xl">
-                        {suggestions.map((suggestion, index) => (
-                          <button
-                            type="button"
-                            key={`${suggestion.display_name}-${index}`}
-                            onClick={() => handleSelectSuggestion(suggestion)}
-                            className="block w-full border-b border-dusty-lavender/10 px-5 py-3.5 text-left text-xs font-bold text-pine-teal transition-colors last:border-0 hover:bg-pearl-beige"
-                          >
-                            {suggestion.display_name}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    {/* Suggestions dropdown removed as manual typing is disabled */}
                   </div>
 
                   <textarea
@@ -1181,7 +1341,7 @@ const Dashboard = () => {
                     onChange={(e) =>
                       setSosData({ ...sosData, description: e.target.value })
                     }
-                    className="w-full resize-none rounded-2xl border border-dusty-lavender/30 bg-white px-5 py-4 text-sm font-bold text-pine-teal shadow-sm outline-none focus:border-blazing-flame"
+                    className="w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm font-bold text-white shadow-inner outline-none focus:border-blazing-flame focus:bg-blazing-flame/10 transition-all placeholder-white/30"
                   />
 
                   <MotionButton

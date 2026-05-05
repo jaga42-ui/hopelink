@@ -107,9 +107,9 @@ const Profile = () => {
         <header className="mb-8 md:mb-12 border-b border-dusty-lavender/30 pt-6 pb-6 md:pb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
             <motion.h1 initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="text-4xl md:text-6xl font-black text-pine-teal uppercase tracking-tight">
-              MY <span className={themeAccent}>LEGACY.</span>
+              OPERATIVE <span className={themeAccent}>DOSSIER.</span>
             </motion.h1>
-            <p className="text-dusty-lavender font-bold uppercase tracking-[0.2em] md:tracking-[0.3em] text-[9px] md:text-[10px] mt-1 md:mt-2">Sahayam Community Impact</p>
+            <p className="text-dusty-lavender font-bold uppercase tracking-[0.2em] md:tracking-[0.3em] text-[9px] md:text-[10px] mt-1 md:mt-2">Global Network Profile & Settings</p>
           </div>
           
           {!isEditing && (
@@ -122,7 +122,8 @@ const Profile = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
           
           <div className="lg:col-span-4 space-y-6 md:space-y-8">
-            <div className="bg-white/70 backdrop-blur-lg border border-white rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 relative overflow-hidden transition-all duration-500 shadow-[0_20px_40px_rgba(41,82,74,0.08)]">
+            <div className="bg-white/70 backdrop-blur-lg border border-white rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 relative overflow-hidden transition-all duration-500 shadow-[0_20px_40px_rgba(41,82,74,0.08)] group hover:shadow-[0_24px_50px_rgba(41,82,74,0.12)]">
+              <div className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-white/70 to-transparent dashboard-card-sheen pointer-events-none" />
               
               <div className="flex flex-col items-center text-center relative z-10">
                 <div className="relative mb-5 md:mb-6 group">
@@ -247,26 +248,32 @@ const Profile = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-4 md:gap-6">
-              <div className="bg-white/70 backdrop-blur-lg border border-white rounded-2xl md:rounded-[2.5rem] p-5 md:p-8 relative overflow-hidden group shadow-[0_10px_30px_rgba(41,82,74,0.05)]">
-                <div className="absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-gradient-to-bl from-pearl-beige to-transparent rounded-bl-[80px] md:rounded-bl-[100px]"></div>
+              <div className="bg-white/70 backdrop-blur-lg border border-white rounded-2xl md:rounded-[2.5rem] p-5 md:p-8 relative overflow-hidden group shadow-[0_10px_30px_rgba(41,82,74,0.05)] hover:scale-105 hover:shadow-[0_20px_40px_rgba(41,82,74,0.12)] transition-all duration-300">
+                <div className="absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-gradient-to-bl from-pearl-beige to-transparent rounded-bl-[80px] md:rounded-bl-[100px] pointer-events-none"></div>
+                <div className="absolute -right-6 -bottom-6 opacity-5 group-hover:opacity-10 group-hover:scale-150 transition-all duration-500 pointer-events-none">
+                  <FaBoxOpen className="text-[120px]" />
+                </div>
                 <div className={`text-3xl md:text-4xl mb-4 md:mb-6 opacity-90 ${themeAccent}`}><FaBoxOpen /></div>
                 {loading ? (
-                  <div className="h-10 md:h-14 w-16 md:w-24 bg-dusty-lavender/20 animate-pulse rounded-lg md:rounded-xl"></div>
+                  <div className="h-10 md:h-14 w-16 md:w-24 bg-dusty-lavender/20 animate-pulse rounded-lg md:rounded-xl relative z-10"></div>
                 ) : (
-                  <h3 className="text-4xl md:text-5xl font-black text-pine-teal">{user.donationsCount || stats.totalDonations}</h3>
+                  <h3 className="text-4xl md:text-5xl font-black text-pine-teal relative z-10">{user.donationsCount || stats.totalDonations}</h3>
                 )}
-                <p className="text-dusty-lavender text-[9px] md:text-[10px] uppercase font-black tracking-widest mt-2 md:mt-3 leading-tight">Missions Completed</p>
+                <p className="text-dusty-lavender text-[9px] md:text-[10px] uppercase font-black tracking-widest mt-2 md:mt-3 leading-tight relative z-10">Missions Completed</p>
               </div>
 
-              <div className="bg-white/70 backdrop-blur-lg border border-white rounded-2xl md:rounded-[2.5rem] p-5 md:p-8 relative overflow-hidden group shadow-[0_10px_30px_rgba(41,82,74,0.05)]">
-                <div className="absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-gradient-to-bl from-pearl-beige to-transparent rounded-bl-[80px] md:rounded-bl-[100px]"></div>
+              <div className="bg-white/70 backdrop-blur-lg border border-white rounded-2xl md:rounded-[2.5rem] p-5 md:p-8 relative overflow-hidden group shadow-[0_10px_30px_rgba(41,82,74,0.05)] hover:scale-105 hover:shadow-[0_20px_40px_rgba(41,82,74,0.12)] transition-all duration-300">
+                <div className="absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-gradient-to-bl from-pearl-beige to-transparent rounded-bl-[80px] md:rounded-bl-[100px] pointer-events-none"></div>
+                <div className="absolute -right-6 -bottom-6 opacity-5 group-hover:opacity-10 group-hover:scale-150 transition-all duration-500 pointer-events-none">
+                  <FaHistory className="text-[120px]" />
+                </div>
                 <div className={`text-3xl md:text-4xl mb-4 md:mb-6 opacity-90 ${themeAccent}`}><FaHistory /></div>
                 {loading ? (
-                  <div className="h-10 md:h-14 w-16 md:w-24 bg-dusty-lavender/20 animate-pulse rounded-lg md:rounded-xl"></div>
+                  <div className="h-10 md:h-14 w-16 md:w-24 bg-dusty-lavender/20 animate-pulse rounded-lg md:rounded-xl relative z-10"></div>
                 ) : (
-                  <h3 className="text-4xl md:text-5xl font-black text-pine-teal">{stats.activeListings}</h3>
+                  <h3 className="text-4xl md:text-5xl font-black text-pine-teal relative z-10">{stats.activeListings}</h3>
                 )}
-                <p className="text-dusty-lavender text-[9px] md:text-[10px] uppercase font-black tracking-widest mt-2 md:mt-3 leading-tight">Active Field Ops</p>
+                <p className="text-dusty-lavender text-[9px] md:text-[10px] uppercase font-black tracking-widest mt-2 md:mt-3 leading-tight relative z-10">Active Field Ops</p>
               </div>
             </div>
 

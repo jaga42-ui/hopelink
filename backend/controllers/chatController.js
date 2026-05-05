@@ -154,6 +154,14 @@ const sendMessage = asyncHandler(async (req, res) => {
     ? donationId.split("_")[0]
     : donationId;
 
+  // 👉 THE FIX: Trust & Safety - Prevent arbitrary spam by validating the target
+  const Donation = require("../models/Donation");
+  const donationExists = await Donation.findById(actualDonationId);
+  if (!donationExists) {
+    res.status(404);
+    throw new Error("SECURITY BLOCK: Target donation does not exist.");
+  }
+
   const message = await Message.create({
     sender: req.user._id,
     receiver: receiverId,

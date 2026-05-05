@@ -13,16 +13,50 @@ const {
   respondToBlast,
   forgotPassword, 
   resetPassword,
-  saveFCMToken, // 👉 NEW: Catches the Firebase token from the phone
-  toggleAvailability
+  saveFCMToken,
+  toggleAvailability,
+  verifyEmail
 } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 const { validateRegister, validateLogin } = require('../middleware/validateMiddleware');
 
 // Standard Auth
+/**
+ * @swagger
+ * /api/auth/register:
+ *   post:
+ *     summary: Register a new user
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - email
+ *               - password
+ *               - phone
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: User registered successfully (OTP sent)
+ *       400:
+ *         description: Invalid input or email already exists
+ */
 router.post('/register', validateRegister, registerUser);
 router.post('/login', validateLogin, loginUser);
 router.post('/google', googleLogin);
+router.post('/verify-email', verifyEmail);
 
 // Password Reset Routes (Public)
 router.post('/forgotpassword', forgotPassword); 

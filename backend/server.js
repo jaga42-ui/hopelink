@@ -12,12 +12,16 @@ const helmet = require("helmet");
 const mongoSanitize = require("express-mongo-sanitize");
 const xss = require("xss-clean");
 const hpp = require("hpp");
+const swaggerUi = require("swagger-ui-express");
+const swaggerSpecs = require("./config/swagger");
+const logger = require("./utils/logger");
 
 const cron = require("node-cron");
 const Donation = require("./models/Donation");
 const Feedback = require("./models/Feedback"); 
 const Blast = require("./models/Blast");
 const User = require("./models/User");
+const CronLock = require("./models/CronLock");
 const admin = require("firebase-admin");
 const { protect } = require("./middleware/authMiddleware");
 
@@ -27,7 +31,7 @@ dotenv.config();
 const requiredEnv = ["MONGO_URI", "JWT_SECRET", "FRONTEND_URL"];
 requiredEnv.forEach((env) => {
   if (!process.env[env]) {
-    console.error(`🚨 FATAL ERROR: Missing required environment variable: ${env}`);
+    logger.error(`🚨 FATAL ERROR: Missing required environment variable: ${env}`);
     process.exit(1);
   }
 });
@@ -62,11 +66,7 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: function (origin, callback) {
-    if (
-      !origin ||
-      allowedOrigins.includes(origin) ||
-      (origin && origin.includes("vercel.app"))
-    ) {
+    if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(null, false);
@@ -145,6 +145,9 @@ app.use("/api/chat", require("./routes/chatRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
 app.use("/api/events", require("./routes/events"));
 
+// Swagger API Documentation Route
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
+
 // ==========================================
 // 👉 FEEDBACK ROUTES (Inline MVP implementation)
 // ==========================================
@@ -194,30 +197,37 @@ io.on("connection", (socket) => {
   });
 
   socket.on("join_chat", ({ userId, donationId }) => {
+    // Rooms are no longer needed for 1-to-1 secure chat, but keeping for legacy compatibility if needed
     socket.join(donationId);
   });
 
   socket.on("send_message", (data) => {
-    socket.to(data.donationId).emit("receive_message", data);
+    // 👉 THE FIX: Emit securely to the receiver's private channel. Prevents eavesdropping and fixes asymmetric room bug.
+    socket.to(data.receiver).emit("receive_message", data);
     socket.to(data.receiver).emit("new_message_notification", data);
   });
 
-  socket.on("mark_as_read", ({ donationId, readerId }) => {
-    socket.to(donationId).emit("messages_read", { readerId });
+  socket.on("mark_as_read", ({ receiverId, readerId }) => {
+    socket.to(receiverId).emit("messages_read", { readerId });
   });
 
   socket.on("edit_message", (data) => {
-    socket.to(data.donationId).emit("message_edited", data);
+    socket.to(data.receiver).emit("message_edited", data);
   });
 
   socket.on("delete_message", (data) => {
-    socket.to(data.donationId).emit("message_deleted", data.id);
+    socket.to(data.receiver).emit("message_deleted", data.id);
   });
 });
 
 cron.schedule("0 0 * * *", async () => {
-  console.log("🧹 [CRON] Initiating nightly database cleanup...");
   try {
+    // Attempt to acquire lock for 30 minutes
+    const lock = await CronLock.create({ jobName: 'dailyCleanup', expiresAt: new Date(Date.now() + 30 * 60 * 1000) });
+    if (!lock) return;
+
+    logger.info("🧹 [CRON] Initiating nightly database cleanup...");
+    
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
 
@@ -231,14 +241,22 @@ cron.schedule("0 0 * * *", async () => {
       { $set: { status: "expired" } },
     );
 
+    // Release lock after success
+    await CronLock.deleteOne({ jobName: 'dailyCleanup' });
   } catch (err) {
-    console.error("❌ [CRON] Cleanup failed:", err);
+    if (err.code !== 11000) { // Ignore duplicate key errors (means another instance got the lock)
+      logger.error("❌ [CRON] Cleanup failed:", err);
+    }
   }
 });
 
 // 👉 AI & SMART ROUTING: Radius Expansion Job
 cron.schedule("* * * * *", async () => {
   try {
+    // Distributed lock for horizontal scaling (expires in 50 seconds)
+    const lock = await CronLock.create({ jobName: 'radiusExpansion', expiresAt: new Date(Date.now() + 50 * 1000) });
+    if (!lock) return;
+
     const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
     
     // Find active blasts stuck at level 1 with no responses
@@ -250,7 +268,7 @@ cron.schedule("* * * * *", async () => {
     });
 
     if (stalledBlasts.length > 0) {
-      console.log(`📡 [CRON] Expanding radius for ${stalledBlasts.length} stalled emergency blasts.`);
+      logger.info(`📡 [CRON] Expanding radius for ${stalledBlasts.length} stalled emergency blasts.`);
     }
 
     for (let blast of stalledBlasts) {
@@ -302,19 +320,42 @@ cron.schedule("* * * * *", async () => {
         await blast.save();
       }
     }
+
+    await CronLock.deleteOne({ jobName: 'radiusExpansion' });
   } catch (err) {
-    console.error("❌ [CRON] Smart Routing Expansion failed:", err);
+    if (err.code !== 11000) { // Ignore duplicate key errors
+      logger.error("❌ [CRON] Smart Routing Expansion failed:", err);
+    }
   }
 });
 
 const PORT = process.env.PORT || 5000;
 
+// 👉 GLOBAL ERROR HANDLER
+app.use((err, req, res, next) => {
+  logger.error("🔥 [ERROR LOG]: %O", err);
+  
+  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  let clientMessage = err.message || "Internal Server Error";
+
+  // 👉 THE FIX: Prevent massive stack traces or HTML logs from breaking the frontend UI Toast
+  if (clientMessage.length > 150 || statusCode === 500) {
+    clientMessage = "System encountered an unexpected disruption. Logs recorded.";
+  }
+
+  res.status(statusCode).json({
+    message: clientMessage,
+    // Hide stack trace in production
+    stack: process.env.NODE_ENV === "production" ? null : err.stack,
+  });
+});
+
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
-    console.log("🔥 MongoDB Connected Securely");
+    logger.info("🔥 MongoDB Connected Securely");
     server.listen(PORT, () =>
-      console.log(`🚀 Master Server running on port ${PORT}`),
+      logger.info(`🚀 Master Server running on port ${PORT}`),
     );
   })
-  .catch((err) => console.log(err));
+  .catch((err) => logger.error(err));
